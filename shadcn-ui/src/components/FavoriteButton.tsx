@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Heart } from 'lucide-react';
 import { DataManager } from '@/lib/mockData';
-import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 
 interface FavoriteButtonProps {
   listingId: string;
@@ -13,63 +13,90 @@ interface FavoriteButtonProps {
   className?: string;
 }
 
-export default function FavoriteButton({ 
-  listingId, 
-  userId, 
+export default function FavoriteButton({
+  listingId,
+  userId,
   size = 'default',
-  variant = 'outline',
+  variant = 'default',
   showText = false,
-  className = ''
+  className
 }: FavoriteButtonProps) {
-  const [isFavorite, setIsFavorite] = useState(
-    userId ? DataManager.isFavorite(userId, listingId) : false
-  );
+  const [isFavorite, setIsFavorite] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleToggleFavorite = async (e: React.MouseEvent) => {
+  // Memoize the check to prevent infinite loops
+  const checkFavoriteStatus = useCallback(() => {
+    if (userId && listingId) {
+      try {
+        const favoriteStatus = DataManager.isFavorite(userId, listingId);
+        setIsFavorite(favoriteStatus);
+      } catch (error) {
+        console.error('Error checking favorite status:', error);
+        setIsFavorite(false);
+      }
+    } else {
+      setIsFavorite(false);
+    }
+  }, [userId, listingId]);
+
+  // Only run effect when userId or listingId changes
+  useEffect(() => {
+    checkFavoriteStatus();
+  }, [checkFavoriteStatus]);
+
+  const handleToggle = useCallback(async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     
-    if (!userId) {
-      toast.error('Favorilere eklemek için giriş yapın');
-      return;
-    }
-
+    if (!userId || isLoading) return;
+    
     setIsLoading(true);
-
+    
     try {
       if (isFavorite) {
-        const removed = DataManager.removeFromFavorites(userId, listingId);
-        if (removed) {
-          setIsFavorite(false);
-          toast.success('Favorilerden kaldırıldı');
-        }
+        DataManager.removeFromFavorites(userId, listingId);
+        setIsFavorite(false);
       } else {
         DataManager.addToFavorites(userId, listingId);
         setIsFavorite(true);
-        toast.success('Favorilere eklendi');
       }
     } catch (error) {
-      toast.error('Bir hata oluştu');
+      console.error('Error toggling favorite:', error);
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [userId, listingId, isFavorite, isLoading]);
+
+  // Don't render if no user
+  if (!userId) {
+    return null;
+  }
 
   return (
     <Button
       variant={variant}
       size={size}
-      onClick={handleToggleFavorite}
+      onClick={handleToggle}
       disabled={isLoading}
-      className={`${className} ${isFavorite ? 'text-red-500 hover:text-red-600' : ''}`}
+      className={cn(
+        "transition-colors",
+        isFavorite && "text-red-500 hover:text-red-600",
+        className
+      )}
     >
       <Heart 
-        className={`h-4 w-4 ${showText ? 'mr-2' : ''} ${
-          isFavorite ? 'fill-current' : ''
-        }`} 
+        className={cn(
+          "h-4 w-4",
+          size === 'sm' && "h-3 w-3",
+          size === 'lg' && "h-5 w-5",
+          isFavorite && "fill-current"
+        )} 
       />
-      {showText && (isFavorite ? 'Favorilerden Çıkar' : 'Favorilere Ekle')}
+      {showText && (
+        <span className="ml-2">
+          {isFavorite ? 'Favorilerden Çıkar' : 'Favorilere Ekle'}
+        </span>
+      )}
     </Button>
   );
 }
