@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -20,48 +20,33 @@ export default function Index() {
   const [selectedCondition, setSelectedCondition] = useState('all');
   const [isLoading, setIsLoading] = useState(true);
   
-  // Memoize current user to prevent unnecessary re-renders
-  const currentUser = useMemo(() => DataManager.getCurrentUser(), []);
+  const currentUser = DataManager.getCurrentUser();
 
-  // Memoize filter object to prevent infinite re-renders
-  const filters = useMemo(() => ({
-    category: selectedCategory !== 'all' ? selectedCategory : undefined,
-    city: selectedCity !== 'all' ? selectedCity : undefined,
-    budgetMax: budgetMax ? parseInt(budgetMax) : undefined,
-    condition: selectedCondition !== 'all' ? selectedCondition : undefined,
-  }), [selectedCategory, selectedCity, budgetMax, selectedCondition]);
-
+  // Load listings when filters change
   useEffect(() => {
-    let isMounted = true;
-    
-    const loadListings = async () => {
+    const loadListings = () => {
       try {
-        // Add small delay to prevent hydration issues
-        await new Promise(resolve => setTimeout(resolve, 100));
-        
-        if (!isMounted) return;
-        
+        const filters = {
+          category: selectedCategory !== 'all' ? selectedCategory : undefined,
+          city: selectedCity !== 'all' ? selectedCity : undefined,
+          budgetMax: budgetMax ? parseInt(budgetMax) : undefined,
+          condition: selectedCondition !== 'all' ? selectedCondition : undefined,
+        };
+
         const filteredListings = DataManager.searchListings(searchQuery, filters);
-        
-        if (isMounted) {
-          setListings(filteredListings || []);
-          setIsLoading(false);
-        }
+        setListings(filteredListings || []);
       } catch (error) {
         console.error('Error loading listings:', error);
-        if (isMounted) {
-          setListings([]);
-          setIsLoading(false);
-        }
+        setListings([]);
+      } finally {
+        setIsLoading(false);
       }
     };
 
-    loadListings();
-    
-    return () => {
-      isMounted = false;
-    };
-  }, [searchQuery, filters]);
+    // Add small delay to prevent rapid re-renders
+    const timeoutId = setTimeout(loadListings, 100);
+    return () => clearTimeout(timeoutId);
+  }, [searchQuery, selectedCategory, selectedCity, budgetMax, selectedCondition]);
 
   const handleListingClick = (listingId: string) => {
     navigate(`/listing/${listingId}`);
@@ -147,7 +132,7 @@ export default function Index() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Tüm Kategoriler</SelectItem>
-                  {categories?.map(category => (
+                  {categories && categories.map(category => (
                     <SelectItem key={category} value={category}>{category}</SelectItem>
                   ))}
                 </SelectContent>
@@ -158,7 +143,7 @@ export default function Index() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Tüm Şehirler</SelectItem>
-                  {cities?.map(city => (
+                  {cities && cities.map(city => (
                     <SelectItem key={city} value={city}>{city}</SelectItem>
                   ))}
                 </SelectContent>
@@ -205,7 +190,7 @@ export default function Index() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {listings.map(listing => {
-              if (!listing?.id) return null;
+              if (!listing || !listing.id) return null;
               
               return (
                 <Card 

@@ -41,9 +41,23 @@
                 "bash"
             ],
             "command_terminator": "\n"
+        },
+        "03": {
+            "tab_id": "03",
+            "cwd": "/workspace/shadcn-ui",
+            "observer": {
+                "block": "Terminal",
+                "uuid": "11f0af9b-a3ba-4f7c-9247-9fce23416feb",
+                "enable_llm_stream": false,
+                "callback_url": ""
+            },
+            "shell_command": [
+                "bash"
+            ],
+            "command_terminator": "\n"
         }
     },
-    "current_tab_id": "02",
+    "current_tab_id": "03",
     "forbidden_commands": {
         "run preview": "Use Deployer.deploy_to_public instead.",
         "serve ": "Use Deployer.deploy_to_public instead.",

@@ -23,22 +23,19 @@ export default function FavoriteButton({
 }: FavoriteButtonProps) {
   const [isFavorite, setIsFavorite] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [isInitialized, setIsInitialized] = useState(false);
 
-  // Initialize favorite status only once
+  // Only check favorite status once when component mounts
   useEffect(() => {
-    if (userId && listingId && !isInitialized) {
+    if (userId && listingId) {
       try {
         const favoriteStatus = DataManager.isFavorite(userId, listingId);
         setIsFavorite(favoriteStatus);
-        setIsInitialized(true);
       } catch (error) {
         console.error('Error checking favorite status:', error);
         setIsFavorite(false);
-        setIsInitialized(true);
       }
     }
-  }, [userId, listingId, isInitialized]);
+  }, []); // Empty dependency array - only run once
 
   const handleToggleFavorite = async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -71,7 +68,6 @@ export default function FavoriteButton({
     }
   };
 
-  // Don't render if no user ID
   if (!userId) {
     return null;
   }
