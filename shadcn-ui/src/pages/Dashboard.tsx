@@ -127,9 +127,32 @@ export default function Dashboard() {
 
   const unreadMessageCount = getUnreadMessageCount();
 
+  // Loading state while checking user
   if (!currentUser) {
-    return null;
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p>Yükleniyor...</p>
+        </div>
+      </div>
+    );
   }
+
+  // Safe user name extraction
+  const getUserInitial = (name: string | undefined) => {
+    if (!name || typeof name !== 'string' || name.length === 0) {
+      return 'U'; // Default to 'U' for User
+    }
+    return name.charAt(0).toUpperCase();
+  };
+
+  const getUserName = (name: string | undefined) => {
+    if (!name || typeof name !== 'string') {
+      return 'Kullanıcı';
+    }
+    return name;
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -142,16 +165,16 @@ export default function Dashboard() {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
                 <div className="w-16 h-16 bg-gradient-to-r from-blue-600 to-green-600 rounded-full flex items-center justify-center text-white text-xl font-bold">
-                  {currentUser.name.charAt(0).toUpperCase()}
+                  {getUserInitial(currentUser.name)}
                 </div>
                 <div>
-                  <h2 className="text-2xl font-bold">{currentUser.name}</h2>
-                  <p className="text-muted-foreground">{currentUser.email}</p>
+                  <h2 className="text-2xl font-bold">{getUserName(currentUser.name)}</h2>
+                  <p className="text-muted-foreground">{currentUser.email || 'Email bulunamadı'}</p>
                   <div className="flex items-center gap-2 mt-1">
                     <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                    <span className="font-medium">{currentUser.rating}</span>
-                    <span className="text-sm text-muted-foreground">({currentUser.reviewCount} değerlendirme)</span>
-                    <Badge variant="secondary">{currentUser.city}</Badge>
+                    <span className="font-medium">{currentUser.rating || 0}</span>
+                    <span className="text-sm text-muted-foreground">({currentUser.reviewCount || 0} değerlendirme)</span>
+                    <Badge variant="secondary">{currentUser.city || 'Şehir belirtilmemiş'}</Badge>
                   </div>
                 </div>
               </div>
