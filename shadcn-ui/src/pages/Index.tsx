@@ -23,31 +23,27 @@ export default function Index() {
   const currentUser = DataManager.getCurrentUser();
 
   useEffect(() => {
-    // Add a small delay to prevent hydration mismatch
-    const timer = setTimeout(() => {
-      loadListings();
-      setIsLoading(false);
-    }, 100);
-    
-    return () => clearTimeout(timer);
+    const loadListings = () => {
+      try {
+        const filters = {
+          category: selectedCategory !== 'all' ? selectedCategory : undefined,
+          city: selectedCity !== 'all' ? selectedCity : undefined,
+          budgetMax: budgetMax ? parseInt(budgetMax) : undefined,
+          condition: selectedCondition !== 'all' ? selectedCondition : undefined,
+        };
+
+        const filteredListings = DataManager.searchListings(searchQuery, filters);
+        setListings(filteredListings || []);
+      } catch (error) {
+        console.error('Error loading listings:', error);
+        setListings([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadListings();
   }, [searchQuery, selectedCategory, selectedCity, budgetMax, selectedCondition]);
-
-  const loadListings = () => {
-    try {
-      const filters = {
-        category: selectedCategory !== 'all' ? selectedCategory : undefined,
-        city: selectedCity !== 'all' ? selectedCity : undefined,
-        budgetMax: budgetMax ? parseInt(budgetMax) : undefined,
-        condition: selectedCondition !== 'all' ? selectedCondition : undefined,
-      };
-
-      const filteredListings = DataManager.searchListings(searchQuery, filters);
-      setListings(filteredListings || []);
-    } catch (error) {
-      console.error('Error loading listings:', error);
-      setListings([]);
-    }
-  };
 
   const handleListingClick = (listingId: string) => {
     navigate(`/listing/${listingId}`);
