@@ -225,7 +225,7 @@ const mockMessages: Message[] = [
   }
 ];
 
-// DataManager class
+// DataManager class with all static methods
 export class DataManager {
   private static STORAGE_KEYS = {
     CURRENT_USER: 'currentUser',
@@ -264,12 +264,47 @@ export class DataManager {
   static login(email: string, password: string): User | null {
     this.initializeData();
     const users = this.getUsers();
+    
+    // Demo için basit doğrulama - gerçek uygulamada hash kontrolü olacak
     const user = users.find(u => u.email === email);
-    if (user) {
+    if (user && (password === '123456' || password === '')) {
       localStorage.setItem(this.STORAGE_KEYS.CURRENT_USER, JSON.stringify(user));
       return user;
     }
     return null;
+  }
+
+  static registerUser(userData: {
+    name: string;
+    email: string;
+    password: string;
+    role: 'buyer' | 'seller' | 'both';
+    city: string;
+  }): User | null {
+    this.initializeData();
+    const users = this.getUsers();
+    
+    // Check if email already exists
+    if (users.find(u => u.email === userData.email)) {
+      return null;
+    }
+
+    const newUser: User = {
+      id: `user_${Date.now()}`,
+      name: userData.name,
+      email: userData.email,
+      role: userData.role,
+      city: userData.city,
+      rating: 5.0,
+      reviewCount: 0,
+      createdAt: new Date().toISOString()
+    };
+
+    users.push(newUser);
+    localStorage.setItem(this.STORAGE_KEYS.USERS, JSON.stringify(users));
+    localStorage.setItem(this.STORAGE_KEYS.CURRENT_USER, JSON.stringify(newUser));
+    
+    return newUser;
   }
 
   static logoutUser() {
@@ -516,17 +551,18 @@ export class DataManager {
     }).format(price);
   }
 
-  static formatDate(input: string | Date, locale = "tr-TR"): string {
+  static formatDate(input: string | Date, locale = 'tr-TR'): string {
     try {
-      const d = new Date(input);
-      if (Number.isNaN(d.getTime())) return "";
-      return d.toLocaleDateString(locale, { 
-        year: "numeric", 
-        month: "2-digit", 
-        day: "2-digit" 
+      const date = new Date(input);
+      if (Number.isNaN(date.getTime())) return '';
+      
+      return date.toLocaleDateString(locale, {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
       });
     } catch {
-      return "";
+      return '';
     }
   }
 
@@ -551,7 +587,7 @@ export class DataManager {
         return this.formatDate(dateString);
       }
     } catch {
-      return "";
+      return '';
     }
   }
 }

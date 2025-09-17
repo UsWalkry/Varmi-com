@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DataManager, cities } from '@/lib/mockData';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 
 interface AuthModalProps {
@@ -25,233 +26,289 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }: AuthModalP
     email: '',
     password: '',
     confirmPassword: '',
-    role: 'both',
+    role: 'buyer' as 'buyer' | 'seller' | 'both',
     city: ''
   });
 
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!loginData.email || !loginData.password) {
-      toast.error('E-posta ve şifre gereklidir');
-      return;
-    }
-
-    setIsSubmitting(true);
+    setIsLoading(true);
 
     try {
-      // Mock login - in real app, this would be API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Demo için basit giriş - gerçek uygulamada API çağrısı olacak
+      const user = DataManager.login(loginData.email, loginData.password || '123456');
       
-      const user = DataManager.loginUser(loginData.email, loginData.password);
       if (user) {
-        toast.success('Giriş başarılı!');
+        toast.success(`Hoş geldiniz, ${user.name}!`);
         onAuthSuccess();
         onClose();
+        
+        // Reset form
+        setLoginData({ email: '', password: '' });
       } else {
         toast.error('E-posta veya şifre hatalı');
       }
     } catch (error) {
+      console.error('Login error:', error);
       toast.error('Giriş yapılırken bir hata oluştu');
     } finally {
-      setIsSubmitting(false);
+      setIsLoading(false);
     }
   };
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!registerData.name || !registerData.email || !registerData.password || !registerData.city) {
-      toast.error('Tüm alanları doldurun');
-      return;
-    }
-
-    if (registerData.password !== registerData.confirmPassword) {
-      toast.error('Şifreler eşleşmiyor');
-      return;
-    }
-
-    if (registerData.password.length < 6) {
-      toast.error('Şifre en az 6 karakter olmalıdır');
-      return;
-    }
-
-    setIsSubmitting(true);
+    setIsLoading(true);
 
     try {
-      // Mock registration - in real app, this would be API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
+      // Validation
+      if (registerData.password !== registerData.confirmPassword) {
+        toast.error('Şifreler eşleşmiyor');
+        setIsLoading(false);
+        return;
+      }
+
+      if (!registerData.name || !registerData.email || !registerData.city) {
+        toast.error('Lütfen tüm alanları doldurun');
+        setIsLoading(false);
+        return;
+      }
+
       const user = DataManager.registerUser({
         name: registerData.name,
         email: registerData.email,
         password: registerData.password,
-        role: registerData.role as 'buyer' | 'seller' | 'both',
+        role: registerData.role,
         city: registerData.city
       });
 
       if (user) {
-        toast.success('Kayıt başarılı! Giriş yapıldı.');
+        toast.success('Hesabınız başarıyla oluşturuldu!');
         onAuthSuccess();
         onClose();
+        
+        // Reset form
+        setRegisterData({
+          name: '',
+          email: '',
+          password: '',
+          confirmPassword: '',
+          role: 'buyer',
+          city: ''
+        });
       } else {
-        toast.error('Bu e-posta adresi zaten kullanılıyor');
+        toast.error('Bu e-posta adresi zaten kullanımda');
       }
     } catch (error) {
+      console.error('Register error:', error);
       toast.error('Kayıt olurken bir hata oluştu');
     } finally {
-      setIsSubmitting(false);
+      setIsLoading(false);
     }
   };
 
-  const resetForms = () => {
-    setLoginData({ email: '', password: '' });
-    setRegisterData({
-      name: '',
-      email: '',
-      password: '',
-      confirmPassword: '',
-      role: 'both',
-      city: ''
-    });
-  };
-
-  const handleClose = () => {
-    resetForms();
-    onClose();
+  const handleQuickLogin = (email: string) => {
+    setLoginData({ email, password: '123456' });
+    
+    // Auto login for demo
+    setTimeout(() => {
+      const user = DataManager.login(email, '123456');
+      if (user) {
+        toast.success(`Demo hesabı ile giriş yapıldı: ${user.name}`);
+        onAuthSuccess();
+        onClose();
+      }
+    }, 500);
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="max-w-md">
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Var mı?'ya Hoş Geldiniz</DialogTitle>
+          <DialogTitle>Giriş Yap / Kayıt Ol</DialogTitle>
         </DialogHeader>
 
         <Tabs defaultValue="login" className="w-full">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="login">Giriş Yap</TabsTrigger>
-            <TabsTrigger value="register">Üye Ol</TabsTrigger>
+            <TabsTrigger value="register">Kayıt Ol</TabsTrigger>
           </TabsList>
 
-          {/* Login Tab */}
           <TabsContent value="login">
-            <form onSubmit={handleLogin} className="space-y-4">
-              <div>
-                <Label htmlFor="login-email">E-posta</Label>
-                <Input
-                  id="login-email"
-                  type="email"
-                  placeholder="ornek@email.com"
-                  value={loginData.email}
-                  onChange={(e) => setLoginData({ ...loginData, email: e.target.value })}
-                  required
-                />
-              </div>
-              <div>
-                <Label htmlFor="login-password">Şifre</Label>
-                <Input
-                  id="login-password"
-                  type="password"
-                  placeholder="••••••••"
-                  value={loginData.password}
-                  onChange={(e) => setLoginData({ ...loginData, password: e.target.value })}
-                  required
-                />
-              </div>
-              
-              <div className="text-sm text-muted-foreground bg-blue-50 p-3 rounded-lg">
-                <p className="font-medium mb-1">Demo hesaplar:</p>
-                <p>• ahmet@example.com / 123456</p>
-                <p>• ayse@example.com / 123456</p>
-                <p>• mehmet@example.com / 123456</p>
-              </div>
+            <Card>
+              <CardHeader>
+                <CardTitle>Hesabınıza Giriş Yapın</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleLogin} className="space-y-4">
+                  <div>
+                    <Label htmlFor="email">E-posta</Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      value={loginData.email}
+                      onChange={(e) => setLoginData(prev => ({ ...prev, email: e.target.value }))}
+                      placeholder="ornek@email.com"
+                      required
+                    />
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="password">Şifre</Label>
+                    <Input
+                      id="password"
+                      type="password"
+                      value={loginData.password}
+                      onChange={(e) => setLoginData(prev => ({ ...prev, password: e.target.value }))}
+                      placeholder="Şifrenizi girin"
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Demo için şifre: 123456 (veya boş bırakın)
+                    </p>
+                  </div>
 
-              <Button type="submit" className="w-full" disabled={isSubmitting}>
-                {isSubmitting ? 'Giriş yapılıyor...' : 'Giriş Yap'}
-              </Button>
-            </form>
+                  <Button type="submit" className="w-full" disabled={isLoading}>
+                    {isLoading ? 'Giriş yapılıyor...' : 'Giriş Yap'}
+                  </Button>
+                </form>
+
+                <div className="mt-6">
+                  <div className="text-center text-sm text-muted-foreground mb-3">
+                    Demo Hesapları (Hızlı Giriş)
+                  </div>
+                  <div className="space-y-2">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="w-full text-left justify-start"
+                      onClick={() => handleQuickLogin('ahmet@example.com')}
+                      disabled={isLoading}
+                    >
+                      👤 Ahmet Yılmaz (Alıcı/Satıcı)
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="w-full text-left justify-start"
+                      onClick={() => handleQuickLogin('ayse@example.com')}
+                      disabled={isLoading}
+                    >
+                      👩 Ayşe Demir (Satıcı)
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="w-full text-left justify-start"
+                      onClick={() => handleQuickLogin('mehmet@example.com')}
+                      disabled={isLoading}
+                    >
+                      👨 Mehmet Kaya (Alıcı)
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </TabsContent>
 
-          {/* Register Tab */}
           <TabsContent value="register">
-            <form onSubmit={handleRegister} className="space-y-4">
-              <div>
-                <Label htmlFor="register-name">Ad Soyad</Label>
-                <Input
-                  id="register-name"
-                  placeholder="Adınız Soyadınız"
-                  value={registerData.name}
-                  onChange={(e) => setRegisterData({ ...registerData, name: e.target.value })}
-                  required
-                />
-              </div>
-              <div>
-                <Label htmlFor="register-email">E-posta</Label>
-                <Input
-                  id="register-email"
-                  type="email"
-                  placeholder="ornek@email.com"
-                  value={registerData.email}
-                  onChange={(e) => setRegisterData({ ...registerData, email: e.target.value })}
-                  required
-                />
-              </div>
-              <div>
-                <Label htmlFor="register-city">Şehir</Label>
-                <Select value={registerData.city} onValueChange={(value) => setRegisterData({ ...registerData, city: value })}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Şehir seçin" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {cities.map(city => (
-                      <SelectItem key={city} value={city}>{city}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label htmlFor="register-role">Hesap Türü</Label>
-                <Select value={registerData.role} onValueChange={(value) => setRegisterData({ ...registerData, role: value })}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="buyer">Sadece Alıcı</SelectItem>
-                    <SelectItem value="seller">Sadece Satıcı</SelectItem>
-                    <SelectItem value="both">Alıcı & Satıcı</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label htmlFor="register-password">Şifre</Label>
-                <Input
-                  id="register-password"
-                  type="password"
-                  placeholder="En az 6 karakter"
-                  value={registerData.password}
-                  onChange={(e) => setRegisterData({ ...registerData, password: e.target.value })}
-                  required
-                />
-              </div>
-              <div>
-                <Label htmlFor="register-confirm">Şifre Tekrar</Label>
-                <Input
-                  id="register-confirm"
-                  type="password"
-                  placeholder="Şifrenizi tekrar girin"
-                  value={registerData.confirmPassword}
-                  onChange={(e) => setRegisterData({ ...registerData, confirmPassword: e.target.value })}
-                  required
-                />
-              </div>
+            <Card>
+              <CardHeader>
+                <CardTitle>Yeni Hesap Oluştur</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleRegister} className="space-y-4">
+                  <div>
+                    <Label htmlFor="register-name">Ad Soyad</Label>
+                    <Input
+                      id="register-name"
+                      type="text"
+                      value={registerData.name}
+                      onChange={(e) => setRegisterData(prev => ({ ...prev, name: e.target.value }))}
+                      placeholder="Adınız ve soyadınız"
+                      required
+                    />
+                  </div>
 
-              <Button type="submit" className="w-full" disabled={isSubmitting}>
-                {isSubmitting ? 'Kayıt olunuyor...' : 'Üye Ol'}
-              </Button>
-            </form>
+                  <div>
+                    <Label htmlFor="register-email">E-posta</Label>
+                    <Input
+                      id="register-email"
+                      type="email"
+                      value={registerData.email}
+                      onChange={(e) => setRegisterData(prev => ({ ...prev, email: e.target.value }))}
+                      placeholder="ornek@email.com"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="register-city">Şehir</Label>
+                    <Select 
+                      value={registerData.city} 
+                      onValueChange={(value) => setRegisterData(prev => ({ ...prev, city: value }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Şehir seçin" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {cities.map(city => (
+                          <SelectItem key={city} value={city}>{city}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="register-role">Hesap Türü</Label>
+                    <Select 
+                      value={registerData.role} 
+                      onValueChange={(value: 'buyer' | 'seller' | 'both') => 
+                        setRegisterData(prev => ({ ...prev, role: value }))
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="buyer">Alıcı</SelectItem>
+                        <SelectItem value="seller">Satıcı</SelectItem>
+                        <SelectItem value="both">Alıcı ve Satıcı</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="register-password">Şifre</Label>
+                    <Input
+                      id="register-password"
+                      type="password"
+                      value={registerData.password}
+                      onChange={(e) => setRegisterData(prev => ({ ...prev, password: e.target.value }))}
+                      placeholder="En az 6 karakter"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="register-confirm-password">Şifre Tekrar</Label>
+                    <Input
+                      id="register-confirm-password"
+                      type="password"
+                      value={registerData.confirmPassword}
+                      onChange={(e) => setRegisterData(prev => ({ ...prev, confirmPassword: e.target.value }))}
+                      placeholder="Şifrenizi tekrar girin"
+                      required
+                    />
+                  </div>
+
+                  <Button type="submit" className="w-full" disabled={isLoading}>
+                    {isLoading ? 'Hesap oluşturuluyor...' : 'Hesap Oluştur'}
+                  </Button>
+                </form>
+              </CardContent>
+            </Card>
           </TabsContent>
         </Tabs>
       </DialogContent>
