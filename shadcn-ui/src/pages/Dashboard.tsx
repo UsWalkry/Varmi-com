@@ -1,139 +1,142 @@
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
+import { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Package, TrendingUp, MessageCircle, Star, Eye, Edit, Trash2, Heart } from 'lucide-react';
-import { Listing, Offer, Message, DataManager } from '@/lib/mockData';
-import OfferCard from '@/components/OfferCard';
-import MessageCenter from '@/components/MessageCenter';
-import Header from '@/components/Header.tsx';
+import { Button } from '@/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { 
+  BarChart3, 
+  MessageCircle, 
+  Heart, 
+  Package, 
+  TrendingUp, 
+  Clock,
+  MapPin,
+  Star,
+  CheckCircle,
+  XCircle
+} from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { DataManager, Listing, Offer } from '@/lib/mockData';
+import Header from '@/components/Header';
 import FavoriteButton from '@/components/FavoriteButton';
 
 export default function Dashboard() {
   const navigate = useNavigate();
   const [myListings, setMyListings] = useState<Listing[]>([]);
   const [myOffers, setMyOffers] = useState<Offer[]>([]);
-  const [offersToMyListings, setOffersToMyListings] = useState<Offer[]>([]);
-  const [myMessages, setMyMessages] = useState<Message[]>([]);
   const [favoriteListings, setFavoriteListings] = useState<Listing[]>([]);
-  const [activeTab, setActiveTab] = useState('my-listings');
-  const [isMessageCenterOpen, setIsMessageCenterOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   const currentUser = DataManager.getCurrentUser();
 
+  // Memoize user data to prevent recalculation
+  const userData = useMemo(() => {
+    if (!currentUser) return null;
+    return {
+      id: currentUser.id,
+      name: currentUser.name,
+      email: currentUser.email
+    };
+  }, [currentUser]);
+
+  // Load data only once when component mounts
   useEffect(() => {
-    if (!currentUser) {
+    if (!userData) {
       navigate('/');
       return;
     }
-    loadUserData();
-  }, [currentUser, navigate]);
 
-  const loadUserData = () => {
-    if (!currentUser) return;
+    const loadDashboardData = () => {
+      try {
+        // Get user's listings
+        const allListings = DataManager.getListings();
+        const userListings = allListings.filter(listing => 
+          listing && listing.buyerId === userData.id
+        );
+        
+        // Get user's offers
+        const allOffers = DataManager.getAllOffers();
+        const userOffers = allOffers.filter(offer => 
+          offer && offer.sellerId === userData.id
+        );
+        
+        // Get favorite listings
+        const favoriteIds = DataManager.getFavorites(userData.id);
+        const favorites = allListings.filter(listing => 
+          listing && favoriteIds.includes(listing.id)
+        );
 
-    // Get user's listings
-    const allListings = DataManager.getListings();
-    const userListings = allListings.filter(listing => listing.buyerId === currentUser.id);
-    setMyListings(userListings);
+        setMyListings(userListings);
+        setMyOffers(userOffers);
+        setFavoriteListings(favorites);
+      } catch (error) {
+        console.error('Error loading dashboard data:', error);
+        setMyListings([]);
+        setMyOffers([]);
+        setFavoriteListings([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
-    // Get user's offers
-    const allOffers = DataManager.getOffers();
-    const userOffers = allOffers.filter(offer => offer.sellerId === currentUser.id);
-    setMyOffers(userOffers);
+    loadDashboardData();
+  }, [userData, navigate]);
 
-    // Get offers to user's listings
-    const listingIds = userListings.map(listing => listing.id);
-    const offersToUser = allOffers.filter(offer => listingIds.includes(offer.listingId));
-    setOffersToMyListings(offersToUser);
+  // Memoize statistics to prevent recalculation
+  const stats = useMemo(() => {
+    if (!userData) return { totalListings: 0, totalOffers: 0, totalFavorites: 0, unreadMessages: 0 };
+    
+    return {
+      totalListings: myListings.length,
+      totalOffers: myOffers.length,
+      totalFavorites: favoriteListings.length,
+      unreadMessages: DataManager.getUnreadMessageCount(userData.id)
+    };
+  }, [userData, myListings.length, myOffers.length, favoriteListings.length]);
 
-    // Get user's messages
-    const allMessages = DataManager.getAllMessages();
-    const userMessages = allMessages.filter(msg => 
-      msg.fromUserId === currentUser.id || msg.toUserId === currentUser.id
-    );
-    setMyMessages(userMessages);
+  const handleOfferAction = (offerId: string, action: 'accept' | 'reject') => {
+    if (!userData) return;
 
-    // Get user's favorite listings
-    const userFavorites = DataManager.getUserFavoriteListings(currentUser.id);
-    setFavoriteListings(userFavorites);
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'active': return 'bg-green-100 text-green-800';
-      case 'accepted': return 'bg-blue-100 text-blue-800';
-      case 'rejected': return 'bg-red-100 text-red-800';
-      case 'closed': return 'bg-gray-100 text-gray-800';
-      case 'expired': return 'bg-orange-100 text-orange-800';
-      default: return 'bg-gray-100 text-gray-800';
+    try {
+      if (action === 'accept') {
+        DataManager.acceptOffer(offerId);
+      } else {
+        DataManager.rejectOffer(offerId);
+      }
+      
+      // Refresh offers
+      const allOffers = DataManager.getAllOffers();
+      const userOffers = allOffers.filter(offer => 
+        offer && offer.sellerId === userData.id
+      );
+      setMyOffers(userOffers);
+    } catch (error) {
+      console.error('Error handling offer:', error);
     }
   };
 
-  const getStatusText = (status: string) => {
-    switch (status) {
-      case 'active': return 'Aktif';
-      case 'accepted': return 'Kabul Edildi';
-      case 'rejected': return 'Reddedildi';
-      case 'closed': return 'Kapandı';
-      case 'expired': return 'Süresi Doldu';
-      default: return status;
+  const getConditionText = (condition: string) => {
+    switch (condition) {
+      case 'new': return 'Sıfır';
+      case 'used': return '2. El';
+      case 'any': return 'Farketmez';
+      default: return condition;
     }
   };
 
-  const handleStatClick = (statType: string) => {
-    switch (statType) {
-      case 'total-listings':
-      case 'active-listings':
-        setActiveTab('my-listings');
-        break;
-      case 'total-offers':
-      case 'accepted-offers':
-        setActiveTab('my-offers');
-        break;
-      case 'received-offers':
-      case 'pending-offers':
-        setActiveTab('received-offers');
-        break;
-      case 'favorites':
-        setActiveTab('favorites');
-        break;
-      case 'messages':
-        setIsMessageCenterOpen(true);
-        break;
-    }
-  };
+  if (!userData) {
+    return null;
+  }
 
-  const stats = {
-    totalListings: myListings.length,
-    activeListings: myListings.filter(l => l.status === 'active').length,
-    totalOffers: myOffers.length,
-    acceptedOffers: myOffers.filter(o => o.status === 'accepted').length,
-    receivedOffers: offersToMyListings.length,
-    pendingOffers: offersToMyListings.filter(o => o.status === 'active').length,
-    favorites: favoriteListings.length
-  };
-
-  // Get unread message count
-  const getUnreadMessageCount = () => {
-    if (!currentUser) return 0;
-    const allMessages = DataManager.getAllMessages();
-    return allMessages.filter(
-      msg => msg.toUserId === currentUser.id && !msg.read
-    ).length;
-  };
-
-  const unreadMessageCount = getUnreadMessageCount();
-
-  // Loading state while checking user
-  if (!currentUser) {
+  if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p>Yönlendiriliyor...</p>
+      <div className="min-h-screen bg-gray-50">
+        <Header />
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p>Yükleniyor...</p>
+          </div>
         </div>
       </div>
     );
@@ -141,190 +144,148 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Header showCreateButton={true} showUserActions={false} />
-
+      <Header />
+      
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* User Info */}
-        <Card className="mb-8">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div className="w-16 h-16 bg-gradient-to-r from-blue-600 to-green-600 rounded-full flex items-center justify-center text-white text-xl font-bold">
-                  {currentUser?.name ? currentUser.name.charAt(0).toUpperCase() : 'U'}
-                </div>
-                <div>
-                  <h2 className="text-2xl font-bold">{currentUser?.name || 'Kullanıcı'}</h2>
-                  <p className="text-muted-foreground">{currentUser?.email || ''}</p>
-                  <div className="flex items-center gap-2 mt-1">
-                    <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                    <span className="font-medium">{currentUser?.rating || 5.0}</span>
-                    <span className="text-sm text-muted-foreground">({currentUser?.reviewCount || 0} değerlendirme)</span>
-                    <Badge variant="secondary">{currentUser?.city || 'Şehir'}</Badge>
-                  </div>
-                </div>
-              </div>
-              <div className="text-right">
-                <p className="text-sm text-muted-foreground">Üyelik Türü</p>
-                <Badge className="bg-blue-100 text-blue-800">
-                  {currentUser?.role === 'buyer' ? 'Alıcı' : 
-                   currentUser?.role === 'seller' ? 'Satıcı' : 'Alıcı & Satıcı'}
-                </Badge>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        {/* Header */}
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+            Hoş geldin, {userData.name}!
+          </h1>
+          <p className="text-gray-600">
+            İlanlarını yönet, teklifleri görüntüle ve favorilerini kontrol et.
+          </p>
+        </div>
 
-        {/* Stats - Now Clickable */}
-        <div className="grid grid-cols-2 md:grid-cols-7 gap-4 mb-8">
-          <Card 
-            className="cursor-pointer hover:shadow-md transition-shadow"
-            onClick={() => handleStatClick('total-listings')}
-          >
-            <CardContent className="p-4 text-center">
-              <Package className="h-6 w-6 text-blue-600 mx-auto mb-2" />
-              <p className="text-xl font-bold">{stats.totalListings}</p>
-              <p className="text-xs text-muted-foreground">Toplam İlan</p>
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Toplam İlanlarım</CardTitle>
+              <Package className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats.totalListings}</div>
+              <p className="text-xs text-muted-foreground">Aktif ilanların</p>
             </CardContent>
           </Card>
-          <Card 
-            className="cursor-pointer hover:shadow-md transition-shadow"
-            onClick={() => handleStatClick('active-listings')}
-          >
-            <CardContent className="p-4 text-center">
-              <TrendingUp className="h-6 w-6 text-green-600 mx-auto mb-2" />
-              <p className="text-xl font-bold">{stats.activeListings}</p>
-              <p className="text-xs text-muted-foreground">Aktif İlan</p>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Gelen Teklifler</CardTitle>
+              <TrendingUp className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats.totalOffers}</div>
+              <p className="text-xs text-muted-foreground">Değerlendirmen gereken</p>
             </CardContent>
           </Card>
-          <Card 
-            className="cursor-pointer hover:shadow-md transition-shadow"
-            onClick={() => handleStatClick('total-offers')}
-          >
-            <CardContent className="p-4 text-center">
-              <MessageCircle className="h-6 w-6 text-purple-600 mx-auto mb-2" />
-              <p className="text-xl font-bold">{stats.totalOffers}</p>
-              <p className="text-xs text-muted-foreground">Verdiğim Teklif</p>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Favorilerim</CardTitle>
+              <Heart className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats.totalFavorites}</div>
+              <p className="text-xs text-muted-foreground">Takip ettiğin ilanlar</p>
             </CardContent>
           </Card>
-          <Card 
-            className="cursor-pointer hover:shadow-md transition-shadow"
-            onClick={() => handleStatClick('accepted-offers')}
-          >
-            <CardContent className="p-4 text-center">
-              <Star className="h-6 w-6 text-yellow-600 mx-auto mb-2" />
-              <p className="text-xl font-bold">{stats.acceptedOffers}</p>
-              <p className="text-xs text-muted-foreground">Kabul Edilen</p>
-            </CardContent>
-          </Card>
-          <Card 
-            className="cursor-pointer hover:shadow-md transition-shadow"
-            onClick={() => handleStatClick('received-offers')}
-          >
-            <CardContent className="p-4 text-center">
-              <Package className="h-6 w-6 text-orange-600 mx-auto mb-2" />
-              <p className="text-xl font-bold">{stats.receivedOffers}</p>
-              <p className="text-xs text-muted-foreground">Gelen Teklif</p>
-            </CardContent>
-          </Card>
-          <Card 
-            className="cursor-pointer hover:shadow-md transition-shadow"
-            onClick={() => handleStatClick('favorites')}
-          >
-            <CardContent className="p-4 text-center">
-              <Heart className="h-6 w-6 text-red-600 mx-auto mb-2" />
-              <p className="text-xl font-bold">{stats.favorites}</p>
-              <p className="text-xs text-muted-foreground">Favorilerim</p>
-            </CardContent>
-          </Card>
-          <Card 
-            className="cursor-pointer hover:shadow-md transition-shadow"
-            onClick={() => handleStatClick('messages')}
-          >
-            <CardContent className="p-4 text-center relative">
-              <MessageCircle className="h-6 w-6 text-indigo-600 mx-auto mb-2" />
-              <p className="text-xl font-bold">{unreadMessageCount}</p>
-              <p className="text-xs text-muted-foreground">Okunmamış Mesaj</p>
-              {unreadMessageCount > 0 && (
-                <div className="absolute top-2 right-2">
-                  <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
-                </div>
-              )}
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Okunmamış Mesaj</CardTitle>
+              <MessageCircle className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats.unreadMessages}</div>
+              <p className="text-xs text-muted-foreground">Yeni mesajların</p>
             </CardContent>
           </Card>
         </div>
 
-        {/* Main Content */}
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="my-listings">İlanlarım ({myListings.length})</TabsTrigger>
-            <TabsTrigger value="my-offers">Tekliflerim ({myOffers.length})</TabsTrigger>
-            <TabsTrigger value="received-offers">Gelen Teklifler ({offersToMyListings.length})</TabsTrigger>
-            <TabsTrigger value="favorites">Favorilerim ({favoriteListings.length})</TabsTrigger>
+        {/* Tabs */}
+        <Tabs defaultValue="listings" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="listings">İlanlarım ({stats.totalListings})</TabsTrigger>
+            <TabsTrigger value="offers">Teklifler ({stats.totalOffers})</TabsTrigger>
+            <TabsTrigger value="favorites">Favoriler ({stats.totalFavorites})</TabsTrigger>
           </TabsList>
 
-          {/* My Listings */}
-          <TabsContent value="my-listings">
+          {/* My Listings Tab */}
+          <TabsContent value="listings">
             <Card>
               <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle>İlanlarım</CardTitle>
-                  <Button onClick={() => navigate('/create-listing')}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Yeni İlan Ver
-                  </Button>
-                </div>
+                <CardTitle>İlanlarım</CardTitle>
               </CardHeader>
               <CardContent>
                 {myListings.length === 0 ? (
                   <div className="text-center py-12">
                     <Package className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-                    <h3 className="text-lg font-semibold mb-2">Henüz ilanınız yok</h3>
+                    <h3 className="text-lg font-semibold mb-2">Henüz ilanın yok</h3>
                     <p className="text-muted-foreground mb-4">
-                      İlk ilanınızı vererek satıcılardan teklif almaya başlayın.
+                      İlk ilanını vererek satıcılardan teklif almaya başla!
                     </p>
                     <Button onClick={() => navigate('/create-listing')}>
-                      <Plus className="h-4 w-4 mr-2" />
-                      İlk İlanınızı Verin
+                      İlan Ver
                     </Button>
                   </div>
                 ) : (
-                  <div className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {myListings.map(listing => (
-                      <div key={listing.id} className="border rounded-lg p-4">
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-2">
-                              <h3 className="font-semibold text-lg">{listing.title}</h3>
-                              <Badge className={getStatusColor(listing.status)}>
-                                {getStatusText(listing.status)}
-                              </Badge>
+                      <Card 
+                        key={listing.id} 
+                        className="cursor-pointer hover:shadow-lg transition-shadow"
+                        onClick={() => navigate(`/listing/${listing.id}`)}
+                      >
+                        <CardHeader>
+                          <div className="flex items-start justify-between">
+                            <CardTitle className="text-lg line-clamp-2 flex-1 mr-2">
+                              {listing.title}
+                            </CardTitle>
+                            <Badge className="bg-green-100 text-green-800">
+                              {listing.status === 'active' ? 'Aktif' : 'Kapalı'}
+                            </Badge>
+                          </div>
+                        </CardHeader>
+                        <CardContent>
+                          <p className="text-muted-foreground text-sm mb-4 line-clamp-3">
+                            {listing.description}
+                          </p>
+                          
+                          <div className="space-y-3">
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm text-muted-foreground">Bütçe</span>
+                              <span className="font-semibold text-green-600">
+                                {DataManager.formatPrice(listing.budgetMin)} - {DataManager.formatPrice(listing.budgetMax)}
+                              </span>
                             </div>
-                            <p className="text-muted-foreground text-sm mb-2 line-clamp-2">
-                              {listing.description}
-                            </p>
-                            <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                              <span>Kategori: {listing.category}</span>
-                              <span>Şehir: {listing.city}</span>
-                              <span>Bütçe: {DataManager.formatPrice(listing.budgetMin)} - {DataManager.formatPrice(listing.budgetMax)}</span>
-                              <span>{listing.offerCount} teklif</span>
+                            
+                            <div className="flex flex-wrap gap-2">
+                              <Badge variant="secondary">{listing.category}</Badge>
+                              <Badge variant="outline">{getConditionText(listing.condition)}</Badge>
+                            </div>
+                            
+                            <div className="flex items-center justify-between text-sm text-muted-foreground">
+                              <div className="flex items-center gap-1">
+                                <MapPin className="h-3 w-3" />
+                                <span>{listing.city}</span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <Clock className="h-3 w-3" />
+                                <span>{DataManager.getTimeAgo(listing.createdAt)}</span>
+                              </div>
+                            </div>
+                            
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-1 text-blue-600">
+                                <TrendingUp className="h-4 w-4" />
+                                <span className="font-semibold">{listing.offerCount || 0} teklif</span>
+                              </div>
                             </div>
                           </div>
-                          <div className="flex gap-2 ml-4">
-                            <Button size="sm" variant="outline" onClick={() => navigate(`/listing/${listing.id}`)}>
-                              <Eye className="h-4 w-4 mr-1" />
-                              Görüntüle
-                            </Button>
-                            <Button size="sm" variant="outline">
-                              <Edit className="h-4 w-4 mr-1" />
-                              Düzenle
-                            </Button>
-                            <Button size="sm" variant="outline">
-                              <Trash2 className="h-4 w-4 mr-1" />
-                              Sil
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
+                        </CardContent>
+                      </Card>
                     ))}
                   </div>
                 )}
@@ -332,41 +293,81 @@ export default function Dashboard() {
             </Card>
           </TabsContent>
 
-          {/* My Offers */}
-          <TabsContent value="my-offers">
+          {/* Offers Tab */}
+          <TabsContent value="offers">
             <Card>
               <CardHeader>
-                <CardTitle>Verdiğim Teklifler</CardTitle>
+                <CardTitle>Gelen Teklifler</CardTitle>
               </CardHeader>
               <CardContent>
                 {myOffers.length === 0 ? (
                   <div className="text-center py-12">
-                    <MessageCircle className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-                    <h3 className="text-lg font-semibold mb-2">Henüz teklif vermediniz</h3>
-                    <p className="text-muted-foreground mb-4">
-                      İlanları inceleyin ve uygun olanlara teklif verin.
+                    <TrendingUp className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+                    <h3 className="text-lg font-semibold mb-2">Henüz teklif yok</h3>
+                    <p className="text-muted-foreground">
+                      İlanlarına satıcılar teklif vermeye başladığında burada görünecek.
                     </p>
-                    <Button onClick={() => navigate('/')}>
-                      İlanları İncele
-                    </Button>
                   </div>
                 ) : (
                   <div className="space-y-4">
                     {myOffers.map(offer => {
                       const listing = DataManager.getListings().find(l => l.id === offer.listingId);
                       return (
-                        <div key={offer.id} className="border rounded-lg p-4">
-                          <div className="flex items-start justify-between mb-3">
-                            <div>
-                              <h4 className="font-semibold">{listing?.title}</h4>
-                              <p className="text-sm text-muted-foreground">İlan sahibi: {listing?.buyerName}</p>
+                        <Card key={offer.id}>
+                          <CardContent className="p-6">
+                            <div className="flex items-start justify-between">
+                              <div className="flex-1">
+                                <h4 className="font-semibold mb-2">{listing?.title}</h4>
+                                <div className="flex items-center gap-4 text-sm text-muted-foreground mb-3">
+                                  <div className="flex items-center gap-1">
+                                    <Star className="h-4 w-4" />
+                                    <span>{offer.sellerName}</span>
+                                  </div>
+                                  <div className="flex items-center gap-1">
+                                    <Clock className="h-3 w-3" />
+                                    <span>{DataManager.getTimeAgo(offer.createdAt)}</span>
+                                  </div>
+                                </div>
+                                <p className="text-sm mb-3">{offer.message}</p>
+                                <div className="flex items-center gap-4">
+                                  <span className="font-semibold text-green-600 text-lg">
+                                    {DataManager.formatPrice(offer.price)}
+                                  </span>
+                                  <Badge 
+                                    variant={
+                                      offer.status === 'pending' ? 'secondary' :
+                                      offer.status === 'accepted' ? 'default' : 'destructive'
+                                    }
+                                  >
+                                    {offer.status === 'pending' ? 'Bekliyor' :
+                                     offer.status === 'accepted' ? 'Kabul Edildi' : 'Reddedildi'}
+                                  </Badge>
+                                </div>
+                              </div>
+                              
+                              {offer.status === 'pending' && (
+                                <div className="flex gap-2 ml-4">
+                                  <Button
+                                    size="sm"
+                                    onClick={() => handleOfferAction(offer.id, 'accept')}
+                                    className="bg-green-600 hover:bg-green-700"
+                                  >
+                                    <CheckCircle className="h-4 w-4 mr-1" />
+                                    Kabul Et
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => handleOfferAction(offer.id, 'reject')}
+                                  >
+                                    <XCircle className="h-4 w-4 mr-1" />
+                                    Reddet
+                                  </Button>
+                                </div>
+                              )}
                             </div>
-                            <Badge className={getStatusColor(offer.status)}>
-                              {getStatusText(offer.status)}
-                            </Badge>
-                          </div>
-                          <OfferCard offer={offer} />
-                        </div>
+                          </CardContent>
+                        </Card>
                       );
                     })}
                   </div>
@@ -375,61 +376,7 @@ export default function Dashboard() {
             </Card>
           </TabsContent>
 
-          {/* Received Offers */}
-          <TabsContent value="received-offers">
-            <Card>
-              <CardHeader>
-                <CardTitle>İlanlarıma Gelen Teklifler</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {offersToMyListings.length === 0 ? (
-                  <div className="text-center py-12">
-                    <TrendingUp className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-                    <h3 className="text-lg font-semibold mb-2">Henüz teklif almadınız</h3>
-                    <p className="text-muted-foreground mb-4">
-                      İlanlarınıza satıcılar teklif vermeye başladığında burada görünecek.
-                    </p>
-                    <Button onClick={() => navigate('/create-listing')}>
-                      <Plus className="h-4 w-4 mr-2" />
-                      Yeni İlan Ver
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    {offersToMyListings.map(offer => {
-                      const listing = DataManager.getListings().find(l => l.id === offer.listingId);
-                      return (
-                        <div key={offer.id} className="border rounded-lg p-4">
-                          <div className="flex items-start justify-between mb-3">
-                            <div>
-                              <h4 className="font-semibold">{listing?.title}</h4>
-                              <p className="text-sm text-muted-foreground">
-                                Teklif veren: {offer.sellerName} 
-                                <Star className="h-3 w-3 inline ml-1 fill-yellow-400 text-yellow-400" />
-                                {offer.sellerRating}
-                              </p>
-                            </div>
-                            <Badge className={getStatusColor(offer.status)}>
-                              {getStatusText(offer.status)}
-                            </Badge>
-                          </div>
-                          <OfferCard 
-                            offer={offer} 
-                            showActions={offer.status === 'active'}
-                            onAccept={(offerId) => console.log('Accept offer:', offerId)}
-                            onReject={(offerId) => console.log('Reject offer:', offerId)}
-                            onMessage={(offerId) => console.log('Message seller:', offerId)}
-                          />
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Favorites */}
+          {/* Favorites Tab */}
           <TabsContent value="favorites">
             <Card>
               <CardHeader>
@@ -439,13 +386,10 @@ export default function Dashboard() {
                 {favoriteListings.length === 0 ? (
                   <div className="text-center py-12">
                     <Heart className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-                    <h3 className="text-lg font-semibold mb-2">Henüz favori ilanınız yok</h3>
-                    <p className="text-muted-foreground mb-4">
-                      Beğendiğiniz ilanları favorilere ekleyerek daha sonra kolayca bulabilirsiniz.
+                    <h3 className="text-lg font-semibold mb-2">Henüz favori yok</h3>
+                    <p className="text-muted-foreground">
+                      Beğendiğin ilanları favorilere ekleyerek buradan takip edebilirsin.
                     </p>
-                    <Button onClick={() => navigate('/')}>
-                      İlanları İncele
-                    </Button>
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -457,11 +401,13 @@ export default function Dashboard() {
                       >
                         <CardHeader>
                           <div className="flex items-start justify-between">
-                            <CardTitle className="text-lg line-clamp-2 flex-1 mr-2">{listing.title}</CardTitle>
+                            <CardTitle className="text-lg line-clamp-2 flex-1 mr-2">
+                              {listing.title}
+                            </CardTitle>
                             <div className="flex items-center gap-2">
                               <FavoriteButton 
                                 listingId={listing.id}
-                                userId={currentUser.id}
+                                userId={userData.id}
                                 size="sm"
                                 variant="ghost"
                               />
@@ -486,14 +432,28 @@ export default function Dashboard() {
                             
                             <div className="flex flex-wrap gap-2">
                               <Badge variant="secondary">{listing.category}</Badge>
-                              <Badge variant="outline">{listing.city}</Badge>
+                              <Badge variant="outline">{getConditionText(listing.condition)}</Badge>
+                            </div>
+                            
+                            <div className="flex items-center justify-between text-sm text-muted-foreground">
+                              <div className="flex items-center gap-1">
+                                <MapPin className="h-3 w-3" />
+                                <span>{listing.city}</span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <Clock className="h-3 w-3" />
+                                <span>{DataManager.getTimeAgo(listing.createdAt)}</span>
+                              </div>
                             </div>
                             
                             <div className="flex items-center justify-between">
-                              <span className="text-sm text-muted-foreground">İlan sahibi: {listing.buyerName}</span>
+                              <div className="flex items-center gap-2">
+                                <span className="text-sm text-muted-foreground">İlan sahibi:</span>
+                                <span className="font-medium">{listing.buyerName}</span>
+                              </div>
                               <div className="flex items-center gap-1 text-blue-600">
                                 <TrendingUp className="h-4 w-4" />
-                                <span className="font-semibold">{listing.offerCount} teklif</span>
+                                <span className="font-semibold">{listing.offerCount || 0} teklif</span>
                               </div>
                             </div>
                           </div>
@@ -507,12 +467,6 @@ export default function Dashboard() {
           </TabsContent>
         </Tabs>
       </div>
-
-      {/* Message Center */}
-      <MessageCenter
-        isOpen={isMessageCenterOpen}
-        onClose={() => setIsMessageCenterOpen(false)}
-      />
     </div>
   );
 }

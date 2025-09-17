@@ -1,116 +1,98 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Plus, User, LogOut, MessageCircle } from 'lucide-react';
+import { MessageCircle, User, LogOut, BarChart3 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { DataManager } from '@/lib/mockData';
-import AuthModal from './AuthModal';
 import MessageCenter from './MessageCenter';
 
-interface HeaderProps {
-  showCreateButton?: boolean;
-  showUserActions?: boolean;
-}
-
-export default function Header({ showCreateButton = true, showUserActions = true }: HeaderProps) {
+export default function Header() {
   const navigate = useNavigate();
-  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isMessageCenterOpen, setIsMessageCenterOpen] = useState(false);
+  
   const currentUser = DataManager.getCurrentUser();
+  const unreadCount = currentUser ? DataManager.getUnreadMessageCount(currentUser.id) : 0;
 
-  const handleAuthSuccess = () => {
+  const handleLogin = () => {
+    DataManager.login('user1', 'password');
     window.location.reload();
   };
 
   const handleLogout = () => {
-    DataManager.logoutUser();
+    DataManager.logout();
     navigate('/');
     window.location.reload();
   };
 
-  const getUnreadMessageCount = () => {
-    if (!currentUser) return 0;
-    const allMessages = DataManager.getAllMessages();
-    return allMessages.filter(
-      msg => msg.toUserId === currentUser.id && !msg.read
-    ).length;
-  };
-
-  const unreadMessageCount = currentUser ? getUnreadMessageCount() : 0;
-
   return (
     <>
-      <header className="bg-white shadow-sm border-b sticky top-0 z-50">
+      <header className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
+          <div className="flex justify-between items-center h-16">
             {/* Logo */}
             <div 
-              className="flex items-center gap-3 cursor-pointer" 
+              className="flex items-center cursor-pointer" 
               onClick={() => navigate('/')}
             >
-              <div className="w-10 h-10 bg-gradient-to-r from-blue-600 to-green-600 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-lg">V</span>
-              </div>
-              <h1 className="text-xl font-bold text-blue-600">Var mı?</h1>
+              <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-green-600 bg-clip-text text-transparent">
+                TeklifVar
+              </h1>
             </div>
 
-            {/* Actions */}
-            <div className="flex items-center gap-3">
-              {currentUser && showUserActions && (
+            {/* Navigation */}
+            <nav className="hidden md:flex items-center space-x-8">
+              <Button variant="ghost" onClick={() => navigate('/')}>
+                Ana Sayfa
+              </Button>
+              <Button variant="ghost" onClick={() => navigate('/create-listing')}>
+                İlan Ver
+              </Button>
+              {currentUser && (
+                <Button variant="ghost" onClick={() => navigate('/dashboard')}>
+                  <BarChart3 className="h-4 w-4 mr-2" />
+                  Panelim
+                </Button>
+              )}
+            </nav>
+
+            {/* User Actions */}
+            <div className="flex items-center space-x-4">
+              {currentUser ? (
                 <>
-                  <Button 
-                    variant="outline" 
+                  {/* Messages */}
+                  <Button
+                    variant="outline"
                     size="sm"
                     onClick={() => setIsMessageCenterOpen(true)}
                     className="relative"
                   >
-                    <MessageCircle className="h-4 w-4 mr-2" />
-                    Mesajlar
-                    {unreadMessageCount > 0 && (
-                      <Badge className="absolute -top-2 -right-2 bg-red-500 text-xs min-w-[20px] h-5 flex items-center justify-center">
-                        {unreadMessageCount}
+                    <MessageCircle className="h-4 w-4" />
+                    <span className="hidden sm:inline ml-2">Mesajlar</span>
+                    {unreadCount > 0 && (
+                      <Badge 
+                        className="absolute -top-2 -right-2 h-5 w-5 flex items-center justify-center p-0 bg-red-500 text-white text-xs"
+                      >
+                        {unreadCount}
                       </Badge>
                     )}
                   </Button>
 
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => navigate('/dashboard')}
-                  >
-                    <User className="h-4 w-4 mr-2" />
-                    Panelim
-                  </Button>
+                  {/* User Menu */}
+                  <div className="flex items-center space-x-2">
+                    <div className="flex items-center space-x-2">
+                      <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-green-600 rounded-full flex items-center justify-center text-white font-bold text-sm">
+                        {currentUser.name.charAt(0).toUpperCase()}
+                      </div>
+                      <span className="hidden sm:block font-medium">{currentUser.name}</span>
+                    </div>
+                    <Button variant="ghost" size="sm" onClick={handleLogout}>
+                      <LogOut className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </>
-              )}
-
-              {showCreateButton && (
-                <Button onClick={() => navigate('/create-listing')}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  İlan Ver
-                </Button>
-              )}
-
-              {currentUser ? (
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium text-gray-700">
-                    Merhaba, {currentUser?.name ? currentUser.name.split(' ')[0] : 'Kullanıcı'}
-                  </span>
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={handleLogout}
-                    className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                  >
-                    <LogOut className="h-4 w-4 mr-2" />
-                    Çıkış Yap
-                  </Button>
-                </div>
               ) : (
-                <Button 
-                  variant="outline" 
-                  onClick={() => setIsAuthModalOpen(true)}
-                >
+                <Button onClick={handleLogin}>
+                  <User className="h-4 w-4 mr-2" />
                   Giriş Yap
                 </Button>
               )}
@@ -119,18 +101,11 @@ export default function Header({ showCreateButton = true, showUserActions = true
         </div>
       </header>
 
-      <AuthModal
-        isOpen={isAuthModalOpen}
-        onClose={() => setIsAuthModalOpen(false)}
-        onAuthSuccess={handleAuthSuccess}
+      {/* Message Center Modal */}
+      <MessageCenter 
+        isOpen={isMessageCenterOpen} 
+        onClose={() => setIsMessageCenterOpen(false)} 
       />
-
-      {currentUser && (
-        <MessageCenter
-          isOpen={isMessageCenterOpen}
-          onClose={() => setIsMessageCenterOpen(false)}
-        />
-      )}
     </>
   );
 }
