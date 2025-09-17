@@ -10,7 +10,7 @@ import OfferCard from '@/components/OfferCard';
 import CreateOfferModal from '@/components/CreateOfferModal';
 import AuthModal from '@/components/AuthModal';
 import MessageModal from '@/components/MessageModal';
-import Header from '@/components/Header';
+import Header from '@/components/Header.tsx';
 import FavoriteButton from '@/components/FavoriteButton';
 import { toast } from 'sonner';
 

@@ -8,7 +8,7 @@ import { Plus, Package, TrendingUp, MessageCircle, Star, Eye, Edit, Trash2, Hear
 import { Listing, Offer, Message, DataManager } from '@/lib/mockData';
 import OfferCard from '@/components/OfferCard';
 import MessageCenter from '@/components/MessageCenter';
-import Header from '@/components/Header';
+import Header from '@/components/Header.tsx';
 import FavoriteButton from '@/components/FavoriteButton';
 
 export default function Dashboard() {
@@ -133,26 +133,11 @@ export default function Dashboard() {
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p>Yükleniyor...</p>
+          <p>Yönlendiriliyor...</p>
         </div>
       </div>
     );
   }
-
-  // Safe user name extraction
-  const getUserInitial = (name: string | undefined) => {
-    if (!name || typeof name !== 'string' || name.length === 0) {
-      return 'U'; // Default to 'U' for User
-    }
-    return name.charAt(0).toUpperCase();
-  };
-
-  const getUserName = (name: string | undefined) => {
-    if (!name || typeof name !== 'string') {
-      return 'Kullanıcı';
-    }
-    return name;
-  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -165,24 +150,24 @@ export default function Dashboard() {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
                 <div className="w-16 h-16 bg-gradient-to-r from-blue-600 to-green-600 rounded-full flex items-center justify-center text-white text-xl font-bold">
-                  {getUserInitial(currentUser.name)}
+                  {currentUser?.name ? currentUser.name.charAt(0).toUpperCase() : 'U'}
                 </div>
                 <div>
-                  <h2 className="text-2xl font-bold">{getUserName(currentUser.name)}</h2>
-                  <p className="text-muted-foreground">{currentUser.email || 'Email bulunamadı'}</p>
+                  <h2 className="text-2xl font-bold">{currentUser?.name || 'Kullanıcı'}</h2>
+                  <p className="text-muted-foreground">{currentUser?.email || ''}</p>
                   <div className="flex items-center gap-2 mt-1">
                     <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                    <span className="font-medium">{currentUser.rating || 0}</span>
-                    <span className="text-sm text-muted-foreground">({currentUser.reviewCount || 0} değerlendirme)</span>
-                    <Badge variant="secondary">{currentUser.city || 'Şehir belirtilmemiş'}</Badge>
+                    <span className="font-medium">{currentUser?.rating || 5.0}</span>
+                    <span className="text-sm text-muted-foreground">({currentUser?.reviewCount || 0} değerlendirme)</span>
+                    <Badge variant="secondary">{currentUser?.city || 'Şehir'}</Badge>
                   </div>
                 </div>
               </div>
               <div className="text-right">
                 <p className="text-sm text-muted-foreground">Üyelik Türü</p>
                 <Badge className="bg-blue-100 text-blue-800">
-                  {currentUser.role === 'buyer' ? 'Alıcı' : 
-                   currentUser.role === 'seller' ? 'Satıcı' : 'Alıcı & Satıcı'}
+                  {currentUser?.role === 'buyer' ? 'Alıcı' : 
+                   currentUser?.role === 'seller' ? 'Satıcı' : 'Alıcı & Satıcı'}
                 </Badge>
               </div>
             </div>

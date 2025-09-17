@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Search, MapPin, Clock, TrendingUp, Package, Star } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Listing, DataManager, categories, cities } from '@/lib/mockData';
-import Header from '@/components/Header';
+import Header from '@/components/Header.tsx';
 import FavoriteButton from '@/components/FavoriteButton';
 
 export default function Index() {
