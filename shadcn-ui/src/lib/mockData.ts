@@ -261,7 +261,7 @@ export class DataManager {
     return userStr ? JSON.parse(userStr) : null;
   }
 
-  static loginUser(email: string, password: string): User | null {
+  static login(email: string, password: string): User | null {
     this.initializeData();
     const users = this.getUsers();
     
@@ -272,6 +272,10 @@ export class DataManager {
       return user;
     }
     return null;
+  }
+
+  static loginUser(email: string, password: string): User | null {
+    return this.login(email, password);
   }
 
   static registerUser(userData: {
@@ -305,6 +309,10 @@ export class DataManager {
     localStorage.setItem(this.STORAGE_KEYS.CURRENT_USER, JSON.stringify(newUser));
     
     return newUser;
+  }
+
+  static logout() {
+    localStorage.removeItem(this.STORAGE_KEYS.CURRENT_USER);
   }
 
   static logoutUser() {
@@ -376,10 +384,11 @@ export class DataManager {
   }
 
   // Offers management
-  static getOffers(): Offer[] {
+  static getOffers(listingId?: string): Offer[] {
     this.initializeData();
     const offersStr = localStorage.getItem(this.STORAGE_KEYS.OFFERS);
-    return offersStr ? JSON.parse(offersStr) : [];
+    const offers = offersStr ? JSON.parse(offersStr) : [];
+    return listingId ? offers.filter((offer: Offer) => offer.listingId === listingId) : offers;
   }
 
   static getAllOffers(): Offer[] {
@@ -387,8 +396,7 @@ export class DataManager {
   }
 
   static getOffersForListing(listingId: string): Offer[] {
-    const offers = this.getOffers();
-    return offers.filter(offer => offer.listingId === listingId);
+    return this.getOffers(listingId);
   }
 
   static addOffer(offer: Omit<Offer, 'id' | 'createdAt'>): Offer {
