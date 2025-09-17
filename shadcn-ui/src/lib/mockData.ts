@@ -50,6 +50,13 @@ export interface Message {
   createdAt: string;
 }
 
+export interface SearchFilters {
+  category?: string;
+  city?: string;
+  budgetMax?: number;
+  condition?: string;
+}
+
 // Categories and cities
 export const categories = [
   'Elektronik',
@@ -261,7 +268,7 @@ export class DataManager {
     return userStr ? JSON.parse(userStr) : null;
   }
 
-  static login(email: string, password: string): User | null {
+  static loginUser(email: string, password: string): User | null {
     this.initializeData();
     const users = this.getUsers();
     
@@ -272,10 +279,6 @@ export class DataManager {
       return user;
     }
     return null;
-  }
-
-  static loginUser(email: string, password: string): User | null {
-    return this.login(email, password);
   }
 
   static registerUser(userData: {
@@ -311,10 +314,6 @@ export class DataManager {
     return newUser;
   }
 
-  static logout() {
-    localStorage.removeItem(this.STORAGE_KEYS.CURRENT_USER);
-  }
-
   static logoutUser() {
     localStorage.removeItem(this.STORAGE_KEYS.CURRENT_USER);
   }
@@ -342,7 +341,7 @@ export class DataManager {
     return listings.find(l => l.id === id);
   }
 
-  static searchListings(query: string = '', filters: any = {}): Listing[] {
+  static searchListings(query: string = '', filters: SearchFilters = {}): Listing[] {
     let listings = this.getListings();
 
     // Text search
@@ -384,11 +383,10 @@ export class DataManager {
   }
 
   // Offers management
-  static getOffers(listingId?: string): Offer[] {
+  static getOffers(): Offer[] {
     this.initializeData();
     const offersStr = localStorage.getItem(this.STORAGE_KEYS.OFFERS);
-    const offers = offersStr ? JSON.parse(offersStr) : [];
-    return listingId ? offers.filter((offer: Offer) => offer.listingId === listingId) : offers;
+    return offersStr ? JSON.parse(offersStr) : [];
   }
 
   static getAllOffers(): Offer[] {
@@ -396,7 +394,8 @@ export class DataManager {
   }
 
   static getOffersForListing(listingId: string): Offer[] {
-    return this.getOffers(listingId);
+    const offers = this.getOffers();
+    return offers.filter(offer => offer.listingId === listingId);
   }
 
   static addOffer(offer: Omit<Offer, 'id' | 'createdAt'>): Offer {
