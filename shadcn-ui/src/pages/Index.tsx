@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -20,30 +20,48 @@ export default function Index() {
   const [selectedCondition, setSelectedCondition] = useState('all');
   const [isLoading, setIsLoading] = useState(true);
   
-  const currentUser = DataManager.getCurrentUser();
+  // Memoize current user to prevent unnecessary re-renders
+  const currentUser = useMemo(() => DataManager.getCurrentUser(), []);
+
+  // Memoize filter object to prevent infinite re-renders
+  const filters = useMemo(() => ({
+    category: selectedCategory !== 'all' ? selectedCategory : undefined,
+    city: selectedCity !== 'all' ? selectedCity : undefined,
+    budgetMax: budgetMax ? parseInt(budgetMax) : undefined,
+    condition: selectedCondition !== 'all' ? selectedCondition : undefined,
+  }), [selectedCategory, selectedCity, budgetMax, selectedCondition]);
 
   useEffect(() => {
-    const loadListings = () => {
+    let isMounted = true;
+    
+    const loadListings = async () => {
       try {
-        const filters = {
-          category: selectedCategory !== 'all' ? selectedCategory : undefined,
-          city: selectedCity !== 'all' ? selectedCity : undefined,
-          budgetMax: budgetMax ? parseInt(budgetMax) : undefined,
-          condition: selectedCondition !== 'all' ? selectedCondition : undefined,
-        };
-
+        // Add small delay to prevent hydration issues
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        if (!isMounted) return;
+        
         const filteredListings = DataManager.searchListings(searchQuery, filters);
-        setListings(filteredListings || []);
+        
+        if (isMounted) {
+          setListings(filteredListings || []);
+          setIsLoading(false);
+        }
       } catch (error) {
         console.error('Error loading listings:', error);
-        setListings([]);
-      } finally {
-        setIsLoading(false);
+        if (isMounted) {
+          setListings([]);
+          setIsLoading(false);
+        }
       }
     };
 
     loadListings();
-  }, [searchQuery, selectedCategory, selectedCity, budgetMax, selectedCondition]);
+    
+    return () => {
+      isMounted = false;
+    };
+  }, [searchQuery, filters]);
 
   const handleListingClick = (listingId: string) => {
     navigate(`/listing/${listingId}`);
@@ -129,7 +147,7 @@ export default function Index() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Tüm Kategoriler</SelectItem>
-                  {categories && categories.map(category => (
+                  {categories?.map(category => (
                     <SelectItem key={category} value={category}>{category}</SelectItem>
                   ))}
                 </SelectContent>
@@ -140,7 +158,7 @@ export default function Index() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Tüm Şehirler</SelectItem>
-                  {cities && cities.map(city => (
+                  {cities?.map(city => (
                     <SelectItem key={city} value={city}>{city}</SelectItem>
                   ))}
                 </SelectContent>
@@ -187,7 +205,7 @@ export default function Index() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {listings.map(listing => {
-              if (!listing || !listing.id) return null;
+              if (!listing?.id) return null;
               
               return (
                 <Card 
