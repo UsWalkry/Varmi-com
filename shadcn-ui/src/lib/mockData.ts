@@ -48,6 +48,17 @@ export interface Offer {
   validUntil: string;
 }
 
+export interface Message {
+  id: string;
+  listingId: string;
+  fromUserId: string;
+  fromUserName: string;
+  toUserId: string;
+  message: string;
+  createdAt: string;
+  read: boolean;
+}
+
 // Categories
 export const categories = [
   'Elektronik',
@@ -208,12 +219,36 @@ const mockOffers: Offer[] = [
   }
 ];
 
+const mockMessages: Message[] = [
+  {
+    id: '1',
+    listingId: '1',
+    fromUserId: '1',
+    fromUserName: 'Ahmet Yılmaz',
+    toUserId: '2',
+    message: 'Merhaba, iPhone\'un garantisi ne kadar süreli?',
+    createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+    read: true
+  },
+  {
+    id: '2',
+    listingId: '1',
+    fromUserId: '2',
+    fromUserName: 'Ayşe Demir',
+    toUserId: '1',
+    message: 'Merhaba! Apple Türkiye garantisi var, 2 yıl süreli. Fatura da mevcut.',
+    createdAt: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString(),
+    read: false
+  }
+];
+
 // LocalStorage management
 const STORAGE_KEYS = {
   LISTINGS: 'marketplace_listings',
   OFFERS: 'marketplace_offers',
   USERS: 'marketplace_users',
-  CURRENT_USER: 'marketplace_current_user'
+  CURRENT_USER: 'marketplace_current_user',
+  MESSAGES: 'marketplace_messages'
 };
 
 export class DataManager {
@@ -226,6 +261,9 @@ export class DataManager {
     }
     if (!localStorage.getItem(STORAGE_KEYS.USERS)) {
       localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(mockUsers));
+    }
+    if (!localStorage.getItem(STORAGE_KEYS.MESSAGES)) {
+      localStorage.setItem(STORAGE_KEYS.MESSAGES, JSON.stringify(mockMessages));
     }
     // Don't auto-login, let user choose
   }
@@ -336,6 +374,61 @@ export class DataManager {
 
   static logoutUser(): void {
     localStorage.removeItem(STORAGE_KEYS.CURRENT_USER);
+  }
+
+  // Message functions
+  static getAllMessages(): Message[] {
+    const data = localStorage.getItem(STORAGE_KEYS.MESSAGES);
+    return data ? JSON.parse(data) : [];
+  }
+
+  static getMessages(listingId: string, userId1: string, userId2: string): Message[] {
+    const messages = this.getAllMessages();
+    
+    return messages.filter((msg: Message) => 
+      msg.listingId === listingId &&
+      ((msg.fromUserId === userId1 && msg.toUserId === userId2) ||
+       (msg.fromUserId === userId2 && msg.toUserId === userId1))
+    ).sort((a: Message, b: Message) => 
+      new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+    );
+  }
+
+  static addMessage(messageData: {
+    listingId: string;
+    fromUserId: string;
+    fromUserName: string;
+    toUserId: string;
+    message: string;
+  }): Message {
+    const messages = this.getAllMessages();
+    
+    const newMessage: Message = {
+      id: Date.now().toString(),
+      ...messageData,
+      createdAt: new Date().toISOString(),
+      read: false
+    };
+    
+    messages.push(newMessage);
+    localStorage.setItem(STORAGE_KEYS.MESSAGES, JSON.stringify(messages));
+    
+    return newMessage;
+  }
+
+  static markMessagesAsRead(listingId: string, currentUserId: string, otherUserId: string): void {
+    const messages = this.getAllMessages();
+    
+    const updatedMessages = messages.map((msg: Message) => {
+      if (msg.listingId === listingId && 
+          msg.fromUserId === otherUserId && 
+          msg.toUserId === currentUserId) {
+        return { ...msg, read: true };
+      }
+      return msg;
+    });
+    
+    localStorage.setItem(STORAGE_KEYS.MESSAGES, JSON.stringify(updatedMessages));
   }
 
   static searchListings(query: string, filters: {
