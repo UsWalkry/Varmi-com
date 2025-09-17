@@ -9,6 +9,7 @@ import { Listing, Offer, DataManager } from '@/lib/mockData';
 import OfferCard from '@/components/OfferCard';
 import CreateOfferModal from '@/components/CreateOfferModal';
 import AuthModal from '@/components/AuthModal';
+import MessageModal from '@/components/MessageModal';
 import { toast } from 'sonner';
 
 export default function ListingDetail() {
@@ -18,6 +19,7 @@ export default function ListingDetail() {
   const [offers, setOffers] = useState<Offer[]>([]);
   const [isOfferModalOpen, setIsOfferModalOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [isMessageModalOpen, setIsMessageModalOpen] = useState(false);
   const [sortBy, setSortBy] = useState<'price' | 'rating' | 'date'>('price');
   const [currentUser, setCurrentUser] = useState(DataManager.getCurrentUser());
 
@@ -74,8 +76,16 @@ export default function ListingDetail() {
   };
 
   const handleMessageSeller = (offerId: string) => {
-    toast.info('Mesajlaşma özelliği yakında eklenecek');
-    // Navigate to messaging interface
+    const offer = offers.find(o => o.id === offerId);
+    if (!offer) return;
+    
+    if (!currentUser) {
+      setIsAuthModalOpen(true);
+      return;
+    }
+    
+    // Open message modal with seller info
+    setIsMessageModalOpen(true);
   };
 
   const handleOfferCreated = () => {
@@ -104,7 +114,7 @@ export default function ListingDetail() {
       setIsAuthModalOpen(true);
       return;
     }
-    toast.info('Mesajlaşma özelliği yakında eklenecek');
+    setIsMessageModalOpen(true);
   };
 
   if (!listing) {
@@ -407,6 +417,15 @@ export default function ListingDetail() {
         isOpen={isAuthModalOpen}
         onClose={() => setIsAuthModalOpen(false)}
         onAuthSuccess={handleAuthSuccess}
+      />
+
+      {/* Message Modal */}
+      <MessageModal
+        isOpen={isMessageModalOpen}
+        onClose={() => setIsMessageModalOpen(false)}
+        recipientId={listing.buyerId}
+        recipientName={listing.buyerName}
+        listingTitle={listing.title}
       />
     </div>
   );
