@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Plus, Package, TrendingUp, MessageCircle, Star, Eye, Edit, Trash2, Mail } from 'lucide-react';
+import { ArrowLeft, Plus, Package, TrendingUp, MessageCircle, Star, Eye, Edit, Trash2, Mail, LogOut } from 'lucide-react';
 import { Listing, Offer, Message, DataManager } from '@/lib/mockData';
 import OfferCard from '@/components/OfferCard';
 import MessageModal from '@/components/MessageModal';
@@ -58,6 +58,11 @@ export default function Dashboard() {
       msg.fromUserId === currentUser.id || msg.toUserId === currentUser.id
     );
     setMyMessages(userMessages);
+  };
+
+  const handleLogout = () => {
+    DataManager.logoutUser();
+    navigate('/');
   };
 
   const getStatusColor = (status: string) => {
@@ -175,10 +180,16 @@ export default function Dashboard() {
             <div className="flex items-center gap-3">
               <h1 className="text-xl font-bold text-blue-600">Kullanıcı Paneli</h1>
             </div>
-            <Button onClick={() => navigate('/create-listing')}>
-              <Plus className="h-4 w-4 mr-2" />
-              Yeni İlan
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" onClick={handleLogout}>
+                <LogOut className="h-4 w-4 mr-2" />
+                Çıkış Yap
+              </Button>
+              <Button onClick={() => navigate('/create-listing')}>
+                <Plus className="h-4 w-4 mr-2" />
+                Yeni İlan
+              </Button>
+            </div>
           </div>
         </div>
       </header>

@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { ArrowLeft, MapPin, Clock, Package, TrendingUp, Plus, Star, MessageCircle } from 'lucide-react';
+import { ArrowLeft, MapPin, Clock, Package, TrendingUp, Plus, Star, MessageCircle, LogOut } from 'lucide-react';
 import { Listing, Offer, DataManager } from '@/lib/mockData';
 import OfferCard from '@/components/OfferCard';
 import CreateOfferModal from '@/components/CreateOfferModal';
@@ -76,16 +76,16 @@ export default function ListingDetail() {
   };
 
   const handleMessageSeller = (offerId: string) => {
-    const offer = offers.find(o => o.id === offerId);
-    if (!offer) return;
-    
     if (!currentUser) {
       setIsAuthModalOpen(true);
       return;
     }
     
-    // Open message modal with seller info
-    setIsMessageModalOpen(true);
+    const offer = offers.find(o => o.id === offerId);
+    if (offer) {
+      // Open message modal with seller info
+      setIsMessageModalOpen(true);
+    }
   };
 
   const handleOfferCreated = () => {
@@ -115,6 +115,11 @@ export default function ListingDetail() {
       return;
     }
     setIsMessageModalOpen(true);
+  };
+
+  const handleLogout = () => {
+    DataManager.logoutUser();
+    setCurrentUser(null);
   };
 
   if (!listing) {
@@ -161,6 +166,23 @@ export default function ListingDetail() {
             </Button>
             <div className="flex items-center gap-3">
               <h1 className="text-xl font-bold text-blue-600">Var mı?</h1>
+            </div>
+            <div className="flex items-center gap-2">
+              {currentUser ? (
+                <>
+                  <Button variant="outline" onClick={() => navigate('/dashboard')}>
+                    Panelim
+                  </Button>
+                  <Button variant="outline" onClick={handleLogout}>
+                    <LogOut className="h-4 w-4 mr-2" />
+                    Çıkış Yap
+                  </Button>
+                </>
+              ) : (
+                <Button variant="outline" onClick={() => setIsAuthModalOpen(true)}>
+                  Giriş Yap
+                </Button>
+              )}
             </div>
           </div>
         </div>
@@ -423,9 +445,10 @@ export default function ListingDetail() {
       <MessageModal
         isOpen={isMessageModalOpen}
         onClose={() => setIsMessageModalOpen(false)}
-        recipientId={listing.buyerId}
-        recipientName={listing.buyerName}
+        listingId={listing.id}
         listingTitle={listing.title}
+        otherUserId={listing.buyerId}
+        otherUserName={listing.buyerName}
       />
     </div>
   );
