@@ -5,21 +5,27 @@ import { MessageCircle, User, LogOut, BarChart3 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { DataManager } from '@/lib/mockData';
 import MessageCenter from './MessageCenter';
+import AuthModal from './AuthModal';
 
 export default function Header() {
   const navigate = useNavigate();
   const [isMessageCenterOpen, setIsMessageCenterOpen] = useState(false);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   
   const currentUser = DataManager.getCurrentUser();
   const unreadCount = currentUser ? DataManager.getUnreadMessageCount(currentUser.id) : 0;
 
   const handleLogin = () => {
-    DataManager.login('user1', 'password');
+    setIsAuthModalOpen(true);
+  };
+
+  const handleAuthSuccess = () => {
+    setIsAuthModalOpen(false);
     window.location.reload();
   };
 
   const handleLogout = () => {
-    DataManager.logout();
+    DataManager.logoutUser();
     navigate('/');
     window.location.reload();
   };
@@ -35,7 +41,7 @@ export default function Header() {
               onClick={() => navigate('/')}
             >
               <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-green-600 bg-clip-text text-transparent">
-                TeklifVar
+                Var mı?
               </h1>
             </div>
 
@@ -100,6 +106,13 @@ export default function Header() {
           </div>
         </div>
       </header>
+
+      {/* Auth Modal */}
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+        onAuthSuccess={handleAuthSuccess}
+      />
 
       {/* Message Center Modal */}
       <MessageCenter 

@@ -261,7 +261,7 @@ export class DataManager {
     return userStr ? JSON.parse(userStr) : null;
   }
 
-  static login(email: string, password: string): User | null {
+  static loginUser(email: string, password: string): User | null {
     this.initializeData();
     const users = this.getUsers();
     
