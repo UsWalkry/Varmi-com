@@ -1,145 +1,100 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Search, Plus, MapPin, Clock, TrendingUp, User, LogOut } from 'lucide-react';
+import { Search, MapPin, Clock, TrendingUp, Package, Star } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { Listing, DataManager, categories, cities } from '@/lib/mockData';
-import ListingCard from '@/components/ListingCard';
-import AuthModal from '@/components/AuthModal';
+import Header from '@/components/Header';
+import FavoriteButton from '@/components/FavoriteButton';
 
 export default function Index() {
   const navigate = useNavigate();
   const [listings, setListings] = useState<Listing[]>([]);
-  const [filteredListings, setFilteredListings] = useState<Listing[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedCity, setSelectedCity] = useState('all');
+  const [budgetMax, setBudgetMax] = useState('');
   const [selectedCondition, setSelectedCondition] = useState('all');
-  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
-  const [currentUser, setCurrentUser] = useState(DataManager.getCurrentUser());
+  const currentUser = DataManager.getCurrentUser();
 
   useEffect(() => {
     loadListings();
-  }, []);
-
-  useEffect(() => {
-    filterListings();
-  }, [listings, searchQuery, selectedCategory, selectedCity, selectedCondition]);
+  }, [searchQuery, selectedCategory, selectedCity, budgetMax, selectedCondition]);
 
   const loadListings = () => {
-    const allListings = DataManager.getListings();
-    const activeListings = allListings.filter(listing => listing.status === 'active');
-    setListings(activeListings);
+    const filters = {
+      category: selectedCategory !== 'all' ? selectedCategory : undefined,
+      city: selectedCity !== 'all' ? selectedCity : undefined,
+      budgetMax: budgetMax ? parseInt(budgetMax) : undefined,
+      condition: selectedCondition !== 'all' ? selectedCondition : undefined,
+    };
+
+    const filteredListings = DataManager.searchListings(searchQuery, filters);
+    setListings(filteredListings);
   };
 
-  const filterListings = () => {
-    let filtered = [...listings];
-
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(listing =>
-        listing.title.toLowerCase().includes(query) ||
-        listing.description.toLowerCase().includes(query)
-      );
-    }
-
-    if (selectedCategory !== 'all') {
-      filtered = filtered.filter(listing => listing.category === selectedCategory);
-    }
-
-    if (selectedCity !== 'all') {
-      filtered = filtered.filter(listing => listing.city === selectedCity);
-    }
-
-    if (selectedCondition !== 'all') {
-      filtered = filtered.filter(listing =>
-        listing.condition === selectedCondition || listing.condition === 'any'
-      );
-    }
-
-    setFilteredListings(filtered);
+  const handleListingClick = (listingId: string) => {
+    navigate(`/listing/${listingId}`);
   };
 
-  const handleAuthSuccess = () => {
-    setCurrentUser(DataManager.getCurrentUser());
+  const getConditionText = (condition: string) => {
+    switch (condition) {
+      case 'new': return 'Sıfır';
+      case 'used': return '2. El';
+      case 'any': return 'Farketmez';
+      default: return condition;
+    }
   };
 
-  const handleLogout = () => {
-    DataManager.logoutUser();
-    setCurrentUser(null);
+  const getDeliveryText = (deliveryType: string) => {
+    switch (deliveryType) {
+      case 'shipping': return 'Kargo';
+      case 'pickup': return 'Elden Teslim';
+      case 'both': return 'Kargo/Elden';
+      default: return deliveryType;
+    }
   };
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center gap-3">
-              <h1 className="text-2xl font-bold text-blue-600">Var mı?</h1>
-              <Badge variant="secondary" className="text-xs">
-                Ters Pazar Yeri
-              </Badge>
-            </div>
-            <div className="flex items-center gap-3">
-              {currentUser ? (
-                <>
-                  <Button variant="outline" onClick={() => navigate('/dashboard')}>
-                    <User className="h-4 w-4 mr-2" />
-                    Panelim
-                  </Button>
-                  <Button variant="outline" onClick={handleLogout}>
-                    <LogOut className="h-4 w-4 mr-2" />
-                    Çıkış Yap
-                  </Button>
-                  <Button onClick={() => navigate('/create-listing')}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    İlan Ver
-                  </Button>
-                </>
-              ) : (
-                <>
-                  <Button variant="outline" onClick={() => setIsAuthModalOpen(true)}>
-                    Giriş Yap
-                  </Button>
-                  <Button onClick={() => navigate('/create-listing')}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    İlan Ver
-                  </Button>
-                </>
-              )}
-            </div>
-          </div>
+      <Header />
+
+      {/* Hero Section */}
+      <section className="bg-gradient-to-r from-blue-600 to-green-600 text-white py-16">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <h1 className="text-4xl md:text-6xl font-bold mb-6">
+            Aradığın Ürün <span className="text-yellow-300">Var mı?</span>
+          </h1>
+          <p className="text-xl md:text-2xl mb-8 opacity-90">
+            İstediğin ürünü ilan ver, satıcılar sana teklif versin!
+          </p>
+          <Button 
+            size="lg" 
+            className="bg-white text-blue-600 hover:bg-gray-100 text-lg px-8 py-3"
+            onClick={() => navigate('/create-listing')}
+          >
+            Hemen İlan Ver
+          </Button>
         </div>
-      </header>
+      </section>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Hero Section */}
-        <div className="text-center mb-12">
-          <h2 className="text-4xl font-bold text-gray-900 mb-4">
-            Aradığınızı Bulun, Satıcılar Size Gelsin
-          </h2>
-          <p className="text-xl text-gray-600 mb-8">
-            İhtiyacınızı ilan edin, en iyi teklifleri alın
-          </p>
-        </div>
-
         {/* Search and Filters */}
         <Card className="mb-8">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Search className="h-5 w-5" />
-              İlan Ara ve Filtrele
+              İlan Ara
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
               <div className="lg:col-span-2">
                 <Input
-                  placeholder="Ne arıyorsunuz?"
+                  placeholder="Ürün ara..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full"
@@ -152,9 +107,7 @@ export default function Index() {
                 <SelectContent>
                   <SelectItem value="all">Tüm Kategoriler</SelectItem>
                   {categories.map(category => (
-                    <SelectItem key={category} value={category}>
-                      {category}
-                    </SelectItem>
+                    <SelectItem key={category} value={category}>{category}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -165,12 +118,16 @@ export default function Index() {
                 <SelectContent>
                   <SelectItem value="all">Tüm Şehirler</SelectItem>
                   {cities.map(city => (
-                    <SelectItem key={city} value={city}>
-                      {city}
-                    </SelectItem>
+                    <SelectItem key={city} value={city}>{city}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
+              <Input
+                type="number"
+                placeholder="Max Bütçe"
+                value={budgetMax}
+                onChange={(e) => setBudgetMax(e.target.value)}
+              />
               <Select value={selectedCondition} onValueChange={setSelectedCondition}>
                 <SelectTrigger>
                   <SelectValue placeholder="Durum" />
@@ -186,77 +143,102 @@ export default function Index() {
           </CardContent>
         </Card>
 
-        {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <Card>
-            <CardContent className="p-6 text-center">
-              <TrendingUp className="h-8 w-8 text-blue-600 mx-auto mb-2" />
-              <p className="text-2xl font-bold">{listings.length}</p>
-              <p className="text-sm text-muted-foreground">Aktif İlan</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-6 text-center">
-              <MapPin className="h-8 w-8 text-green-600 mx-auto mb-2" />
-              <p className="text-2xl font-bold">{new Set(listings.map(l => l.city)).size}</p>
-              <p className="text-sm text-muted-foreground">Şehir</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-6 text-center">
-              <Clock className="h-8 w-8 text-orange-600 mx-auto mb-2" />
-              <p className="text-2xl font-bold">{categories.length}</p>
-              <p className="text-sm text-muted-foreground">Kategori</p>
-            </CardContent>
-          </Card>
+        {/* Results */}
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-2xl font-bold">Aktif İlanlar ({listings.length})</h2>
         </div>
 
-        {/* Listings */}
-        <div className="space-y-6">
-          <div className="flex items-center justify-between">
-            <h3 className="text-2xl font-bold">
-              Aktif İlanlar ({filteredListings.length})
-            </h3>
-            <Button onClick={() => navigate('/create-listing')}>
-              <Plus className="h-4 w-4 mr-2" />
-              İlan Ver
-            </Button>
+        {listings.length === 0 ? (
+          <Card>
+            <CardContent className="text-center py-12">
+              <Package className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+              <h3 className="text-lg font-semibold mb-2">İlan bulunamadı</h3>
+              <p className="text-muted-foreground mb-4">
+                Arama kriterlerinize uygun ilan bulunmuyor. Filtreleri değiştirmeyi deneyin.
+              </p>
+              <Button onClick={() => navigate('/create-listing')}>
+                İlk İlanı Siz Verin
+              </Button>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {listings.map(listing => (
+              <Card 
+                key={listing.id} 
+                className="cursor-pointer hover:shadow-lg transition-shadow"
+                onClick={() => handleListingClick(listing.id)}
+              >
+                <CardHeader>
+                  <div className="flex items-start justify-between">
+                    <CardTitle className="text-lg line-clamp-2 flex-1 mr-2">{listing.title}</CardTitle>
+                    <div className="flex items-center gap-2">
+                      <FavoriteButton 
+                        listingId={listing.id}
+                        userId={currentUser?.id}
+                        size="sm"
+                        variant="ghost"
+                      />
+                      <Badge className="bg-green-100 text-green-800">
+                        {listing.status === 'active' ? 'Aktif' : 'Kapalı'}
+                      </Badge>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-muted-foreground text-sm mb-4 line-clamp-3">
+                    {listing.description}
+                  </p>
+                  
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-muted-foreground">Bütçe</span>
+                      <span className="font-semibold text-green-600">
+                        {DataManager.formatPrice(listing.budgetMin)} - {DataManager.formatPrice(listing.budgetMax)}
+                      </span>
+                    </div>
+                    
+                    <div className="flex flex-wrap gap-2">
+                      <Badge variant="secondary">{listing.category}</Badge>
+                      <Badge variant="outline">{getConditionText(listing.condition)}</Badge>
+                      <Badge variant="outline">
+                        <Package className="h-3 w-3 mr-1" />
+                        {getDeliveryText(listing.deliveryType)}
+                      </Badge>
+                    </div>
+                    
+                    <div className="flex items-center justify-between text-sm text-muted-foreground">
+                      <div className="flex items-center gap-1">
+                        <MapPin className="h-3 w-3" />
+                        <span>{listing.city}</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Clock className="h-3 w-3" />
+                        <span>{DataManager.getTimeAgo(listing.createdAt)}</span>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-muted-foreground">İlan sahibi:</span>
+                        <span className="font-medium">{listing.buyerName}</span>
+                        <div className="flex items-center gap-1">
+                          <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
+                          <span className="text-xs">4.8</span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1 text-blue-600">
+                        <TrendingUp className="h-4 w-4" />
+                        <span className="font-semibold">{listing.offerCount} teklif</span>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
           </div>
-
-          {filteredListings.length === 0 ? (
-            <Card>
-              <CardContent className="p-12 text-center">
-                <Search className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-lg font-semibold mb-2">İlan bulunamadı</h3>
-                <p className="text-muted-foreground mb-4">
-                  Arama kriterlerinize uygun ilan bulunamadı. Filtreleri değiştirmeyi deneyin.
-                </p>
-                <Button onClick={() => {
-                  setSearchQuery('');
-                  setSelectedCategory('all');
-                  setSelectedCity('all');
-                  setSelectedCondition('all');
-                }}>
-                  Filtreleri Temizle
-                </Button>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredListings.map(listing => (
-                <ListingCard key={listing.id} listing={listing} />
-              ))}
-            </div>
-          )}
-        </div>
+        )}
       </div>
-
-      {/* Auth Modal */}
-      <AuthModal
-        isOpen={isAuthModalOpen}
-        onClose={() => setIsAuthModalOpen(false)}
-        onAuthSuccess={handleAuthSuccess}
-      />
     </div>
   );
 }

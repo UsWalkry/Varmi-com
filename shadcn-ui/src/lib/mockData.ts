@@ -59,6 +59,13 @@ export interface Message {
   read: boolean;
 }
 
+export interface Favorite {
+  id: string;
+  userId: string;
+  listingId: string;
+  createdAt: string;
+}
+
 // Categories
 export const categories = [
   'Elektronik',
@@ -242,13 +249,23 @@ const mockMessages: Message[] = [
   }
 ];
 
+const mockFavorites: Favorite[] = [
+  {
+    id: '1',
+    userId: '1',
+    listingId: '2',
+    createdAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString()
+  }
+];
+
 // LocalStorage management
 const STORAGE_KEYS = {
   LISTINGS: 'marketplace_listings',
   OFFERS: 'marketplace_offers',
   USERS: 'marketplace_users',
   CURRENT_USER: 'marketplace_current_user',
-  MESSAGES: 'marketplace_messages'
+  MESSAGES: 'marketplace_messages',
+  FAVORITES: 'marketplace_favorites'
 };
 
 export class DataManager {
@@ -264,6 +281,9 @@ export class DataManager {
     }
     if (!localStorage.getItem(STORAGE_KEYS.MESSAGES)) {
       localStorage.setItem(STORAGE_KEYS.MESSAGES, JSON.stringify(mockMessages));
+    }
+    if (!localStorage.getItem(STORAGE_KEYS.FAVORITES)) {
+      localStorage.setItem(STORAGE_KEYS.FAVORITES, JSON.stringify(mockFavorites));
     }
     // Don't auto-login, let user choose
   }
@@ -429,6 +449,66 @@ export class DataManager {
     });
     
     localStorage.setItem(STORAGE_KEYS.MESSAGES, JSON.stringify(updatedMessages));
+  }
+
+  // Favorite functions
+  static getFavorites(userId?: string): Favorite[] {
+    const data = localStorage.getItem(STORAGE_KEYS.FAVORITES);
+    const favorites = data ? JSON.parse(data) : [];
+    return userId ? favorites.filter((fav: Favorite) => fav.userId === userId) : favorites;
+  }
+
+  static addToFavorites(userId: string, listingId: string): Favorite {
+    const favorites = this.getFavorites();
+    
+    // Check if already in favorites
+    const existingFavorite = favorites.find((fav: Favorite) => 
+      fav.userId === userId && fav.listingId === listingId
+    );
+    
+    if (existingFavorite) {
+      return existingFavorite;
+    }
+
+    const newFavorite: Favorite = {
+      id: Date.now().toString(),
+      userId,
+      listingId,
+      createdAt: new Date().toISOString()
+    };
+    
+    favorites.push(newFavorite);
+    localStorage.setItem(STORAGE_KEYS.FAVORITES, JSON.stringify(favorites));
+    
+    return newFavorite;
+  }
+
+  static removeFromFavorites(userId: string, listingId: string): boolean {
+    const favorites = this.getFavorites();
+    const updatedFavorites = favorites.filter((fav: Favorite) => 
+      !(fav.userId === userId && fav.listingId === listingId)
+    );
+    
+    if (updatedFavorites.length !== favorites.length) {
+      localStorage.setItem(STORAGE_KEYS.FAVORITES, JSON.stringify(updatedFavorites));
+      return true;
+    }
+    
+    return false;
+  }
+
+  static isFavorite(userId: string, listingId: string): boolean {
+    const favorites = this.getFavorites(userId);
+    return favorites.some((fav: Favorite) => fav.listingId === listingId);
+  }
+
+  static getUserFavoriteListings(userId: string): Listing[] {
+    const favorites = this.getFavorites(userId);
+    const allListings = this.getListings();
+    
+    return favorites
+      .map(fav => allListings.find(listing => listing.id === fav.listingId))
+      .filter(listing => listing !== undefined) as Listing[];
   }
 
   static searchListings(query: string, filters: {
