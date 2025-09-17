@@ -4,19 +4,25 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Plus, Package, TrendingUp, MessageCircle, Star, Eye, Edit, Trash2, Bell } from 'lucide-react';
-import { Listing, Offer, DataManager } from '@/lib/mockData';
-import ListingCard from '@/components/ListingCard';
+import { ArrowLeft, Plus, Package, TrendingUp, MessageCircle, Star, Eye, Edit, Trash2, Mail } from 'lucide-react';
+import { Listing, Offer, Message, DataManager } from '@/lib/mockData';
 import OfferCard from '@/components/OfferCard';
-import MessageCenter from '@/components/MessageCenter';
+import MessageModal from '@/components/MessageModal';
 
 export default function Dashboard() {
   const navigate = useNavigate();
   const [myListings, setMyListings] = useState<Listing[]>([]);
   const [myOffers, setMyOffers] = useState<Offer[]>([]);
   const [offersToMyListings, setOffersToMyListings] = useState<Offer[]>([]);
+  const [myMessages, setMyMessages] = useState<Message[]>([]);
   const [activeTab, setActiveTab] = useState('my-listings');
-  const [isMessageCenterOpen, setIsMessageCenterOpen] = useState(false);
+  const [isMessageModalOpen, setIsMessageModalOpen] = useState(false);
+  const [selectedConversation, setSelectedConversation] = useState<{
+    listingId: string;
+    listingTitle: string;
+    otherUserId: string;
+    otherUserName: string;
+  } | null>(null);
 
   const currentUser = DataManager.getCurrentUser();
 
@@ -45,6 +51,13 @@ export default function Dashboard() {
     const listingIds = userListings.map(listing => listing.id);
     const offersToUser = allOffers.filter(offer => listingIds.includes(offer.listingId));
     setOffersToMyListings(offersToUser);
+
+    // Get user's messages
+    const allMessages = DataManager.getAllMessages();
+    const userMessages = allMessages.filter(msg => 
+      msg.fromUserId === currentUser.id || msg.toUserId === currentUser.id
+    );
+    setMyMessages(userMessages);
   };
 
   const getStatusColor = (status: string) => {
@@ -71,22 +84,68 @@ export default function Dashboard() {
 
   const handleStatClick = (statType: string) => {
     switch (statType) {
-      case 'total-listings':
-      case 'active-listings':
+      case 'totalListings':
+      case 'activeListings':
         setActiveTab('my-listings');
         break;
-      case 'total-offers':
-      case 'accepted-offers':
+      case 'totalOffers':
+      case 'acceptedOffers':
         setActiveTab('my-offers');
         break;
-      case 'received-offers':
-      case 'pending-offers':
+      case 'receivedOffers':
+      case 'pendingOffers':
         setActiveTab('received-offers');
         break;
       case 'messages':
-        setIsMessageCenterOpen(true);
+        setActiveTab('messages');
         break;
     }
+  };
+
+  const openMessageModal = (listingId: string, listingTitle: string, otherUserId: string, otherUserName: string) => {
+    setSelectedConversation({ listingId, listingTitle, otherUserId, otherUserName });
+    setIsMessageModalOpen(true);
+  };
+
+  // Group messages by conversation
+  const getConversations = () => {
+    if (!currentUser) return [];
+    
+    const conversations = new Map();
+    
+    myMessages.forEach(msg => {
+      const otherUserId = msg.fromUserId === currentUser.id ? msg.toUserId : msg.fromUserId;
+      const otherUserName = msg.fromUserId === currentUser.id ? 
+        DataManager.getUser(msg.toUserId)?.name || 'Bilinmeyen' :
+        msg.fromUserName;
+      
+      const listing = DataManager.getListings().find(l => l.id === msg.listingId);
+      const key = `${msg.listingId}-${otherUserId}`;
+      
+      if (!conversations.has(key)) {
+        conversations.set(key, {
+          listingId: msg.listingId,
+          listingTitle: listing?.title || 'Bilinmeyen İlan',
+          otherUserId,
+          otherUserName,
+          lastMessage: msg,
+          unreadCount: 0
+        });
+      }
+      
+      const conv = conversations.get(key);
+      if (new Date(msg.createdAt) > new Date(conv.lastMessage.createdAt)) {
+        conv.lastMessage = msg;
+      }
+      
+      if (!msg.read && msg.toUserId === currentUser.id) {
+        conv.unreadCount++;
+      }
+    });
+    
+    return Array.from(conversations.values()).sort((a, b) => 
+      new Date(b.lastMessage.createdAt).getTime() - new Date(a.lastMessage.createdAt).getTime()
+    );
   };
 
   const stats = {
@@ -95,19 +154,9 @@ export default function Dashboard() {
     totalOffers: myOffers.length,
     acceptedOffers: myOffers.filter(o => o.status === 'accepted').length,
     receivedOffers: offersToMyListings.length,
-    pendingOffers: offersToMyListings.filter(o => o.status === 'active').length
+    pendingOffers: offersToMyListings.filter(o => o.status === 'active').length,
+    unreadMessages: myMessages.filter(m => !m.read && m.toUserId === currentUser?.id).length
   };
-
-  // Get unread message count
-  const getUnreadMessageCount = () => {
-    if (!currentUser) return 0;
-    const allMessages = DataManager.getAllMessages();
-    return allMessages.filter(
-      msg => msg.toUserId === currentUser.id && !msg.read
-    ).length;
-  };
-
-  const unreadMessageCount = getUnreadMessageCount();
 
   if (!currentUser) {
     return null;
@@ -126,26 +175,10 @@ export default function Dashboard() {
             <div className="flex items-center gap-3">
               <h1 className="text-xl font-bold text-blue-600">Kullanıcı Paneli</h1>
             </div>
-            <div className="flex items-center gap-2">
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={() => setIsMessageCenterOpen(true)}
-                className="relative"
-              >
-                <MessageCircle className="h-4 w-4 mr-2" />
-                Mesajlar
-                {unreadMessageCount > 0 && (
-                  <Badge className="absolute -top-2 -right-2 bg-red-500 text-xs min-w-[20px] h-5 flex items-center justify-center">
-                    {unreadMessageCount}
-                  </Badge>
-                )}
-              </Button>
-              <Button onClick={() => navigate('/create-listing')}>
-                <Plus className="h-4 w-4 mr-2" />
-                Yeni İlan
-              </Button>
-            </div>
+            <Button onClick={() => navigate('/create-listing')}>
+              <Plus className="h-4 w-4 mr-2" />
+              Yeni İlan
+            </Button>
           </div>
         </div>
       </header>
@@ -182,80 +215,63 @@ export default function Dashboard() {
         </Card>
 
         {/* Stats - Now Clickable */}
-        <div className="grid grid-cols-2 md:grid-cols-6 gap-4 mb-8">
-          <Card 
-            className="cursor-pointer hover:shadow-md transition-shadow"
-            onClick={() => handleStatClick('total-listings')}
-          >
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 mb-8">
+          <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => handleStatClick('totalListings')}>
             <CardContent className="p-4 text-center">
               <Package className="h-6 w-6 text-blue-600 mx-auto mb-2" />
               <p className="text-xl font-bold">{stats.totalListings}</p>
               <p className="text-xs text-muted-foreground">Toplam İlan</p>
             </CardContent>
           </Card>
-          <Card 
-            className="cursor-pointer hover:shadow-md transition-shadow"
-            onClick={() => handleStatClick('active-listings')}
-          >
+          <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => handleStatClick('activeListings')}>
             <CardContent className="p-4 text-center">
               <TrendingUp className="h-6 w-6 text-green-600 mx-auto mb-2" />
               <p className="text-xl font-bold">{stats.activeListings}</p>
               <p className="text-xs text-muted-foreground">Aktif İlan</p>
             </CardContent>
           </Card>
-          <Card 
-            className="cursor-pointer hover:shadow-md transition-shadow"
-            onClick={() => handleStatClick('total-offers')}
-          >
+          <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => handleStatClick('totalOffers')}>
             <CardContent className="p-4 text-center">
               <MessageCircle className="h-6 w-6 text-purple-600 mx-auto mb-2" />
               <p className="text-xl font-bold">{stats.totalOffers}</p>
               <p className="text-xs text-muted-foreground">Verdiğim Teklif</p>
             </CardContent>
           </Card>
-          <Card 
-            className="cursor-pointer hover:shadow-md transition-shadow"
-            onClick={() => handleStatClick('accepted-offers')}
-          >
+          <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => handleStatClick('acceptedOffers')}>
             <CardContent className="p-4 text-center">
               <Star className="h-6 w-6 text-yellow-600 mx-auto mb-2" />
               <p className="text-xl font-bold">{stats.acceptedOffers}</p>
               <p className="text-xs text-muted-foreground">Kabul Edilen</p>
             </CardContent>
           </Card>
-          <Card 
-            className="cursor-pointer hover:shadow-md transition-shadow"
-            onClick={() => handleStatClick('received-offers')}
-          >
+          <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => handleStatClick('receivedOffers')}>
             <CardContent className="p-4 text-center">
               <Package className="h-6 w-6 text-orange-600 mx-auto mb-2" />
               <p className="text-xl font-bold">{stats.receivedOffers}</p>
               <p className="text-xs text-muted-foreground">Gelen Teklif</p>
             </CardContent>
           </Card>
-          <Card 
-            className="cursor-pointer hover:shadow-md transition-shadow"
-            onClick={() => handleStatClick('messages')}
-          >
-            <CardContent className="p-4 text-center relative">
-              <MessageCircle className="h-6 w-6 text-red-600 mx-auto mb-2" />
-              <p className="text-xl font-bold">{unreadMessageCount}</p>
+          <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => handleStatClick('messages')}>
+            <CardContent className="p-4 text-center">
+              <Mail className="h-6 w-6 text-indigo-600 mx-auto mb-2" />
+              <p className="text-xl font-bold">{stats.unreadMessages}</p>
               <p className="text-xs text-muted-foreground">Okunmamış Mesaj</p>
-              {unreadMessageCount > 0 && (
-                <div className="absolute top-2 right-2">
-                  <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
-                </div>
-              )}
             </CardContent>
           </Card>
         </div>
 
         {/* Main Content */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="my-listings">İlanlarım ({myListings.length})</TabsTrigger>
             <TabsTrigger value="my-offers">Tekliflerim ({myOffers.length})</TabsTrigger>
             <TabsTrigger value="received-offers">Gelen Teklifler ({offersToMyListings.length})</TabsTrigger>
+            <TabsTrigger value="messages">
+              Mesajlar ({getConversations().length})
+              {stats.unreadMessages > 0 && (
+                <Badge className="ml-2 bg-red-500 text-white text-xs">{stats.unreadMessages}</Badge>
+              )}
+            </TabsTrigger>
           </TabsList>
 
           {/* My Listings */}
@@ -424,14 +440,72 @@ export default function Dashboard() {
               </CardContent>
             </Card>
           </TabsContent>
+
+          {/* Messages */}
+          <TabsContent value="messages">
+            <Card>
+              <CardHeader>
+                <CardTitle>Mesajlarım</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {getConversations().length === 0 ? (
+                  <div className="text-center py-12">
+                    <Mail className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+                    <h3 className="text-lg font-semibold mb-2">Henüz mesajınız yok</h3>
+                    <p className="text-muted-foreground mb-4">
+                      İlan sahipleri veya satıcılarla mesajlaşmaya başladığınızda burada görünecek.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {getConversations().map((conv, index) => (
+                      <div 
+                        key={index} 
+                        className="border rounded-lg p-4 cursor-pointer hover:bg-gray-50 transition-colors"
+                        onClick={() => openMessageModal(conv.listingId, conv.listingTitle, conv.otherUserId, conv.otherUserName)}
+                      >
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <h4 className="font-semibold">{conv.otherUserName}</h4>
+                              {conv.unreadCount > 0 && (
+                                <Badge className="bg-red-500 text-white text-xs">
+                                  {conv.unreadCount}
+                                </Badge>
+                              )}
+                            </div>
+                            <p className="text-sm text-muted-foreground mb-1">{conv.listingTitle}</p>
+                            <p className="text-sm text-gray-600 line-clamp-1">{conv.lastMessage.message}</p>
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            {DataManager.getTimeAgo(conv.lastMessage.createdAt)}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
         </Tabs>
       </div>
 
-      {/* Message Center */}
-      <MessageCenter
-        isOpen={isMessageCenterOpen}
-        onClose={() => setIsMessageCenterOpen(false)}
-      />
+      {/* Message Modal */}
+      {selectedConversation && (
+        <MessageModal
+          isOpen={isMessageModalOpen}
+          onClose={() => {
+            setIsMessageModalOpen(false);
+            setSelectedConversation(null);
+            loadUserData(); // Refresh data when modal closes
+          }}
+          listingId={selectedConversation.listingId}
+          listingTitle={selectedConversation.listingTitle}
+          otherUserId={selectedConversation.otherUserId}
+          otherUserName={selectedConversation.otherUserName}
+        />
+      )}
     </div>
   );
 }
