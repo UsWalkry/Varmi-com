@@ -227,9 +227,7 @@ export class DataManager {
     if (!localStorage.getItem(STORAGE_KEYS.USERS)) {
       localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(mockUsers));
     }
-    if (!localStorage.getItem(STORAGE_KEYS.CURRENT_USER)) {
-      localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(mockUsers[0]));
-    }
+    // Don't auto-login, let user choose
   }
 
   static getListings(): Listing[] {
@@ -289,6 +287,55 @@ export class DataManager {
     const data = localStorage.getItem(STORAGE_KEYS.USERS);
     const users = data ? JSON.parse(data) : [];
     return users.find((user: User) => user.id === id) || null;
+  }
+
+  static loginUser(email: string, password: string): User | null {
+    const data = localStorage.getItem(STORAGE_KEYS.USERS);
+    const users = data ? JSON.parse(data) : [];
+    
+    // Mock password check - in real app, this would be hashed
+    const user = users.find((u: User) => u.email === email);
+    if (user && password === '123456') { // Demo password for all users
+      localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(user));
+      return user;
+    }
+    return null;
+  }
+
+  static registerUser(userData: {
+    name: string;
+    email: string;
+    password: string;
+    role: 'buyer' | 'seller' | 'both';
+    city: string;
+  }): User | null {
+    const data = localStorage.getItem(STORAGE_KEYS.USERS);
+    const users = data ? JSON.parse(data) : [];
+    
+    // Check if email already exists
+    if (users.find((u: User) => u.email === userData.email)) {
+      return null;
+    }
+
+    const newUser: User = {
+      id: Date.now().toString(),
+      name: userData.name,
+      email: userData.email,
+      role: userData.role,
+      city: userData.city,
+      rating: 5.0,
+      reviewCount: 0
+    };
+
+    users.push(newUser);
+    localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(users));
+    localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(newUser));
+    
+    return newUser;
+  }
+
+  static logoutUser(): void {
+    localStorage.removeItem(STORAGE_KEYS.CURRENT_USER);
   }
 
   static searchListings(query: string, filters: {

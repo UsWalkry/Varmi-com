@@ -4,9 +4,10 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Search, Plus, TrendingUp, Users, Package, Clock } from 'lucide-react';
+import { Search, Plus, TrendingUp, Users, Package, Clock, LogIn, LogOut, User } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import ListingCard from '@/components/ListingCard';
+import AuthModal from '@/components/AuthModal';
 import { Listing, DataManager, categories, cities } from '@/lib/mockData';
 
 export default function Index() {
@@ -19,6 +20,8 @@ export default function Index() {
     budgetMax: '',
     condition: 'all'
   });
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [currentUser, setCurrentUser] = useState(DataManager.getCurrentUser());
 
   useEffect(() => {
     loadListings();
@@ -49,6 +52,31 @@ export default function Index() {
     });
   };
 
+  const handleAuthSuccess = () => {
+    setCurrentUser(DataManager.getCurrentUser());
+  };
+
+  const handleLogout = () => {
+    DataManager.logoutUser();
+    setCurrentUser(null);
+  };
+
+  const handleCreateListing = () => {
+    if (!currentUser) {
+      setIsAuthModalOpen(true);
+      return;
+    }
+    navigate('/create-listing');
+  };
+
+  const handleDashboard = () => {
+    if (!currentUser) {
+      setIsAuthModalOpen(true);
+      return;
+    }
+    navigate('/dashboard');
+  };
+
   const stats = {
     totalListings: DataManager.getListings().length,
     activeListings: DataManager.getListings().filter(l => l.status === 'active').length,
@@ -71,14 +99,36 @@ export default function Index() {
               </h1>
             </div>
             <div className="flex items-center gap-3">
-              <Button variant="outline" onClick={() => navigate('/dashboard')}>
-                <Users className="h-4 w-4 mr-2" />
-                Panelim
-              </Button>
-              <Button onClick={() => navigate('/create-listing')}>
-                <Plus className="h-4 w-4 mr-2" />
-                İlan Ver
-              </Button>
+              {currentUser ? (
+                <>
+                  <div className="flex items-center gap-2 text-sm">
+                    <User className="h-4 w-4" />
+                    <span>Hoş geldin, {currentUser.name.split(' ')[0]}</span>
+                  </div>
+                  <Button variant="outline" onClick={handleDashboard}>
+                    <Users className="h-4 w-4 mr-2" />
+                    Panelim
+                  </Button>
+                  <Button onClick={handleCreateListing}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    İlan Ver
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={handleLogout}>
+                    <LogOut className="h-4 w-4" />
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button variant="outline" onClick={() => setIsAuthModalOpen(true)}>
+                    <LogIn className="h-4 w-4 mr-2" />
+                    Giriş Yap
+                  </Button>
+                  <Button onClick={handleCreateListing}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    İlan Ver
+                  </Button>
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -246,7 +296,7 @@ export default function Index() {
                       Filtreleri Temizle
                     </Button>
                   )}
-                  <Button onClick={() => navigate('/create-listing')}>
+                  <Button onClick={handleCreateListing}>
                     <Plus className="h-4 w-4 mr-2" />
                     İlan Ver
                   </Button>
@@ -273,7 +323,7 @@ export default function Index() {
             <Button 
               size="lg" 
               variant="secondary"
-              onClick={() => navigate('/create-listing')}
+              onClick={handleCreateListing}
             >
               <Plus className="h-5 w-5 mr-2" />
               Ücretsiz İlan Ver
@@ -281,6 +331,13 @@ export default function Index() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Auth Modal */}
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+        onAuthSuccess={handleAuthSuccess}
+      />
     </div>
   );
 }

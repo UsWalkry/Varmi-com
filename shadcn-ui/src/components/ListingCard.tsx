@@ -46,8 +46,20 @@ export default function ListingCard({ listing }: ListingCardProps) {
     return hoursUntilExpiry <= 24 && hoursUntilExpiry > 0;
   };
 
+  const handleCardClick = () => {
+    navigate(`/listing/${listing.id}`);
+  };
+
+  const handleButtonClick = (e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent card click when button is clicked
+    navigate(`/listing/${listing.id}`);
+  };
+
   return (
-    <Card className="hover:shadow-lg transition-shadow cursor-pointer group">
+    <Card 
+      className="hover:shadow-lg transition-shadow cursor-pointer group"
+      onClick={handleCardClick}
+    >
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
           <div className="flex-1">
@@ -112,7 +124,7 @@ export default function ListingCard({ listing }: ListingCardProps) {
           </div>
           <Button 
             size="sm" 
-            onClick={() => navigate(`/listing/${listing.id}`)}
+            onClick={handleButtonClick}
             className="ml-auto"
           >
             Detaylar

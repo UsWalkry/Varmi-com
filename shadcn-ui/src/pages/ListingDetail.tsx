@@ -8,6 +8,7 @@ import { ArrowLeft, MapPin, Clock, Package, TrendingUp, Plus, Star, MessageCircl
 import { Listing, Offer, DataManager } from '@/lib/mockData';
 import OfferCard from '@/components/OfferCard';
 import CreateOfferModal from '@/components/CreateOfferModal';
+import AuthModal from '@/components/AuthModal';
 import { toast } from 'sonner';
 
 export default function ListingDetail() {
@@ -16,9 +17,9 @@ export default function ListingDetail() {
   const [listing, setListing] = useState<Listing | null>(null);
   const [offers, setOffers] = useState<Offer[]>([]);
   const [isOfferModalOpen, setIsOfferModalOpen] = useState(false);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [sortBy, setSortBy] = useState<'price' | 'rating' | 'date'>('price');
-
-  const currentUser = DataManager.getCurrentUser();
+  const [currentUser, setCurrentUser] = useState(DataManager.getCurrentUser());
 
   useEffect(() => {
     if (id) {
@@ -80,6 +81,30 @@ export default function ListingDetail() {
   const handleOfferCreated = () => {
     loadListingAndOffers();
     toast.success('Teklifiniz başarıyla gönderildi!');
+  };
+
+  const handleAuthSuccess = () => {
+    setCurrentUser(DataManager.getCurrentUser());
+  };
+
+  const handleCreateOffer = () => {
+    if (!currentUser) {
+      setIsAuthModalOpen(true);
+      return;
+    }
+    setIsOfferModalOpen(true);
+  };
+
+  const handleLogin = () => {
+    setIsAuthModalOpen(true);
+  };
+
+  const handleMessageOwner = () => {
+    if (!currentUser) {
+      setIsAuthModalOpen(true);
+      return;
+    }
+    toast.info('Mesajlaşma özelliği yakında eklenecek');
   };
 
   if (!listing) {
@@ -246,7 +271,7 @@ export default function ListingDetail() {
                       Bu ilana henüz teklif verilmemiş. İlk teklifi siz verin!
                     </p>
                     {canMakeOffer && (
-                      <Button onClick={() => setIsOfferModalOpen(true)}>
+                      <Button onClick={handleCreateOffer}>
                         <Plus className="h-4 w-4 mr-2" />
                         İlk Teklifi Ver
                       </Button>
@@ -282,7 +307,7 @@ export default function ListingDetail() {
                   <Button 
                     className="w-full" 
                     size="lg"
-                    onClick={() => setIsOfferModalOpen(true)}
+                    onClick={handleCreateOffer}
                   >
                     <Plus className="h-4 w-4 mr-2" />
                     Teklif Ver
@@ -297,7 +322,7 @@ export default function ListingDetail() {
                 ) : !currentUser ? (
                   <div className="text-center py-4">
                     <p className="text-sm text-muted-foreground mb-2">Teklif vermek için giriş yapın</p>
-                    <Button variant="outline" className="w-full">
+                    <Button variant="outline" className="w-full" onClick={handleLogin}>
                       Giriş Yap
                     </Button>
                   </div>
@@ -307,7 +332,7 @@ export default function ListingDetail() {
                   </div>
                 )}
 
-                <Button variant="outline" className="w-full">
+                <Button variant="outline" className="w-full" onClick={handleMessageOwner}>
                   <MessageCircle className="h-4 w-4 mr-2" />
                   İlan Sahibine Mesaj
                 </Button>
@@ -375,6 +400,13 @@ export default function ListingDetail() {
         onClose={() => setIsOfferModalOpen(false)}
         listing={listing}
         onOfferCreated={handleOfferCreated}
+      />
+
+      {/* Auth Modal */}
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+        onAuthSuccess={handleAuthSuccess}
       />
     </div>
   );
