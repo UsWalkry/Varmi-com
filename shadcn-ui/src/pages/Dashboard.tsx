@@ -4,16 +4,19 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Plus, Package, TrendingUp, MessageCircle, Star, Eye, Edit, Trash2 } from 'lucide-react';
+import { ArrowLeft, Plus, Package, TrendingUp, MessageCircle, Star, Eye, Edit, Trash2, Bell } from 'lucide-react';
 import { Listing, Offer, DataManager } from '@/lib/mockData';
 import ListingCard from '@/components/ListingCard';
 import OfferCard from '@/components/OfferCard';
+import MessageCenter from '@/components/MessageCenter';
 
 export default function Dashboard() {
   const navigate = useNavigate();
   const [myListings, setMyListings] = useState<Listing[]>([]);
   const [myOffers, setMyOffers] = useState<Offer[]>([]);
   const [offersToMyListings, setOffersToMyListings] = useState<Offer[]>([]);
+  const [activeTab, setActiveTab] = useState('my-listings');
+  const [isMessageCenterOpen, setIsMessageCenterOpen] = useState(false);
 
   const currentUser = DataManager.getCurrentUser();
 
@@ -66,6 +69,26 @@ export default function Dashboard() {
     }
   };
 
+  const handleStatClick = (statType: string) => {
+    switch (statType) {
+      case 'total-listings':
+      case 'active-listings':
+        setActiveTab('my-listings');
+        break;
+      case 'total-offers':
+      case 'accepted-offers':
+        setActiveTab('my-offers');
+        break;
+      case 'received-offers':
+      case 'pending-offers':
+        setActiveTab('received-offers');
+        break;
+      case 'messages':
+        setIsMessageCenterOpen(true);
+        break;
+    }
+  };
+
   const stats = {
     totalListings: myListings.length,
     activeListings: myListings.filter(l => l.status === 'active').length,
@@ -74,6 +97,17 @@ export default function Dashboard() {
     receivedOffers: offersToMyListings.length,
     pendingOffers: offersToMyListings.filter(o => o.status === 'active').length
   };
+
+  // Get unread message count
+  const getUnreadMessageCount = () => {
+    if (!currentUser) return 0;
+    const allMessages = DataManager.getAllMessages();
+    return allMessages.filter(
+      msg => msg.toUserId === currentUser.id && !msg.read
+    ).length;
+  };
+
+  const unreadMessageCount = getUnreadMessageCount();
 
   if (!currentUser) {
     return null;
@@ -92,10 +126,26 @@ export default function Dashboard() {
             <div className="flex items-center gap-3">
               <h1 className="text-xl font-bold text-blue-600">Kullanıcı Paneli</h1>
             </div>
-            <Button onClick={() => navigate('/create-listing')}>
-              <Plus className="h-4 w-4 mr-2" />
-              Yeni İlan
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => setIsMessageCenterOpen(true)}
+                className="relative"
+              >
+                <MessageCircle className="h-4 w-4 mr-2" />
+                Mesajlar
+                {unreadMessageCount > 0 && (
+                  <Badge className="absolute -top-2 -right-2 bg-red-500 text-xs min-w-[20px] h-5 flex items-center justify-center">
+                    {unreadMessageCount}
+                  </Badge>
+                )}
+              </Button>
+              <Button onClick={() => navigate('/create-listing')}>
+                <Plus className="h-4 w-4 mr-2" />
+                Yeni İlan
+              </Button>
+            </div>
           </div>
         </div>
       </header>
@@ -131,54 +181,77 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        {/* Stats */}
+        {/* Stats - Now Clickable */}
         <div className="grid grid-cols-2 md:grid-cols-6 gap-4 mb-8">
-          <Card>
+          <Card 
+            className="cursor-pointer hover:shadow-md transition-shadow"
+            onClick={() => handleStatClick('total-listings')}
+          >
             <CardContent className="p-4 text-center">
               <Package className="h-6 w-6 text-blue-600 mx-auto mb-2" />
               <p className="text-xl font-bold">{stats.totalListings}</p>
               <p className="text-xs text-muted-foreground">Toplam İlan</p>
             </CardContent>
           </Card>
-          <Card>
+          <Card 
+            className="cursor-pointer hover:shadow-md transition-shadow"
+            onClick={() => handleStatClick('active-listings')}
+          >
             <CardContent className="p-4 text-center">
               <TrendingUp className="h-6 w-6 text-green-600 mx-auto mb-2" />
               <p className="text-xl font-bold">{stats.activeListings}</p>
               <p className="text-xs text-muted-foreground">Aktif İlan</p>
             </CardContent>
           </Card>
-          <Card>
+          <Card 
+            className="cursor-pointer hover:shadow-md transition-shadow"
+            onClick={() => handleStatClick('total-offers')}
+          >
             <CardContent className="p-4 text-center">
               <MessageCircle className="h-6 w-6 text-purple-600 mx-auto mb-2" />
               <p className="text-xl font-bold">{stats.totalOffers}</p>
               <p className="text-xs text-muted-foreground">Verdiğim Teklif</p>
             </CardContent>
           </Card>
-          <Card>
+          <Card 
+            className="cursor-pointer hover:shadow-md transition-shadow"
+            onClick={() => handleStatClick('accepted-offers')}
+          >
             <CardContent className="p-4 text-center">
               <Star className="h-6 w-6 text-yellow-600 mx-auto mb-2" />
               <p className="text-xl font-bold">{stats.acceptedOffers}</p>
               <p className="text-xs text-muted-foreground">Kabul Edilen</p>
             </CardContent>
           </Card>
-          <Card>
+          <Card 
+            className="cursor-pointer hover:shadow-md transition-shadow"
+            onClick={() => handleStatClick('received-offers')}
+          >
             <CardContent className="p-4 text-center">
               <Package className="h-6 w-6 text-orange-600 mx-auto mb-2" />
               <p className="text-xl font-bold">{stats.receivedOffers}</p>
               <p className="text-xs text-muted-foreground">Gelen Teklif</p>
             </CardContent>
           </Card>
-          <Card>
-            <CardContent className="p-4 text-center">
-              <TrendingUp className="h-6 w-6 text-red-600 mx-auto mb-2" />
-              <p className="text-xl font-bold">{stats.pendingOffers}</p>
-              <p className="text-xs text-muted-foreground">Bekleyen</p>
+          <Card 
+            className="cursor-pointer hover:shadow-md transition-shadow"
+            onClick={() => handleStatClick('messages')}
+          >
+            <CardContent className="p-4 text-center relative">
+              <MessageCircle className="h-6 w-6 text-red-600 mx-auto mb-2" />
+              <p className="text-xl font-bold">{unreadMessageCount}</p>
+              <p className="text-xs text-muted-foreground">Okunmamış Mesaj</p>
+              {unreadMessageCount > 0 && (
+                <div className="absolute top-2 right-2">
+                  <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
 
         {/* Main Content */}
-        <Tabs defaultValue="my-listings" className="space-y-6">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="my-listings">İlanlarım ({myListings.length})</TabsTrigger>
             <TabsTrigger value="my-offers">Tekliflerim ({myOffers.length})</TabsTrigger>
@@ -353,6 +426,12 @@ export default function Dashboard() {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Message Center */}
+      <MessageCenter
+        isOpen={isMessageCenterOpen}
+        onClose={() => setIsMessageCenterOpen(false)}
+      />
     </div>
   );
 }
