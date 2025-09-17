@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Search, MapPin, Clock, TrendingUp, Package, Star } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Listing, DataManager, categories, cities } from '@/lib/mockData';
-import Header from '@/components/Header.tsx';
+import Header from '@/components/Header';
 import FavoriteButton from '@/components/FavoriteButton';
 
 export default function Index() {
@@ -18,22 +18,35 @@ export default function Index() {
   const [selectedCity, setSelectedCity] = useState('all');
   const [budgetMax, setBudgetMax] = useState('');
   const [selectedCondition, setSelectedCondition] = useState('all');
+  const [isLoading, setIsLoading] = useState(true);
+  
   const currentUser = DataManager.getCurrentUser();
 
   useEffect(() => {
-    loadListings();
+    // Add a small delay to prevent hydration mismatch
+    const timer = setTimeout(() => {
+      loadListings();
+      setIsLoading(false);
+    }, 100);
+    
+    return () => clearTimeout(timer);
   }, [searchQuery, selectedCategory, selectedCity, budgetMax, selectedCondition]);
 
   const loadListings = () => {
-    const filters = {
-      category: selectedCategory !== 'all' ? selectedCategory : undefined,
-      city: selectedCity !== 'all' ? selectedCity : undefined,
-      budgetMax: budgetMax ? parseInt(budgetMax) : undefined,
-      condition: selectedCondition !== 'all' ? selectedCondition : undefined,
-    };
+    try {
+      const filters = {
+        category: selectedCategory !== 'all' ? selectedCategory : undefined,
+        city: selectedCity !== 'all' ? selectedCity : undefined,
+        budgetMax: budgetMax ? parseInt(budgetMax) : undefined,
+        condition: selectedCondition !== 'all' ? selectedCondition : undefined,
+      };
 
-    const filteredListings = DataManager.searchListings(searchQuery, filters);
-    setListings(filteredListings);
+      const filteredListings = DataManager.searchListings(searchQuery, filters);
+      setListings(filteredListings || []);
+    } catch (error) {
+      console.error('Error loading listings:', error);
+      setListings([]);
+    }
   };
 
   const handleListingClick = (listingId: string) => {
@@ -57,6 +70,20 @@ export default function Index() {
       default: return deliveryType;
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Header />
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p>Yükleniyor...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -106,7 +133,7 @@ export default function Index() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Tüm Kategoriler</SelectItem>
-                  {categories.map(category => (
+                  {categories && categories.map(category => (
                     <SelectItem key={category} value={category}>{category}</SelectItem>
                   ))}
                 </SelectContent>
@@ -117,7 +144,7 @@ export default function Index() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Tüm Şehirler</SelectItem>
-                  {cities.map(city => (
+                  {cities && cities.map(city => (
                     <SelectItem key={city} value={city}>{city}</SelectItem>
                   ))}
                 </SelectContent>
@@ -163,79 +190,87 @@ export default function Index() {
           </Card>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {listings.map(listing => (
-              <Card 
-                key={listing.id} 
-                className="cursor-pointer hover:shadow-lg transition-shadow"
-                onClick={() => handleListingClick(listing.id)}
-              >
-                <CardHeader>
-                  <div className="flex items-start justify-between">
-                    <CardTitle className="text-lg line-clamp-2 flex-1 mr-2">{listing.title}</CardTitle>
-                    <div className="flex items-center gap-2">
-                      <FavoriteButton 
-                        listingId={listing.id}
-                        userId={currentUser?.id}
-                        size="sm"
-                        variant="ghost"
-                      />
-                      <Badge className="bg-green-100 text-green-800">
-                        {listing.status === 'active' ? 'Aktif' : 'Kapalı'}
-                      </Badge>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-muted-foreground text-sm mb-4 line-clamp-3">
-                    {listing.description}
-                  </p>
-                  
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-muted-foreground">Bütçe</span>
-                      <span className="font-semibold text-green-600">
-                        {DataManager.formatPrice(listing.budgetMin)} - {DataManager.formatPrice(listing.budgetMax)}
-                      </span>
-                    </div>
-                    
-                    <div className="flex flex-wrap gap-2">
-                      <Badge variant="secondary">{listing.category}</Badge>
-                      <Badge variant="outline">{getConditionText(listing.condition)}</Badge>
-                      <Badge variant="outline">
-                        <Package className="h-3 w-3 mr-1" />
-                        {getDeliveryText(listing.deliveryType)}
-                      </Badge>
-                    </div>
-                    
-                    <div className="flex items-center justify-between text-sm text-muted-foreground">
-                      <div className="flex items-center gap-1">
-                        <MapPin className="h-3 w-3" />
-                        <span>{listing.city}</span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Clock className="h-3 w-3" />
-                        <span>{DataManager.getTimeAgo(listing.createdAt)}</span>
-                      </div>
-                    </div>
-                    
-                    <div className="flex items-center justify-between">
+            {listings.map(listing => {
+              if (!listing || !listing.id) return null;
+              
+              return (
+                <Card 
+                  key={listing.id} 
+                  className="cursor-pointer hover:shadow-lg transition-shadow"
+                  onClick={() => handleListingClick(listing.id)}
+                >
+                  <CardHeader>
+                    <div className="flex items-start justify-between">
+                      <CardTitle className="text-lg line-clamp-2 flex-1 mr-2">
+                        {listing.title || 'Başlık Yok'}
+                      </CardTitle>
                       <div className="flex items-center gap-2">
-                        <span className="text-sm text-muted-foreground">İlan sahibi:</span>
-                        <span className="font-medium">{listing.buyerName}</span>
+                        {currentUser && (
+                          <FavoriteButton 
+                            listingId={listing.id}
+                            userId={currentUser.id}
+                            size="sm"
+                            variant="ghost"
+                          />
+                        )}
+                        <Badge className="bg-green-100 text-green-800">
+                          {listing.status === 'active' ? 'Aktif' : 'Kapalı'}
+                        </Badge>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-muted-foreground text-sm mb-4 line-clamp-3">
+                      {listing.description || 'Açıklama yok'}
+                    </p>
+                    
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-muted-foreground">Bütçe</span>
+                        <span className="font-semibold text-green-600">
+                          {DataManager.formatPrice(listing.budgetMin || 0)} - {DataManager.formatPrice(listing.budgetMax || 0)}
+                        </span>
+                      </div>
+                      
+                      <div className="flex flex-wrap gap-2">
+                        <Badge variant="secondary">{listing.category || 'Kategori Yok'}</Badge>
+                        <Badge variant="outline">{getConditionText(listing.condition || 'any')}</Badge>
+                        <Badge variant="outline">
+                          <Package className="h-3 w-3 mr-1" />
+                          {getDeliveryText(listing.deliveryType || 'both')}
+                        </Badge>
+                      </div>
+                      
+                      <div className="flex items-center justify-between text-sm text-muted-foreground">
                         <div className="flex items-center gap-1">
-                          <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
-                          <span className="text-xs">4.8</span>
+                          <MapPin className="h-3 w-3" />
+                          <span>{listing.city || 'Şehir Yok'}</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Clock className="h-3 w-3" />
+                          <span>{DataManager.getTimeAgo(listing.createdAt || new Date().toISOString())}</span>
                         </div>
                       </div>
-                      <div className="flex items-center gap-1 text-blue-600">
-                        <TrendingUp className="h-4 w-4" />
-                        <span className="font-semibold">{listing.offerCount} teklif</span>
+                      
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm text-muted-foreground">İlan sahibi:</span>
+                          <span className="font-medium">{listing.buyerName || 'Bilinmiyor'}</span>
+                          <div className="flex items-center gap-1">
+                            <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
+                            <span className="text-xs">4.8</span>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1 text-blue-600">
+                          <TrendingUp className="h-4 w-4" />
+                          <span className="font-semibold">{listing.offerCount || 0} teklif</span>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+                  </CardContent>
+                </Card>
+              );
+            })}
           </div>
         )}
       </div>
