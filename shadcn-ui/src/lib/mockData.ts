@@ -268,7 +268,7 @@ export class DataManager {
     return userStr ? JSON.parse(userStr) : null;
   }
 
-  static loginUser(email: string, password: string): User | null {
+  static login(email: string, password: string): User | null {
     this.initializeData();
     const users = this.getUsers();
     
@@ -279,6 +279,10 @@ export class DataManager {
       return user;
     }
     return null;
+  }
+
+  static loginUser(email: string, password: string): User | null {
+    return this.login(email, password);
   }
 
   static registerUser(userData: {
@@ -312,6 +316,10 @@ export class DataManager {
     localStorage.setItem(this.STORAGE_KEYS.CURRENT_USER, JSON.stringify(newUser));
     
     return newUser;
+  }
+
+  static logout() {
+    localStorage.removeItem(this.STORAGE_KEYS.CURRENT_USER);
   }
 
   static logoutUser() {
@@ -353,16 +361,16 @@ export class DataManager {
     }
 
     // Apply filters
-    if (filters.category) {
+    if (filters.category && filters.category !== 'all') {
       listings = listings.filter(listing => listing.category === filters.category);
     }
-    if (filters.city) {
+    if (filters.city && filters.city !== 'all') {
       listings = listings.filter(listing => listing.city === filters.city);
     }
     if (filters.budgetMax) {
       listings = listings.filter(listing => listing.budgetMin <= filters.budgetMax);
     }
-    if (filters.condition) {
+    if (filters.condition && filters.condition !== 'all') {
       listings = listings.filter(listing => listing.condition === filters.condition);
     }
 
