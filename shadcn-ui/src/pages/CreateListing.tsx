@@ -53,11 +53,28 @@ export default function CreateListing() {
       return;
     }
 
+    // Tarih kuralları: bugün >= min, max = bugün + 30 gün
+    const todayStr = new Date().toISOString().split('T')[0];
+    const maxDate = new Date();
+    maxDate.setDate(maxDate.getDate() + 30);
+    const maxStr = maxDate.toISOString().split('T')[0];
+
+    if (formData.expiresAt) {
+      if (formData.expiresAt < todayStr) {
+        toast.error('İlan bitiş tarihi bugünden önce olamaz');
+        return;
+      }
+      if (formData.expiresAt > maxStr) {
+        toast.error('İlan bitiş tarihi en fazla 30 gün sonrası olabilir');
+        return;
+      }
+    }
+
     setIsLoading(true);
 
     try {
       const expiresAt = formData.expiresAt || 
-        new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(); // 30 days default
+        new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(); // 30 gün varsayılan
 
       const newListing = DataManager.addListing({
         buyerId: currentUser.id,
@@ -287,9 +304,10 @@ export default function CreateListing() {
                   value={formData.expiresAt || defaultExpiryString}
                   onChange={(e) => handleInputChange('expiresAt', e.target.value)}
                   min={new Date().toISOString().split('T')[0]}
+                  max={defaultExpiryString}
                 />
                 <p className="text-sm text-muted-foreground">
-                  Boş bırakılırsa 30 gün sonra otomatik olarak kapanır
+                  Boş bırakılırsa 30 gün sonra otomatik olarak kapanır (maksimum +30 gün)
                 </p>
               </div>
 

@@ -4,8 +4,8 @@ interface LocalErrorBoundaryState {
   hasError: boolean;
 }
 
-class LocalErrorBoundary extends React.Component<React.PropsWithChildren<{}>, LocalErrorBoundaryState> {
-  constructor(props: React.PropsWithChildren<{}>) {
+class LocalErrorBoundary extends React.Component<React.PropsWithChildren<Record<string, never>>, LocalErrorBoundaryState> {
+  constructor(props: React.PropsWithChildren<Record<string, never>>) {
     super(props);
     this.state = { hasError: false };
   }

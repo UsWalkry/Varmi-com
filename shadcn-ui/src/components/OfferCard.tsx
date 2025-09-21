@@ -1,7 +1,7 @@
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Star, Truck, Clock, Package2, CheckCircle, XCircle } from 'lucide-react';
+import { Star, Truck, Clock, Package2, CheckCircle, XCircle, Scale } from 'lucide-react';
 import { Offer, DataManager } from '@/lib/mockData';
 
 interface OfferCardProps {
@@ -10,6 +10,7 @@ interface OfferCardProps {
   onAccept?: (offerId: string) => void;
   onReject?: (offerId: string) => void;
   onMessage?: (offerId: string) => void;
+  onWithdraw?: (offerId: string) => void; // teklif sahibi için sil/geri çek
 }
 
 export default function OfferCard({ 
@@ -17,7 +18,8 @@ export default function OfferCard({
   showActions = false, 
   onAccept, 
   onReject, 
-  onMessage 
+  onMessage,
+  onWithdraw,
 }: OfferCardProps) {
   
   const getConditionText = (condition: string) => {
@@ -118,6 +120,12 @@ export default function OfferCard({
               <Package2 className="h-3 w-3 mr-1" />
               {getDeliveryText(offer.deliveryType)}
             </Badge>
+            {offer.deliveryType === 'shipping' && offer.shippingDesi && (
+              <Badge variant="outline">
+                <Scale className="h-3 w-3 mr-1" />
+                Desi: {offer.shippingDesi}
+              </Badge>
+            )}
             <Badge variant="outline">
               <Clock className="h-3 w-3 mr-1" />
               {offer.etaDays} gün teslimat
@@ -171,6 +179,22 @@ export default function OfferCard({
             >
               <CheckCircle className="h-4 w-4 mr-1" />
               Kabul Et
+            </Button>
+          </div>
+        </CardFooter>
+      )}
+
+      {/* Teklif sahibi için Sil/Geri Çek */}
+      {offer.status === 'active' && onWithdraw && (
+        <CardFooter className="pt-0">
+          <div className="flex w-full">
+            <Button 
+              variant="ghost" 
+              size="sm"
+              className="ml-auto text-red-600 hover:text-red-700"
+              onClick={() => onWithdraw?.(offer.id)}
+            >
+              Teklifi Sil
             </Button>
           </div>
         </CardFooter>

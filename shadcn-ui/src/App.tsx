@@ -1,7 +1,7 @@
 import { Toaster } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, HashRouter, Routes, Route } from 'react-router-dom';
 import Index from './pages/Index';
 import ListingDetail from './pages/ListingDetail';
 import CreateListing from './pages/CreateListing';
@@ -10,25 +10,33 @@ import EditListing from './pages/EditListing';
 import NotFound from './pages/NotFound';
 import Inbox from './pages/Inbox';
 import LocalErrorBoundary from '@/components/ui/LocalErrorBoundary';
+import Profile from './pages/Profile';
 
 const queryClient = new QueryClient();
+
+// Codespaces gibi bazı barındırma ortamlarında history fallback sorunlarını önlemek için
+// otomatik olarak HashRouter'a geçiş yapalım. İsteğe bağlı olarak VITE_ROUTER_MODE=hash ile zorlanabilir.
+const isCodespaces = typeof window !== 'undefined' && window.location.hostname.includes('app.github.dev');
+const useHashRouter = isCodespaces || import.meta.env.VITE_ROUTER_MODE === 'hash';
+const Router = useHashRouter ? HashRouter : BrowserRouter;
 
 const App = () => (
   <LocalErrorBoundary>
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <Toaster />
-        <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+        <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/listing/:id" element={<ListingDetail />} />
             <Route path="/create-listing" element={<CreateListing />} />
             <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/profile" element={<Profile />} />
             <Route path="/edit-listing/:id" element={<EditListing />} />
             <Route path="/inbox" element={<Inbox />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
-        </BrowserRouter>
+        </Router>
       </TooltipProvider>
     </QueryClientProvider>
   </LocalErrorBoundary>

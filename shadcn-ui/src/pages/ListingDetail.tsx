@@ -1,10 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { ArrowLeft, MapPin, Clock, Package, TrendingUp, Plus, Star, MessageCircle, Heart } from 'lucide-react';
+import { ArrowLeft, MapPin, Clock, Package, TrendingUp, Plus, Star, MessageCircle, Heart, Trash2 } from 'lucide-react';
 import { Listing, Offer, DataManager } from '@/lib/mockData';
 import OfferCard from '@/components/OfferCard';
 import CreateOfferModal from '@/components/CreateOfferModal';
@@ -23,6 +23,20 @@ export default function ListingDetail() {
       navigate(`/edit-listing/${listing.id}`);
     }
   };
+  const handleDeleteListing = () => {
+    if (!listing || !currentUser) return;
+    if (currentUser.id !== listing.buyerId) return;
+    const ok = window.confirm('Bu ilanı silmek istediğinize emin misiniz? Bu işlem geri alınamaz.');
+    if (!ok) return;
+    try {
+      DataManager.deleteListing(listing.id, currentUser.id);
+      toast.success('İlan silindi');
+      navigate('/');
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'İlan silinemedi';
+      toast.error(msg);
+    }
+  };
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [listing, setListing] = useState<Listing | null>(null);
@@ -33,13 +47,7 @@ export default function ListingDetail() {
   const [sortBy, setSortBy] = useState<'price' | 'rating' | 'date'>('price');
   const [currentUser, setCurrentUser] = useState(DataManager.getCurrentUser());
 
-  useEffect(() => {
-    if (id) {
-      loadListingAndOffers();
-    }
-  }, [id]);
-
-  const loadListingAndOffers = () => {
+  const loadListingAndOffers = useCallback(() => {
     const allListings = DataManager.getListings();
     const foundListing = allListings.find(l => l.id === id);
     
@@ -50,10 +58,17 @@ export default function ListingDetail() {
     }
 
     setListing(foundListing);
-    
-  const listingOffers = DataManager.getOffersForListing(id);
+    const listingOffers = DataManager.getOffersForListing(id!);
     setOffers(sortOffers(listingOffers, sortBy));
-  };
+  }, [id, sortBy, navigate]);
+
+  useEffect(() => {
+    if (id) {
+      loadListingAndOffers();
+    }
+  }, [id, loadListingAndOffers]);
+
+  
 
   const sortOffers = (offers: Offer[], sortType: 'price' | 'rating' | 'date') => {
     return [...offers].sort((a, b) => {
@@ -87,6 +102,21 @@ export default function ListingDetail() {
   const handleRejectOffer = (offerId: string) => {
     toast.info('Teklif reddedildi');
     // Update offer status in real implementation
+  };
+
+  const handleWithdrawOffer = (offerId: string) => {
+    if (!currentUser) {
+      setIsAuthModalOpen(true);
+      return;
+    }
+    try {
+      DataManager.deleteOffer(offerId, currentUser.id);
+      toast.success('Teklifiniz silindi');
+      loadListingAndOffers();
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'Teklif silinemedi';
+      toast.error(msg);
+    }
   };
 
   const handleMessageSeller = (offerId: string) => {
@@ -143,7 +173,8 @@ export default function ListingDetail() {
   }
 
   const isOwner = currentUser?.id === listing.buyerId;
-  const canMakeOffer = currentUser && !isOwner && listing.status === 'active';
+  const alreadyOffered = currentUser ? DataManager.getOffersForListing(listing.id).some(o => o.sellerId === currentUser.id) : false;
+  const canMakeOffer = currentUser && !isOwner && listing.status === 'active' && !alreadyOffered;
 
   const getConditionText = (condition: string) => {
     switch (condition) {
@@ -316,6 +347,7 @@ export default function ListingDetail() {
                         onAccept={handleAcceptOffer}
                         onReject={handleRejectOffer}
                         onMessage={handleMessageSeller}
+                        onWithdraw={offer.sellerId === currentUser?.id ? handleWithdrawOffer : undefined}
                       />
                     ))}
                   </div>
@@ -342,11 +374,21 @@ export default function ListingDetail() {
                     Teklif Ver
                   </Button>
                 ) : isOwner ? (
+                  <div className="text-center py-4 space-y-2">
+                    <p className="text-sm text-muted-foreground">Bu sizin ilanınız</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      <Button variant="outline" onClick={handleEditListing}>
+                        Düzenle
+                      </Button>
+                      <Button variant="destructive" onClick={handleDeleteListing}>
+                        <Trash2 className="h-4 w-4 mr-1" /> Sil
+                      </Button>
+                    </div>
+                  </div>
+                ) : alreadyOffered ? (
                   <div className="text-center py-4">
-                    <p className="text-sm text-muted-foreground mb-2">Bu sizin ilanınız</p>
-                    <Button variant="outline" className="w-full" onClick={handleEditListing}>
-                      İlanı Düzenle
-                    </Button>
+                    <p className="text-sm text-muted-foreground mb-2">Bu ilana zaten bir teklif verdiniz</p>
+                    <p className="text-xs text-muted-foreground">Tek ilan başına en fazla 1 teklif hakkınız var</p>
                   </div>
                 ) : !currentUser ? (
                   <div className="text-center py-4">

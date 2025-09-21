@@ -22,7 +22,14 @@ export default function EditListing() {
     category: '',
     condition: 'new',
     deliveryType: 'shipping',
+    expiresAt: ''
   });
+
+  // Tarih sınırları: bugün ve +30 gün
+  const todayStr = new Date().toISOString().split('T')[0];
+  const maxDate = new Date();
+  maxDate.setDate(maxDate.getDate() + 30);
+  const maxStr = maxDate.toISOString().split('T')[0];
 
   useEffect(() => {
     if (id) {
@@ -38,6 +45,7 @@ export default function EditListing() {
           category: found.category,
           condition: found.condition,
           deliveryType: found.deliveryType,
+          expiresAt: (found.expiresAt ? new Date(found.expiresAt) : (()=>{ const d=new Date(found.createdAt); d.setDate(d.getDate()+30); return d; })()).toISOString().split('T')[0]
         });
       }
     }
@@ -49,6 +57,21 @@ export default function EditListing() {
 
   const handleSave = () => {
     if (!listing) return;
+    // Doğrulamalar
+    const todayStr = new Date().toISOString().split('T')[0];
+    const maxDate = new Date();
+    maxDate.setDate(maxDate.getDate() + 30);
+    const maxStr = maxDate.toISOString().split('T')[0];
+    if (form.expiresAt) {
+      if (form.expiresAt < todayStr) {
+        toast.error('İlan bitiş tarihi bugünden önce olamaz');
+        return;
+      }
+      if (form.expiresAt > maxStr) {
+        toast.error('İlan bitiş tarihi en fazla 30 gün sonrası olabilir');
+        return;
+      }
+    }
     DataManager.updateListing(listing.id, {
       title: form.title,
       description: form.description,
@@ -58,6 +81,7 @@ export default function EditListing() {
       category: form.category,
       condition: form.condition as 'new' | 'used' | 'any',
       deliveryType: form.deliveryType as 'shipping' | 'pickup' | 'both',
+      expiresAt: form.expiresAt ? new Date(form.expiresAt).toISOString() : listing.expiresAt
     });
     toast.success('İlan başarıyla güncellendi!');
     navigate(`/listing/${listing.id}`);
@@ -102,6 +126,18 @@ export default function EditListing() {
                   <label className="block text-sm font-medium mb-1">Max. Bütçe</label>
                   <Input name="budgetMax" value={form.budgetMax} onChange={handleChange} type="number" required />
                 </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">İlan Bitiş Tarihi</label>
+                <Input
+                  name="expiresAt"
+                  type="date"
+                  value={form.expiresAt}
+                  onChange={handleChange}
+                  min={todayStr}
+                  max={maxStr}
+                />
+                <p className="text-xs text-muted-foreground mt-1">Maksimum +30 gün</p>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>

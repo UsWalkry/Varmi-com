@@ -28,20 +28,11 @@ export default function Dashboard() {
   const [isLoading, setIsLoading] = useState(true);
 
   const currentUser = DataManager.getCurrentUser();
-
-  // Memoize user data to prevent recalculation
-  const userData = useMemo(() => {
-    if (!currentUser) return null;
-    return {
-      id: currentUser.id,
-      name: currentUser.name,
-      email: currentUser.email
-    };
-  }, [currentUser]);
+  const userId = currentUser?.id;
 
   // Load data only once when component mounts
   useEffect(() => {
-    if (!userData) {
+    if (!userId) {
       navigate('/');
       return;
     }
@@ -51,17 +42,17 @@ export default function Dashboard() {
         // Get user's listings
         const allListings = DataManager.getListings();
         const userListings = allListings.filter(listing => 
-          listing && listing.buyerId === userData.id
+          listing && listing.buyerId === userId
         );
         
         // Get user's offers
         const allOffers = DataManager.getAllOffers();
         const userOffers = allOffers.filter(offer => 
-          offer && offer.sellerId === userData.id
+          offer && offer.sellerId === userId
         );
         
         // Get favorite listings
-        const favoriteIds = DataManager.getFavorites(userData.id);
+        const favoriteIds = DataManager.getFavorites(userId);
         const favorites = allListings.filter(listing => 
           listing && favoriteIds.includes(listing.id)
         );
@@ -80,22 +71,22 @@ export default function Dashboard() {
     };
 
     loadDashboardData();
-  }, [userData, navigate]);
+  }, [userId, navigate]);
 
   // Memoize statistics to prevent recalculation
   const stats = useMemo(() => {
-    if (!userData) return { totalListings: 0, totalOffers: 0, totalFavorites: 0, unreadMessages: 0 };
+    if (!userId) return { totalListings: 0, totalOffers: 0, totalFavorites: 0, unreadMessages: 0 };
     
     return {
       totalListings: myListings.length,
       totalOffers: myOffers.length,
       totalFavorites: favoriteListings.length,
-      unreadMessages: DataManager.getUnreadMessageCount(userData.id)
+      unreadMessages: DataManager.getUnreadMessageCount(userId)
     };
-  }, [userData, myListings.length, myOffers.length, favoriteListings.length]);
+  }, [userId, myListings.length, myOffers.length, favoriteListings.length]);
 
   const handleOfferAction = (offerId: string, action: 'accept' | 'reject') => {
-    if (!userData) return;
+    if (!userId) return;
 
     try {
       if (action === 'accept') {
@@ -107,7 +98,7 @@ export default function Dashboard() {
       // Refresh offers
       const allOffers = DataManager.getAllOffers();
       const userOffers = allOffers.filter(offer => 
-        offer && offer.sellerId === userData.id
+        offer && offer.sellerId === userId
       );
       setMyOffers(userOffers);
     } catch (error) {
@@ -124,7 +115,7 @@ export default function Dashboard() {
     }
   };
 
-  if (!userData) {
+  if (!userId) {
     return null;
   }
 
@@ -150,7 +141,7 @@ export default function Dashboard() {
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            Hoş geldin, {userData.name}!
+            Hoş geldin, {currentUser?.name}!
           </h1>
           <p className="text-gray-600">
             İlanlarını yönet, teklifleri görüntüle ve favorilerini kontrol et.
@@ -407,7 +398,7 @@ export default function Dashboard() {
                             <div className="flex items-center gap-2">
                               <FavoriteButton 
                                 listingId={listing.id}
-                                userId={userData.id}
+                                userId={userId}
                                 size="sm"
                                 variant="ghost"
                               />

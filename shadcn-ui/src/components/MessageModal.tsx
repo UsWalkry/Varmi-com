@@ -9,7 +9,7 @@ import { Send, MessageCircle } from 'lucide-react';
 import { DataManager, Message } from '@/lib/mockData';
 import { toast } from 'sonner';
 import React from 'react';
-import { ErrorBoundary } from './ErrorBoundary';
+// import { ErrorBoundary } from './ErrorBoundary';
 
 
 interface MessageModalProps {
@@ -24,8 +24,8 @@ interface MessageModalProps {
 }
 
 // Renamed the local ErrorBoundary to avoid import conflict
-class LocalErrorBoundary extends React.Component<React.PropsWithChildren<{}>, { hasError: boolean }> {
-  constructor(props: React.PropsWithChildren<{}>) {
+class LocalErrorBoundary extends React.Component<React.PropsWithChildren<Record<string, never>>, { hasError: boolean }> {
+  constructor(props: React.PropsWithChildren<Record<string, never>>) {
     super(props);
     this.state = { hasError: false };
   }
@@ -83,6 +83,12 @@ function MessageModalContent({
   useEffect(() => {
     if (isOpen) {
       setMessages(fetchConversation());
+      // Açıldığında okunmamışları işaretle
+      if (currentUserId && recipientId && listingId) {
+        DataManager.markMessagesAsRead(listingId, currentUserId, recipientId);
+        // Okundu sonrası konuşmayı tekrar çek (state tazeleme)
+        setMessages(DataManager.getConversation(currentUserId, recipientId, listingId));
+      }
     }
   }, [isOpen, fetchConversation]);
 
@@ -91,13 +97,16 @@ function MessageModalContent({
     setIsLoading(true);
     try {
       DataManager.addMessage({
-        listingId: listingTitle || '',
+        // Her zaman gerçek listingId kullanılmalı
+        listingId: listingId || '',
         fromUserId: currentUser.id,
         fromUserName: currentUser.name,
         toUserId: recipientId,
         message: newMessage.trim()
       });
-      setMessages(DataManager.getConversation(currentUser.id, recipientId, listingTitle || ''));
+      if (listingId) {
+        setMessages(DataManager.getConversation(currentUser.id, recipientId, listingId));
+      }
       setNewMessage('');
       toast.success('Mesaj gönderildi!');
     } catch (error) {

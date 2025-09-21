@@ -17,9 +17,10 @@ interface AuthModalProps {
 
 export default function AuthModal({ isOpen, onClose, onAuthSuccess }: AuthModalProps) {
   const [loginData, setLoginData] = useState({
-    email: '',
+    identifier: '',
     password: ''
   });
+  const [twoFA, setTwoFA] = useState<{ required: boolean; userId: string | null; code: string }>({ required: false, userId: null, code: '' });
 
   const [registerData, setRegisterData] = useState({
     name: '',
@@ -27,7 +28,8 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }: AuthModalP
     password: '',
     confirmPassword: '',
     role: 'buyer' as 'buyer' | 'seller' | 'both',
-    city: ''
+    city: '',
+    phone: ''
   });
 
   const [isLoading, setIsLoading] = useState(false);
@@ -37,22 +39,43 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }: AuthModalP
     setIsLoading(true);
 
     try {
-      // Demo için basit giriş - gerçek uygulamada API çağrısı olacak
-      const user = DataManager.login(loginData.email, loginData.password || '123456');
-      
-      if (user) {
-        toast.success(`Hoş geldiniz, ${user.name}!`);
+      // 2FA destekli giriş akışı
+      const res = DataManager.startLogin(loginData.identifier, loginData.password || '123456');
+      if (!res) {
+        toast.error('E-posta/telefon veya şifre hatalı');
+      } else if (res.status === 'ok') {
+        toast.success('Hoş geldiniz!');
         onAuthSuccess();
         onClose();
-        
-        // Reset form
-        setLoginData({ email: '', password: '' });
-      } else {
-        toast.error('E-posta veya şifre hatalı');
+        setLoginData({ identifier: '', password: '' });
+        setTwoFA({ required: false, userId: null, code: '' });
+      } else if (res.status === '2fa') {
+        setTwoFA({ required: true, userId: res.userId, code: '' });
+        toast.message('Doğrulama gerekli', { description: 'Authenticator uygulamanızdaki 6 haneli kodu girin.' });
       }
     } catch (error) {
       console.error('Login error:', error);
       toast.error('Giriş yapılırken bir hata oluştu');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleVerify2FA = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!twoFA.userId) return;
+    setIsLoading(true);
+    try {
+  const user = await DataManager.verifyAuthenticatorCode(twoFA.userId, twoFA.code);
+      if (user) {
+        toast.success(`Hoş geldiniz, ${user.name}!`);
+        onAuthSuccess();
+        onClose();
+        setLoginData({ identifier: '', password: '' });
+        setTwoFA({ required: false, userId: null, code: '' });
+      } else {
+        toast.error('Doğrulama kodu hatalı veya süresi doldu');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -76,12 +99,17 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }: AuthModalP
         return;
       }
 
+      // Telefonu normalize et (+90 sabit, sadece rakam, 10 hane)
+      const digits = (registerData.phone || '').replace(/\D/g, '').replace(/^90/, '').slice(0, 10);
+      const normalizedPhone = digits ? `+90${digits}` : '';
+
       const user = DataManager.registerUser({
         name: registerData.name,
         email: registerData.email,
         password: registerData.password,
         role: registerData.role,
-        city: registerData.city
+        city: registerData.city,
+        phone: normalizedPhone
       });
 
       if (user) {
@@ -96,10 +124,11 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }: AuthModalP
           password: '',
           confirmPassword: '',
           role: 'buyer',
-          city: ''
+          city: '',
+          phone: ''
         });
       } else {
-        toast.error('Bu e-posta adresi zaten kullanımda');
+        toast.error('Bu e-posta veya telefon zaten kullanımda');
       }
     } catch (error) {
       console.error('Register error:', error);
@@ -128,18 +157,21 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }: AuthModalP
                 <CardTitle>Hesabınıza Giriş Yapın</CardTitle>
               </CardHeader>
               <CardContent>
-                <form onSubmit={handleLogin} className="space-y-4">
+                <form onSubmit={twoFA.required ? handleVerify2FA : handleLogin} className="space-y-4">
                   <div>
-                    <Label htmlFor="email">E-posta</Label>
+                    <Label htmlFor="identifier">E-posta veya Cep No</Label>
                     <Input
-                      id="email"
-                      type="email"
-                      value={loginData.email}
-                      onChange={(e) => setLoginData(prev => ({ ...prev, email: e.target.value }))}
-                      placeholder="ornek@email.com"
+                      id="identifier"
+                      type="text"
+                      value={loginData.identifier}
+                      onChange={(e) => setLoginData(prev => ({ ...prev, identifier: e.target.value }))}
+                      placeholder="ornek@email.com ya da 5xx xxx xx xx"
+                      disabled={twoFA.required}
                       required
                     />
                   </div>
+
+                  
                   
                   <div>
                     <Label htmlFor="password">Şifre</Label>
@@ -149,12 +181,30 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }: AuthModalP
                       value={loginData.password}
                       onChange={(e) => setLoginData(prev => ({ ...prev, password: e.target.value }))}
                       placeholder="Şifrenizi girin"
+                      disabled={twoFA.required}
                     />
                     
                   </div>
 
+                  {twoFA.required && (
+                    <div>
+                      <Label htmlFor="twofa-code">Authenticator Kodu</Label>
+                      <Input
+                        id="twofa-code"
+                        type="text"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
+                        maxLength={6}
+                        value={twoFA.code}
+                        onChange={(e) => setTwoFA(s => ({ ...s, code: e.target.value.replace(/\D/g, '').slice(0, 6) }))}
+                        placeholder="6 haneli kod"
+                        required
+                      />
+                    </div>
+                  )}
+
                   <Button type="submit" className="w-full" disabled={isLoading}>
-                    {isLoading ? 'Giriş yapılıyor...' : 'Giriş Yap'}
+                    {isLoading ? (twoFA.required ? 'Doğrulanıyor...' : 'Giriş yapılıyor...') : (twoFA.required ? 'Kodu Doğrula' : 'Giriş Yap')}
                   </Button>
                 </form>
               </CardContent>
@@ -207,6 +257,27 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }: AuthModalP
                         ))}
                       </SelectContent>
                     </Select>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="register-phone">Telefon</Label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground select-none">+90</span>
+                      <Input
+                        id="register-phone"
+                        type="tel"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
+                        className="pl-12"
+                        placeholder="5xx xxx xx xx"
+                        value={(registerData.phone || '').replace(/^\+?90/, '').replace(/\D/g, '').slice(0, 10)}
+                        onChange={(e)=>{
+                          const digits = e.target.value.replace(/\D/g, '').slice(0, 10);
+                          setRegisterData(prev => ({ ...prev, phone: digits ? `+90${digits}` : '' }));
+                        }}
+                        required
+                      />
+                    </div>
                   </div>
 
                   <div>

@@ -1,5 +1,5 @@
 import { useTheme } from 'next-themes';
-import { Toaster as Sonner, toast } from 'sonner';
+import { Toaster as Sonner } from 'sonner';
 
 type ToasterProps = React.ComponentProps<typeof Sonner>;
 
@@ -9,11 +9,13 @@ const Toaster = ({ ...props }: ToasterProps) => {
   return (
     <Sonner
       theme={theme as ToasterProps['theme']}
-      className="toaster group"
+      // Görünmezken üstte tıklamaları engellememesi için kapsayıcıyı pasif yap
+      className="toaster group pointer-events-none"
       toastOptions={{
         classNames: {
+          // Toast öğesi etkileşimli olmalı; kapsayıcı pointer-events-none olduğu için burada tekrar etkinleştiriyoruz
           toast:
-            'group toast group-[.toaster]:bg-background group-[.toaster]:text-foreground group-[.toaster]:border-border group-[.toaster]:shadow-lg',
+            'group toast pointer-events-auto group-[.toaster]:bg-background group-[.toaster]:text-foreground group-[.toaster]:border-border group-[.toaster]:shadow-lg',
           description: 'group-[.toast]:text-muted-foreground',
           actionButton: 'group-[.toast]:bg-primary group-[.toast]:text-primary-foreground',
           cancelButton: 'group-[.toast]:bg-muted group-[.toast]:text-muted-foreground',
@@ -24,4 +26,4 @@ const Toaster = ({ ...props }: ToasterProps) => {
   );
 };
 
-export { Toaster, toast };
+export { Toaster };
