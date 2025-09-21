@@ -1,5 +1,5 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -13,6 +13,7 @@ export default function EditListing() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [listing, setListing] = useState<Listing | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [form, setForm] = useState({
     title: '',
     description: '',
@@ -24,6 +25,7 @@ export default function EditListing() {
     deliveryType: 'shipping',
     expiresAt: ''
   });
+  const [images, setImages] = useState<string[]>([]);
 
   // Tarih sınırları: bugün ve +30 gün
   const todayStr = new Date().toISOString().split('T')[0];
@@ -36,6 +38,7 @@ export default function EditListing() {
       const found = DataManager.getListings().find(l => l.id === id);
       if (found) {
         setListing(found);
+        setImages(found.images || []);
         setForm({
           title: found.title,
           description: found.description,
@@ -57,6 +60,10 @@ export default function EditListing() {
 
   const handleSave = () => {
     if (!listing) return;
+    if (images.length === 0) {
+      toast.error('İlan için en az 1 görsel bulunmalıdır');
+      return;
+    }
     // Doğrulamalar
     const todayStr = new Date().toISOString().split('T')[0];
     const maxDate = new Date();
@@ -81,10 +88,79 @@ export default function EditListing() {
       category: form.category,
       condition: form.condition as 'new' | 'used' | 'any',
       deliveryType: form.deliveryType as 'shipping' | 'pickup' | 'both',
-      expiresAt: form.expiresAt ? new Date(form.expiresAt).toISOString() : listing.expiresAt
+      expiresAt: form.expiresAt ? new Date(form.expiresAt).toISOString() : listing.expiresAt,
+      images
     });
     toast.success('İlan başarıyla güncellendi!');
     navigate(`/listing/${listing.id}`);
+  };
+
+  // Image helpers (same compression approach as CreateListing)
+  const handleFilesSelected = async (fileList: FileList | null) => {
+    if (!fileList || fileList.length === 0) return;
+    const files = Array.from(fileList);
+    const MAX_FILE_MB = 2;
+    const readAsDataUrl = (file: File) => new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result));
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+    const compressImageDataUrl = async (dataUrl: string) => {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      await new Promise<void>((res, rej) => {
+        img.onload = () => res();
+        img.onerror = () => rej(new Error('Görsel yüklenemedi'));
+        img.src = dataUrl;
+      });
+      const maxDim = 1280;
+      let { width, height } = img;
+      const scale = Math.min(1, maxDim / Math.max(width, height));
+      width = Math.round(width * scale);
+      height = Math.round(height * scale);
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return dataUrl;
+      ctx.drawImage(img, 0, 0, width, height);
+      const tryTypes: Array<[string, number]> = [['image/webp', 0.8], ['image/jpeg', 0.8]];
+      for (const [type, q] of tryTypes) {
+        try {
+          const out = canvas.toDataURL(type, q);
+          if (out && out.startsWith('data:image')) return out;
+        } catch (_e) {
+          // ignore
+        }
+      }
+      return canvas.toDataURL('image/png');
+    };
+
+    const toAdd: string[] = [];
+    for (const f of files) {
+      if (!f.type.startsWith('image/')) {
+        toast.error(`${f.name}: Sadece görsel dosyaları yükleyebilirsiniz`);
+        continue;
+      }
+      if (f.size > MAX_FILE_MB * 1024 * 1024) {
+        toast.error(`${f.name}: Dosya boyutu ${MAX_FILE_MB}MB'den küçük olmalı`);
+        continue;
+      }
+      try {
+        const raw = await readAsDataUrl(f);
+        const compressed = await compressImageDataUrl(raw);
+        toAdd.push(compressed);
+      } catch {
+        toast.error(`${f.name}: Dosya okunamadı`);
+      }
+    }
+    if (toAdd.length) setImages(prev => [...prev, ...toAdd]);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const removeImage = (idx: number) => {
+    setImages(prev => prev.filter((_, i) => i !== idx));
   };
 
   if (!listing) {
@@ -108,6 +184,34 @@ export default function EditListing() {
           </CardHeader>
           <CardContent>
             <form className="space-y-6">
+              {/* Images */}
+              <div className="space-y-2">
+                <label className="block text-sm font-medium">Görseller</label>
+                {images.length > 0 && (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                    {images.map((src, idx) => (
+                      <div key={idx} className="relative group border rounded-md overflow-hidden bg-muted/20">
+                        <img src={src} alt={`İlan görseli ${idx+1}`} className="h-28 w-full object-cover" />
+                        <button
+                          type="button"
+                          onClick={() => removeImage(idx)}
+                          className="absolute top-1 right-1 inline-flex items-center justify-center rounded-full bg-black/60 text-white text-xs px-2 py-1 opacity-0 group-hover:opacity-100 transition"
+                        >
+                          Kaldır
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <Input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={(e) => handleFilesSelected(e.target.files)}
+                />
+                <p className="text-xs text-muted-foreground">Sadece görsel dosyaları kabul edilir. Önerilen tek dosya boyutu ≤ 2MB.</p>
+              </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Başlık</label>
                 <Input name="title" value={form.title} onChange={handleChange} required />
