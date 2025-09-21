@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -17,6 +17,7 @@ export default function CreateListing() {
   const [isLoading, setIsLoading] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState(DataManager.getCurrentUser());
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const [formData, setFormData] = useState({
     title: '',
@@ -29,6 +30,9 @@ export default function CreateListing() {
     deliveryType: 'both',
     expiresAt: ''
   });
+
+  // Görseller (data URL'ler)
+  const [images, setImages] = useState<string[]>([]);
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -45,6 +49,12 @@ export default function CreateListing() {
     if (!formData.title || !formData.description || !formData.category || 
         !formData.budgetMin || !formData.budgetMax || !formData.city) {
       toast.error('Lütfen tüm zorunlu alanları doldurun');
+      return;
+    }
+
+    // En az 1 görsel zorunlu
+    if (images.length === 0) {
+      toast.error('İlan için en az 1 görsel yüklemelisiniz');
       return;
     }
 
@@ -88,7 +98,8 @@ export default function CreateListing() {
         city: formData.city,
         deliveryType: formData.deliveryType as 'shipping' | 'pickup' | 'both',
         status: 'active',
-        expiresAt
+        expiresAt,
+        images
       });
 
       toast.success('İlanınız başarıyla oluşturuldu!');
@@ -98,6 +109,45 @@ export default function CreateListing() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // Dosya seçiminden görsellere dönüştürme (data URL)
+  const handleFilesSelected = async (fileList: FileList | null) => {
+    if (!fileList || fileList.length === 0) return;
+    const files = Array.from(fileList);
+    const MAX_FILE_MB = 2; // LocalStorage taşmaması için 2MB öneri limiti
+
+    const readAsDataUrl = (file: File) => new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result));
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+
+    const toAdd: string[] = [];
+    for (const f of files) {
+      if (!f.type.startsWith('image/')) {
+        toast.error(`${f.name}: Sadece görsel dosyaları yükleyebilirsiniz`);
+        continue;
+      }
+      if (f.size > MAX_FILE_MB * 1024 * 1024) {
+        toast.error(`${f.name}: Dosya boyutu ${MAX_FILE_MB}MB'den küçük olmalı`);
+        continue;
+      }
+      try {
+        const url = await readAsDataUrl(f);
+        toAdd.push(url);
+      } catch {
+        toast.error(`${f.name}: Dosya okunamadı`);
+      }
+    }
+    if (toAdd.length) setImages(prev => [...prev, ...toAdd]);
+    // input değerini sıfırla (aynı dosyayı tekrar seçebilmek için)
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const removeImage = (idx: number) => {
+    setImages(prev => prev.filter((_, i) => i !== idx));
   };
 
   const handleAuthSuccess = () => {
@@ -162,6 +212,41 @@ export default function CreateListing() {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
+              {/* Images */}
+              <div className="space-y-2">
+                <Label>İlan Görselleri (en az 1 adet) *</Label>
+                <div className="flex flex-col gap-3">
+                  {/* Önizlemeler */}
+                  {images.length > 0 && (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                      {images.map((src, idx) => (
+                        <div key={idx} className="relative group border rounded-md overflow-hidden bg-muted/20">
+                          <img src={src} alt={`İlan görseli ${idx+1}`} className="h-28 w-full object-cover" />
+                          <button
+                            type="button"
+                            onClick={() => removeImage(idx)}
+                            className="absolute top-1 right-1 inline-flex items-center justify-center rounded-full bg-black/60 text-white text-xs px-2 py-1 opacity-0 group-hover:opacity-100 transition"
+                            aria-label="Görseli kaldır"
+                          >
+                            Kaldır
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <div className="flex items-center gap-2">
+                    <Input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      onChange={(e) => handleFilesSelected(e.target.files)}
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground">Sadece görsel dosyaları kabul edilir. Önerilen tek dosya boyutu ≤ 2MB.</p>
+                </div>
+              </div>
+
               {/* Title */}
               <div className="space-y-2">
                 <Label htmlFor="title">İlan Başlığı *</Label>

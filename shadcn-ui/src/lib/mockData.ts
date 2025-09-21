@@ -158,6 +158,8 @@ export interface Listing {
   id: string;
   title: string;
   description: string;
+  // İlan görselleri (data URL veya uzak URL). En az 1 önerilir.
+  images?: string[];
   category: string;
   budgetMin: number;
   budgetMax: number;
@@ -179,6 +181,8 @@ export interface Offer {
   sellerName: string;
   sellerRating: number;
   price: number;
+  // Teklife eklenebilen görseller (max 5)
+  images?: string[];
   // Optional details for richer offers
   condition?: 'new' | 'used';
   brand?: string;
@@ -1066,6 +1070,11 @@ export class DataManager {
 
   static addListing(listing: Omit<Listing, 'id' | 'createdAt' | 'offerCount'>): Listing {
     const listings = this.getListings();
+    // Görsel zorunluluğu
+    const imgs = (listing as Listing).images || [];
+    if (!imgs || imgs.length === 0) {
+      throw new Error('İlan için en az 1 görsel yüklemelisiniz');
+    }
     const newListing: Listing = {
       ...listing,
       id: `listing_${Date.now()}`,
@@ -1103,6 +1112,11 @@ export class DataManager {
     }
 
     const offers = this.getOffers();
+    // Görsel adet sınırı: max 5
+    const imgs = (offer as Offer).images || [];
+    if (imgs.length > 5) {
+      throw new Error('Teklife en fazla 5 görsel yükleyebilirsiniz');
+    }
     const alreadyOffered = offers.some(
       (o) => o.listingId === offer.listingId && o.sellerId === offer.sellerId
     );

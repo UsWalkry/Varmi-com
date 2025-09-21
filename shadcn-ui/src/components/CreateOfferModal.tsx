@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -22,6 +22,7 @@ export default function CreateOfferModal({
   listing, 
   onOfferCreated 
 }: CreateOfferModalProps) {
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [formData, setFormData] = useState({
     price: '',
     condition: 'new',
@@ -36,6 +37,7 @@ export default function CreateOfferModal({
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [images, setImages] = useState<string[]>([]);
 
   const currentUser = DataManager.getCurrentUser();
 
@@ -144,7 +146,7 @@ export default function CreateOfferModal({
       }
     }
 
-    setIsSubmitting(true);
+  setIsSubmitting(true);
 
     try {
       const newOffer = DataManager.addOffer({
@@ -162,7 +164,8 @@ export default function CreateOfferModal({
         shippingCost,
         etaDays,
         status: 'active',
-        validUntil: validUntilISO
+        validUntil: validUntilISO,
+        images: images.length ? images : undefined
       });
 
       toast.success('Teklifiniz başarıyla gönderildi!');
@@ -182,6 +185,7 @@ export default function CreateOfferModal({
         etaDays: '3',
         validUntil: ''
       });
+      setImages([]);
     } catch (error) {
       const err = error as unknown as { message?: string };
       const msg = err?.message || 'Teklif gönderilirken bir hata oluştu';
@@ -189,6 +193,47 @@ export default function CreateOfferModal({
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  // Görsel seçimi ve önizleme
+  const handleFilesSelected = async (fileList: FileList | null) => {
+    if (!fileList || fileList.length === 0) return;
+    const files = Array.from(fileList);
+    const MAX_FILE_MB = 2;
+    const readAsDataUrl = (file: File) => new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result));
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+
+    const toAdd: string[] = [];
+    for (const f of files) {
+      if (!f.type.startsWith('image/')) {
+        toast.error(`${f.name}: Sadece görsel dosyaları yükleyebilirsiniz`);
+        continue;
+      }
+      if (f.size > MAX_FILE_MB * 1024 * 1024) {
+        toast.error(`${f.name}: Dosya boyutu ${MAX_FILE_MB}MB'den küçük olmalı`);
+        continue;
+      }
+      toAdd.push(await readAsDataUrl(f));
+    }
+    if (toAdd.length) {
+      setImages(prev => {
+        const merged = [...prev, ...toAdd];
+        if (merged.length > 5) {
+          toast.error('En fazla 5 görsel yükleyebilirsiniz');
+          return merged.slice(0, 5);
+        }
+        return merged;
+      });
+    }
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const removeImage = (idx: number) => {
+    setImages(prev => prev.filter((_, i) => i !== idx));
   };
 
   // İlan durumuna göre condition kısıtları
@@ -236,6 +281,37 @@ export default function CreateOfferModal({
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Images (optional, max 5) */}
+          <div className="space-y-2">
+            <Label>Ürün Görselleri (opsiyonel, en fazla 5)</Label>
+            <div className="flex flex-col gap-3">
+              {images.length > 0 && (
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                  {images.map((src, idx) => (
+                    <div key={idx} className="relative group border rounded-md overflow-hidden bg-muted/20">
+                      <img src={src} alt={`Teklif görseli ${idx+1}`} className="h-28 w-full object-cover" />
+                      <button
+                        type="button"
+                        onClick={() => removeImage(idx)}
+                        className="absolute top-1 right-1 inline-flex items-center justify-center rounded-full bg-black/60 text-white text-xs px-2 py-1 opacity-0 group-hover:opacity-100 transition"
+                        aria-label="Görseli kaldır"
+                      >
+                        Kaldır
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <Input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={(e) => handleFilesSelected(e.target.files)}
+              />
+              <p className="text-xs text-muted-foreground">Sadece görsel dosyaları kabul edilir. En fazla 5 adet ve önerilen tek dosya boyutu ≤ 2MB.</p>
+            </div>
+          </div>
           {/* Price */}
           <div className="grid grid-cols-2 gap-4">
             <div>

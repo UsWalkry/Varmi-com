@@ -60,6 +60,12 @@ export default function ListingCard({ listing }: ListingCardProps) {
       className="hover:shadow-lg transition-shadow cursor-pointer group"
       onClick={handleCardClick}
     >
+      {/* Cover image if available */}
+      {listing.images && listing.images.length > 0 && (
+        <div className="w-full h-40 overflow-hidden rounded-t-lg">
+          <img src={listing.images[0]} alt={listing.title} className="w-full h-full object-cover" />
+        </div>
+      )}
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
           <div className="flex-1">
