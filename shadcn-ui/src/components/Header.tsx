@@ -109,13 +109,13 @@ export default function Header() {
                       <div className="flex items-center gap-2 cursor-pointer" tabIndex={0} aria-label="Hesap menüsü">
                         <Button variant="outline" size="sm" type="button" className="flex items-center gap-2">
                           <User className="h-4 w-4" />
-                          <span>Hesabım</span>
+                          <span className="hidden md:inline">Hesabım</span>
                           {unreadCount > 0 && (
                             <Badge className="ml-1 bg-red-500 text-white">{unreadCount}</Badge>
                           )}
                         </Button>
                         {/* Profil resmi butonun dışında sağda */}
-                        <Avatar className="h-8 w-8">
+                        <Avatar className="h-8 w-8 ring-2 ring-blue-500/40 ring-offset-1 ring-offset-white shadow-sm">
                           <AvatarImage src={avatarPreview || user?.avatarUrl || ''} alt={user?.name || 'Profil'} />
                           <AvatarFallback className="text-[10px]">
                             {(user?.name || 'U').charAt(0).toUpperCase()}
