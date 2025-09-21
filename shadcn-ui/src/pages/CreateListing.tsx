@@ -105,7 +105,16 @@ export default function CreateListing() {
       toast.success('İlanınız başarıyla oluşturuldu!');
       navigate(`/listing/${newListing.id}`);
     } catch (error) {
-      toast.error('İlan oluşturulurken bir hata oluştu');
+      const err = error as unknown as { message?: string };
+      const msg = err?.message || 'İlan oluşturulurken bir hata oluştu';
+      // Olası localStorage QUOTA hatası için kullanıcı dostu açıklama
+      if (/quota|storage/i.test(String(error))) {
+        toast.error('Tarayıcı depolama sınırı aşıldı. Daha az sayıda veya daha küçük boyutta görsel yükleyin.');
+      } else {
+        toast.error(msg);
+      }
+      // Geliştirici konsolu için log
+      console.error('CreateListing error:', error);
     } finally {
       setIsLoading(false);
     }
@@ -124,6 +133,38 @@ export default function CreateListing() {
       reader.readAsDataURL(file);
     });
 
+    // Basit sıkıştırma/yeniden boyutlandırma: max 1280px, kalite 0.8, webp veya jpeg
+    const compressImageDataUrl = async (dataUrl: string) => {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      await new Promise<void>((res, rej) => {
+        img.onload = () => res();
+        img.onerror = () => rej(new Error('Görsel yüklenemedi'));
+        img.src = dataUrl;
+      });
+      const maxDim = 1280;
+      let { width, height } = img;
+      const scale = Math.min(1, maxDim / Math.max(width, height));
+      width = Math.round(width * scale);
+      height = Math.round(height * scale);
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return dataUrl;
+      ctx.drawImage(img, 0, 0, width, height);
+      const tryTypes: Array<[string, number]> = [['image/webp', 0.8], ['image/jpeg', 0.8]];
+      for (const [type, q] of tryTypes) {
+        try {
+          const out = canvas.toDataURL(type, q);
+          if (out && out.startsWith('data:image')) return out;
+        } catch (_e) {
+          // fallback to next type
+        }
+      }
+      return canvas.toDataURL('image/png');
+    };
+
     const toAdd: string[] = [];
     for (const f of files) {
       if (!f.type.startsWith('image/')) {
@@ -135,8 +176,9 @@ export default function CreateListing() {
         continue;
       }
       try {
-        const url = await readAsDataUrl(f);
-        toAdd.push(url);
+        const raw = await readAsDataUrl(f);
+        const compressed = await compressImageDataUrl(raw);
+        toAdd.push(compressed);
       } catch {
         toast.error(`${f.name}: Dosya okunamadı`);
       }

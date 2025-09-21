@@ -207,6 +207,37 @@ export default function CreateOfferModal({
       reader.readAsDataURL(file);
     });
 
+    const compressImageDataUrl = async (dataUrl: string) => {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      await new Promise<void>((res, rej) => {
+        img.onload = () => res();
+        img.onerror = () => rej(new Error('Görsel yüklenemedi'));
+        img.src = dataUrl;
+      });
+      const maxDim = 1280;
+      let { width, height } = img;
+      const scale = Math.min(1, maxDim / Math.max(width, height));
+      width = Math.round(width * scale);
+      height = Math.round(height * scale);
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return dataUrl;
+      ctx.drawImage(img, 0, 0, width, height);
+      const tryTypes: Array<[string, number]> = [['image/webp', 0.8], ['image/jpeg', 0.8]];
+      for (const [type, q] of tryTypes) {
+        try {
+          const out = canvas.toDataURL(type, q);
+          if (out && out.startsWith('data:image')) return out;
+        } catch (_e) {
+          // ignore and try next type
+        }
+      }
+      return canvas.toDataURL('image/png');
+    };
+
     const toAdd: string[] = [];
     for (const f of files) {
       if (!f.type.startsWith('image/')) {
@@ -217,7 +248,9 @@ export default function CreateOfferModal({
         toast.error(`${f.name}: Dosya boyutu ${MAX_FILE_MB}MB'den küçük olmalı`);
         continue;
       }
-      toAdd.push(await readAsDataUrl(f));
+      const raw = await readAsDataUrl(f);
+      const compressed = await compressImageDataUrl(raw);
+      toAdd.push(compressed);
     }
     if (toAdd.length) {
       setImages(prev => {
