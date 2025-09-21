@@ -14,6 +14,7 @@ import Header from '@/components/Header.tsx';
 import FavoriteButton from '@/components/FavoriteButton';
 import { toast } from 'sonner';
 import ReviewModal from '@/components/ReviewModal';
+import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
 
 export default function ListingDetail() {
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
@@ -238,6 +239,29 @@ export default function ListingDetail() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
+                  {/* Images/Gallery */}
+                  {listing.images && listing.images.length > 0 && (
+                    <div className="relative">
+                      <Carousel className="w-full">
+                        <CarouselContent>
+                          {listing.images.map((src, idx) => (
+                            <CarouselItem key={idx}>
+                              <div className="w-full h-64 md:h-80 lg:h-96 overflow-hidden rounded-md">
+                                <img src={src} alt={`${listing.title} görsel ${idx + 1}`} className="w-full h-full object-cover" />
+                              </div>
+                            </CarouselItem>
+                          ))}
+                        </CarouselContent>
+                        {listing.images.length > 1 && (
+                          <>
+                            <CarouselPrevious className="-left-3 sm:-left-6" />
+                            <CarouselNext className="-right-3 sm:-right-6" />
+                          </>
+                        )}
+                      </Carousel>
+                    </div>
+                  )}
+
                   <p className="text-gray-700 leading-relaxed">{listing.description}</p>
                   
                   <div className="flex flex-wrap gap-2">
