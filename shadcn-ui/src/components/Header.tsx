@@ -106,20 +106,22 @@ export default function Header() {
                   {/* Account Dropdown */}
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="outline" size="sm" type="button" className="flex items-center gap-2">
-                        <User className="h-4 w-4" />
-                        <span>Hesabım</span>
-                        {unreadCount > 0 && (
-                          <Badge className="ml-1 bg-red-500 text-white">{unreadCount}</Badge>
-                        )}
-                        {/* Profil resmi sağda */}
-                        <Avatar className="h-6 w-6 ml-1">
+                      <div className="flex items-center gap-2 cursor-pointer" tabIndex={0} aria-label="Hesap menüsü">
+                        <Button variant="outline" size="sm" type="button" className="flex items-center gap-2">
+                          <User className="h-4 w-4" />
+                          <span>Hesabım</span>
+                          {unreadCount > 0 && (
+                            <Badge className="ml-1 bg-red-500 text-white">{unreadCount}</Badge>
+                          )}
+                        </Button>
+                        {/* Profil resmi butonun dışında sağda */}
+                        <Avatar className="h-8 w-8">
                           <AvatarImage src={avatarPreview || user?.avatarUrl || ''} alt={user?.name || 'Profil'} />
                           <AvatarFallback className="text-[10px]">
                             {(user?.name || 'U').charAt(0).toUpperCase()}
                           </AvatarFallback>
                         </Avatar>
-                      </Button>
+                      </div>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-48">
                       <DropdownMenuLabel>{user.name}</DropdownMenuLabel>
