@@ -103,7 +103,7 @@ export default function ListingCard({ listing }: ListingCardProps) {
           </div>
           <div className="flex items-center gap-1 text-sm text-muted-foreground">
             <TrendingUp className="h-4 w-4" />
-            <span>{listing.offerCount} teklif</span>
+            <span>{DataManager.getOffersForListing(listing.id).length} teklif</span>
           </div>
         </div>
 
@@ -121,6 +121,21 @@ export default function ListingCard({ listing }: ListingCardProps) {
           <div className="text-xs text-muted-foreground">
             <span>İlan sahibi: </span>
             <span className="font-medium">{listing.buyerName}</span>
+            {/* Kullanıcı puanı ve değerlendirme sayısı sadece >0 ise göster */}
+            {(() => {
+              const reviewCount = DataManager.getUserReviewCount(listing.buyerId);
+              const averageRating = DataManager.getUserAverageRating(listing.buyerId);
+              if (reviewCount > 0) {
+                return (
+                  <span className="ml-2 flex items-center gap-1">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="#FFD700" className="inline-block"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+                    {averageRating.toFixed(1)}
+                    <span className="text-gray-400">({reviewCount})</span>
+                  </span>
+                );
+              }
+              return null;
+            })()}
           </div>
           <Button 
             size="sm" 

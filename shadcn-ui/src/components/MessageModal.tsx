@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -6,17 +6,11 @@ import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Send, MessageCircle } from 'lucide-react';
-import { DataManager } from '@/lib/mockData';
+import { DataManager, Message } from '@/lib/mockData';
 import { toast } from 'sonner';
+import React from 'react';
+import { ErrorBoundary } from './ErrorBoundary';
 
-interface Message {
-  id: string;
-  fromUserId: string;
-  fromUserName: string;
-  toUserId: string;
-  content: string;
-  timestamp: string;
-}
 
 interface MessageModalProps {
   isOpen: boolean;
@@ -24,79 +18,88 @@ interface MessageModalProps {
   recipientId: string;
   recipientName: string;
   listingTitle?: string;
+  listingId?: string;
+  otherUserId?: string;
+  otherUserName?: string;
 }
 
-export default function MessageModal({ 
+// Renamed the local ErrorBoundary to avoid import conflict
+class LocalErrorBoundary extends React.Component<React.PropsWithChildren<{}>, { hasError: boolean }> {
+  constructor(props: React.PropsWithChildren<{}>) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    console.error("Error caught in LocalErrorBoundary:", error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return <h1>Bir hata oluştu.</h1>;
+    }
+    return this.props.children;
+  }
+}
+
+export default function MessageModal(props: MessageModalProps) {
+  return (
+    <LocalErrorBoundary>
+      <MessageModalContent {...props} />
+    </LocalErrorBoundary>
+  );
+}
+
+function MessageModalContent({ 
   isOpen, 
   onClose, 
   recipientId, 
   recipientName,
-  listingTitle 
+  listingTitle,
+  listingId,
+  otherUserId,
+  otherUserName
 }: MessageModalProps) {
+  // Mock conversation - in real app, this would load from database
+  const currentUser = DataManager.getCurrentUser();
+  const currentUserId = currentUser?.id;
   const [newMessage, setNewMessage] = useState('');
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
-  const currentUser = DataManager.getCurrentUser();
-
-  // Mock conversation - in real app, this would load from database
-  const mockMessages: Message[] = [
-    {
-      id: '1',
-      fromUserId: recipientId,
-      fromUserName: recipientName,
-      toUserId: currentUser?.id || '',
-      content: 'Merhaba! İlanınızla ilgili birkaç sorum var.',
-      timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString()
-    },
-    {
-      id: '2',
-      fromUserId: currentUser?.id || '',
-      fromUserName: currentUser?.name || '',
-      toUserId: recipientId,
-      content: 'Tabii ki! Sorularınızı bekliyorum.',
-      timestamp: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString()
+  // Memoize the conversation fetching logic to prevent unnecessary re-renders
+  const fetchConversation = useCallback(() => {
+    if (currentUserId && recipientId && listingId) {
+      return DataManager.getConversation(currentUserId, recipientId, listingId);
     }
-  ];
+    return [];
+  }, [currentUserId, recipientId, listingId]);
 
-  useState(() => {
+  // Mesajları modal açıldığında ilgili conversation'ı yükle
+  useEffect(() => {
     if (isOpen) {
-      setMessages(mockMessages);
+      setMessages(fetchConversation());
     }
-  });
+  }, [isOpen, fetchConversation]);
 
   const handleSendMessage = async () => {
     if (!newMessage.trim() || !currentUser) return;
-
     setIsLoading(true);
-
     try {
-      const message: Message = {
-        id: Date.now().toString(),
+      DataManager.addMessage({
+        listingId: listingTitle || '',
         fromUserId: currentUser.id,
         fromUserName: currentUser.name,
         toUserId: recipientId,
-        content: newMessage.trim(),
-        timestamp: new Date().toISOString()
-      };
-
-      setMessages(prev => [...prev, message]);
+        message: newMessage.trim()
+      });
+      setMessages(DataManager.getConversation(currentUser.id, recipientId, listingTitle || ''));
       setNewMessage('');
       toast.success('Mesaj gönderildi!');
-
-      // Mock response after 2 seconds
-      setTimeout(() => {
-        const response: Message = {
-          id: (Date.now() + 1).toString(),
-          fromUserId: recipientId,
-          fromUserName: recipientName,
-          toUserId: currentUser.id,
-          content: 'Mesajınız için teşekkürler! En kısa sürede detaylı bilgi vereceğim.',
-          timestamp: new Date().toISOString()
-        };
-        setMessages(prev => [...prev, response]);
-      }, 2000);
-
     } catch (error) {
       toast.error('Mesaj gönderilemedi');
     } finally {
@@ -106,33 +109,22 @@ export default function MessageModal({
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
       handleSendMessage();
+      e.preventDefault();
     }
   };
 
-  const formatTime = (timestamp: string) => {
-    return new Intl.DateTimeFormat('tr-TR', {
-      hour: '2-digit',
-      minute: '2-digit',
-      day: 'numeric',
-      month: 'short'
-    }).format(new Date(timestamp));
-  };
+  function formatTime(dateString: string) {
+    const date = new Date(dateString);
+    return date.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+  }
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl h-[600px] flex flex-col">
+      <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <MessageCircle className="h-5 w-5" />
-            {recipientName} ile Mesajlaşma
-          </DialogTitle>
-          {listingTitle && (
-            <p className="text-sm text-muted-foreground">
-              İlan: {listingTitle}
-            </p>
-          )}
+          <DialogTitle>Mesaj Gönder</DialogTitle>
+          <p className="text-xs text-muted-foreground">{recipientName} - {listingTitle}</p>
         </DialogHeader>
 
         {/* Messages Area */}
@@ -161,7 +153,7 @@ export default function MessageModal({
                         <div className="flex items-center gap-2 mb-1">
                           <span className="text-xs font-medium">{message.fromUserName}</span>
                           <span className="text-xs text-muted-foreground">
-                            {formatTime(message.timestamp)}
+                            {formatTime(message.createdAt)}
                           </span>
                         </div>
                         <div

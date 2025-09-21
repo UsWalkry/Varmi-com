@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { MessageCircle, User, LogOut, BarChart3 } from 'lucide-react';
@@ -11,9 +11,23 @@ export default function Header() {
   const navigate = useNavigate();
   const [isMessageCenterOpen, setIsMessageCenterOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
   
   const currentUser = DataManager.getCurrentUser();
-  const unreadCount = currentUser ? DataManager.getUnreadMessageCount(currentUser.id) : 0;
+
+  useEffect(() => {
+    const updateUnreadCount = () => {
+      const currentUser = DataManager.getCurrentUser();
+      setUnreadCount(currentUser ? DataManager.getUnreadMessageCount(currentUser.id) : 0);
+    };
+
+    updateUnreadCount();
+
+    window.addEventListener('storage', updateUnreadCount);
+    return () => {
+      window.removeEventListener('storage', updateUnreadCount);
+    };
+  }, []);
 
   const handleLogin = () => {
     setIsAuthModalOpen(true);
@@ -29,6 +43,8 @@ export default function Header() {
     navigate('/');
     window.location.reload();
   };
+
+  const memoizedOnClose = useCallback(() => setIsMessageCenterOpen(false), []);
 
   return (
     <>
@@ -117,7 +133,7 @@ export default function Header() {
       {/* Message Center Modal */}
       <MessageCenter 
         isOpen={isMessageCenterOpen} 
-        onClose={() => setIsMessageCenterOpen(false)} 
+        onClose={memoizedOnClose} 
       />
     </>
   );

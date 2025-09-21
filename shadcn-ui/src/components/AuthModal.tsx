@@ -109,20 +109,6 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }: AuthModalP
     }
   };
 
-  const handleQuickLogin = (email: string) => {
-    setLoginData({ email, password: '123456' });
-    
-    // Auto login for demo
-    setTimeout(() => {
-      const user = DataManager.login(email, '123456');
-      if (user) {
-        toast.success(`Demo hesabı ile giriş yapıldı: ${user.name}`);
-        onAuthSuccess();
-        onClose();
-      }
-    }, 500);
-  };
-
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-md">
@@ -164,50 +150,13 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }: AuthModalP
                       onChange={(e) => setLoginData(prev => ({ ...prev, password: e.target.value }))}
                       placeholder="Şifrenizi girin"
                     />
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Demo için şifre: 123456 (veya boş bırakın)
-                    </p>
+                    
                   </div>
 
                   <Button type="submit" className="w-full" disabled={isLoading}>
                     {isLoading ? 'Giriş yapılıyor...' : 'Giriş Yap'}
                   </Button>
                 </form>
-
-                <div className="mt-6">
-                  <div className="text-center text-sm text-muted-foreground mb-3">
-                    Demo Hesapları (Hızlı Giriş)
-                  </div>
-                  <div className="space-y-2">
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      className="w-full text-left justify-start"
-                      onClick={() => handleQuickLogin('ahmet@example.com')}
-                      disabled={isLoading}
-                    >
-                      👤 Ahmet Yılmaz (Alıcı/Satıcı)
-                    </Button>
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      className="w-full text-left justify-start"
-                      onClick={() => handleQuickLogin('ayse@example.com')}
-                      disabled={isLoading}
-                    >
-                      👩 Ayşe Demir (Satıcı)
-                    </Button>
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      className="w-full text-left justify-start"
-                      onClick={() => handleQuickLogin('mehmet@example.com')}
-                      disabled={isLoading}
-                    >
-                      👨 Mehmet Kaya (Alıcı)
-                    </Button>
-                  </div>
-                </div>
               </CardContent>
             </Card>
           </TabsContent>

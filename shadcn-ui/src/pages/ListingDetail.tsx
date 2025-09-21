@@ -13,8 +13,16 @@ import MessageModal from '@/components/MessageModal';
 import Header from '@/components/Header.tsx';
 import FavoriteButton from '@/components/FavoriteButton';
 import { toast } from 'sonner';
+import ReviewModal from '@/components/ReviewModal';
 
 export default function ListingDetail() {
+  const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
+  const [reviewTarget, setReviewTarget] = useState<{offerId: string, toUserId: string} | null>(null);
+  const handleEditListing = () => {
+    if (listing?.id) {
+      navigate(`/edit-listing/${listing.id}`);
+    }
+  };
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [listing, setListing] = useState<Listing | null>(null);
@@ -43,7 +51,7 @@ export default function ListingDetail() {
 
     setListing(foundListing);
     
-    const listingOffers = DataManager.getOffers(id);
+  const listingOffers = DataManager.getOffersForListing(id);
     setOffers(sortOffers(listingOffers, sortBy));
   };
 
@@ -51,7 +59,7 @@ export default function ListingDetail() {
     return [...offers].sort((a, b) => {
       switch (sortType) {
         case 'price':
-          return (a.price + a.shippingCost) - (b.price + b.shippingCost);
+          return a.price - b.price;
         case 'rating':
           return b.sellerRating - a.sellerRating;
         case 'date':
@@ -68,8 +76,12 @@ export default function ListingDetail() {
   };
 
   const handleAcceptOffer = (offerId: string) => {
-    toast.success('Teklif kabul edildi! Ödeme sayfasına yönlendiriliyorsunuz...');
-    // Here would be the payment flow
+    toast.success('Teklif kabul edildi! Değerlendirme yapabilirsiniz.');
+    const offer = offers.find(o => o.id === offerId);
+    if (offer && currentUser) {
+      setReviewTarget({ offerId, toUserId: offer.sellerId });
+      setIsReviewModalOpen(true);
+    }
   };
 
   const handleRejectOffer = (offerId: string) => {
@@ -153,7 +165,7 @@ export default function ListingDetail() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Header showCreateButton={false} />
+  <Header />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -217,16 +229,26 @@ export default function ListingDetail() {
                     </div>
                     <div>
                       <p className="text-sm text-muted-foreground">Son Başvuru</p>
-                      <p className="font-semibold">{DataManager.formatDate(listing.expiresAt)}</p>
+                      {/* <p className="font-semibold">{DataManager.formatDate(listing.expiresAt)}</p> */}
                     </div>
                     <div>
                       <p className="text-sm text-muted-foreground">İlan Sahibi</p>
                       <div className="flex items-center gap-2">
                         <p className="font-semibold">{listing.buyerName}</p>
-                        <div className="flex items-center gap-1">
-                          <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                          <span className="text-sm">4.8</span>
-                        </div>
+                        {(() => {
+                          const reviewCount = DataManager.getUserReviewCount(listing.buyerId);
+                          const averageRating = DataManager.getUserAverageRating(listing.buyerId);
+                          if (reviewCount > 0) {
+                            return (
+                              <div className="flex items-center gap-1">
+                                <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                                <span className="text-sm">{averageRating.toFixed(1)}</span>
+                                <span className="text-gray-400">({reviewCount})</span>
+                              </div>
+                            );
+                          }
+                          return null;
+                        })()}
                       </div>
                     </div>
                   </div>
@@ -322,7 +344,7 @@ export default function ListingDetail() {
                 ) : isOwner ? (
                   <div className="text-center py-4">
                     <p className="text-sm text-muted-foreground mb-2">Bu sizin ilanınız</p>
-                    <Button variant="outline" className="w-full">
+                    <Button variant="outline" className="w-full" onClick={handleEditListing}>
                       İlanı Düzenle
                     </Button>
                   </div>
@@ -370,7 +392,7 @@ export default function ListingDetail() {
                   <span className="text-sm text-muted-foreground">En Düşük Teklif</span>
                   <span className="font-semibold text-green-600">
                     {offers.length > 0 
-                      ? DataManager.formatPrice(Math.min(...offers.map(o => o.price + o.shippingCost)))
+                      ? DataManager.formatPrice(Math.min(...offers.map(o => o.price)))
                       : '-'
                     }
                   </span>
@@ -379,7 +401,7 @@ export default function ListingDetail() {
                   <span className="text-sm text-muted-foreground">Ortalama Teklif</span>
                   <span className="font-semibold">
                     {offers.length > 0 
-                      ? DataManager.formatPrice(offers.reduce((sum, o) => sum + o.price + o.shippingCost, 0) / offers.length)
+                      ? DataManager.formatPrice(offers.reduce((sum, o) => sum + o.price, 0) / offers.length)
                       : '-'
                     }
                   </span>
@@ -387,7 +409,7 @@ export default function ListingDetail() {
                 <div className="flex justify-between">
                   <span className="text-sm text-muted-foreground">Kalan Süre</span>
                   <span className="font-semibold">
-                    {Math.ceil((new Date(listing.expiresAt).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))} gün
+                    {/* Kalan süre özelliği kaldırıldı */}
                   </span>
                 </div>
               </CardContent>
@@ -431,11 +453,22 @@ export default function ListingDetail() {
       <MessageModal
         isOpen={isMessageModalOpen}
         onClose={() => setIsMessageModalOpen(false)}
-        listingId={listing.id}
+        recipientId={listing.buyerId}
+        recipientName={listing.buyerName}
         listingTitle={listing.title}
-        otherUserId={listing.buyerId}
-        otherUserName={listing.buyerName}
       />
+
+      {/* Review Modal */}
+      {reviewTarget && (
+        <ReviewModal
+          isOpen={isReviewModalOpen}
+          onClose={() => setIsReviewModalOpen(false)}
+          fromUserId={currentUser.id}
+          toUserId={reviewTarget.toUserId}
+          listingId={listing.id}
+          offerId={reviewTarget.offerId}
+        />
+      )}
     </div>
   );
 }

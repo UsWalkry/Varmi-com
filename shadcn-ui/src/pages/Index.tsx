@@ -255,14 +255,24 @@ export default function Index() {
                         <div className="flex items-center gap-2">
                           <span className="text-sm text-muted-foreground">İlan sahibi:</span>
                           <span className="font-medium">{listing.buyerName || 'Bilinmiyor'}</span>
-                          <div className="flex items-center gap-1">
-                            <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
-                            <span className="text-xs">4.8</span>
-                          </div>
+                          {(() => {
+                            const user = DataManager.getUsers().find(u => u.id === listing.buyerId);
+                            const reviewCount = DataManager.getUserReviewCount(listing.buyerId);
+                            if (user && reviewCount > 0) {
+                              return (
+                                <span className="flex items-center gap-1">
+                                  <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
+                                  <span className="text-xs">{(user.averageRating ?? 0).toFixed(1)}</span>
+                                  <span className="text-gray-400">({reviewCount})</span>
+                                </span>
+                              );
+                            }
+                            return null;
+                          })()}
                         </div>
                         <div className="flex items-center gap-1 text-blue-600">
                           <TrendingUp className="h-4 w-4" />
-                          <span className="font-semibold">{listing.offerCount || 0} teklif</span>
+                          <span className="font-semibold">{DataManager.getOffersForListing(listing.id).length} teklif</span>
                         </div>
                       </div>
                     </div>

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -7,6 +7,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { MessageCircle, User, Clock } from 'lucide-react';
 import { DataManager, Message } from '@/lib/mockData';
 import MessageModal from './MessageModal';
+import { cn } from '@/lib/utils';
 
 interface MessageCenterProps {
   isOpen: boolean;
@@ -30,20 +31,14 @@ export default function MessageCenter({ isOpen, onClose }: MessageCenterProps) {
 
   const currentUser = DataManager.getCurrentUser();
 
-  useEffect(() => {
-    if (isOpen && currentUser) {
-      loadConversations();
-    }
-  }, [isOpen, currentUser]);
-
-  const loadConversations = () => {
+  const loadConversations = useCallback(() => {
     if (!currentUser) return;
 
     setIsLoading(true);
-    
+
     try {
       const allMessages = DataManager.getAllMessages();
-      
+
       if (!allMessages || allMessages.length === 0) {
         setConversations([]);
         setIsLoading(false);
@@ -64,48 +59,24 @@ export default function MessageCenter({ isOpen, onClose }: MessageCenterProps) {
       const conversationMap = new Map<string, Conversation>();
 
       userMessages.forEach(message => {
-        if (!message || !message.listingId || !message.fromUserId || !message.toUserId) {
-          return;
-        }
-
-        const otherUserId = message.fromUserId === currentUser.id ? message.toUserId : message.fromUserId;
-        const otherUserName = message.fromUserId === currentUser.id ? 
-          (DataManager.getUser(message.toUserId)?.name || 'Bilinmeyen Kullanıcı') :
-          (message.fromUserName || 'Bilinmeyen Kullanıcı');
-        
-        const conversationKey = `${message.listingId}-${otherUserId}`;
-        
-        const existing = conversationMap.get(conversationKey);
-        if (!existing || new Date(message.createdAt) > new Date(existing.lastMessage.createdAt)) {
-          const listing = DataManager.getListings().find(l => l && l.id === message.listingId);
-          
-          // Count unread messages
-          const unreadCount = userMessages.filter(
-            msg => msg && 
-                   msg.listingId === message.listingId &&
-                   msg.fromUserId === otherUserId &&
-                   msg.toUserId === currentUser.id &&
-                   !msg.read
-          ).length;
-
-          conversationMap.set(conversationKey, {
-            otherUserId,
-            otherUserName,
+        const key = `${message.listingId}-${message.fromUserId === currentUser.id ? message.toUserId : message.fromUserId}`;
+        if (!conversationMap.has(key)) {
+          conversationMap.set(key, {
             listingId: message.listingId,
-            listingTitle: listing?.title || 'Bilinmeyen İlan',
+            otherUserId: message.fromUserId === currentUser.id ? message.toUserId : message.fromUserId,
+            otherUserName: message.fromUserId === currentUser.id ? message.fromUserName : message.fromUserName,
+            listingTitle: 'Unknown Listing',
             lastMessage: message,
-            unreadCount
+            unreadCount: 0,
           });
         }
       });
 
-      const sortedConversations = Array.from(conversationMap.values())
-        .filter(conv => conv && conv.lastMessage)
-        .sort((a, b) => {
-          const dateA = new Date(a.lastMessage.createdAt).getTime();
-          const dateB = new Date(b.lastMessage.createdAt).getTime();
-          return dateB - dateA;
-        });
+      const sortedConversations = Array.from(conversationMap.values()).sort((a, b) => {
+        const dateA = new Date(a.lastMessage.createdAt).getTime();
+        const dateB = new Date(b.lastMessage.createdAt).getTime();
+        return dateB - dateA;
+      });
 
       setConversations(sortedConversations);
     } catch (error) {
@@ -114,7 +85,13 @@ export default function MessageCenter({ isOpen, onClose }: MessageCenterProps) {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [currentUser?.id]);
+
+  useEffect(() => {
+    if (isOpen && currentUser) {
+      loadConversations();
+    }
+  }, [isOpen, loadConversations]);
 
   const handleConversationClick = (conversation: Conversation) => {
     if (!conversation || !conversation.listingId || !conversation.otherUserId) {
@@ -154,16 +131,30 @@ export default function MessageCenter({ isOpen, onClose }: MessageCenterProps) {
 
   const totalUnreadCount = conversations.reduce((sum, conv) => sum + (conv?.unreadCount || 0), 0);
 
+  const memoizedOnClose = useCallback(() => {
+    onClose();
+  }, [onClose]);
+
+  const dialogContentClassName = useMemo(() =>
+    cn(
+      'max-w-2xl h-[600px] flex flex-col'
+    ), []);
+
+  const dialogTitleClassName = useMemo(() =>
+    cn(
+      'flex items-center gap-2'
+    ), []);
+
   if (!currentUser) {
     return null;
   }
 
   return (
     <>
-      <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="max-w-2xl h-[600px] flex flex-col">
+      <Dialog open={isOpen} onOpenChange={memoizedOnClose}>
+        <DialogContent className={dialogContentClassName}>
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
+            <DialogTitle className={dialogTitleClassName}>
               <MessageCircle className="h-5 w-5" />
               Mesajlarım
               {totalUnreadCount > 0 && (
@@ -213,7 +204,7 @@ export default function MessageCenter({ isOpen, onClose }: MessageCenterProps) {
                                   {conversation.otherUserName || 'Bilinmeyen Kullanıcı'}
                                 </h4>
                                 {conversation.unreadCount > 0 && (
-                                  <Badge size="sm" className="bg-red-500 text-xs">
+                                  <Badge className="bg-red-500 text-xs">
                                     {conversation.unreadCount}
                                   </Badge>
                                 )}
@@ -223,7 +214,7 @@ export default function MessageCenter({ isOpen, onClose }: MessageCenterProps) {
                               </p>
                               <p className="text-sm text-gray-700 truncate">
                                 {conversation.lastMessage.fromUserId === currentUser?.id ? 'Sen: ' : ''}
-                                {conversation.lastMessage.message || 'Mesaj içeriği yok'}
+                                {conversation.lastMessage.content || 'Mesaj içeriği yok'}
                               </p>
                             </div>
                           </div>
@@ -251,6 +242,8 @@ export default function MessageCenter({ isOpen, onClose }: MessageCenterProps) {
           listingTitle={selectedConversation.listingTitle}
           otherUserId={selectedConversation.otherUserId}
           otherUserName={selectedConversation.otherUserName}
+          recipientId={selectedConversation.otherUserId}
+          recipientName={selectedConversation.otherUserName}
         />
       )}
     </>

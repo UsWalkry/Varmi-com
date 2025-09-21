@@ -1,3 +1,13 @@
+export interface Review {
+  id: string;
+  fromUserId: string;
+  toUserId: string;
+  listingId: string;
+  offerId: string;
+  rating: number; // 1-5
+  comment: string;
+  createdAt: string;
+}
 // Mock data and localStorage management
 export interface User {
   id: string;
@@ -7,6 +17,7 @@ export interface User {
   city: string;
   rating: number;
   reviewCount: number;
+  averageRating?: number;
   createdAt: string;
 }
 
@@ -25,6 +36,7 @@ export interface Listing {
   status: 'active' | 'closed' | 'expired';
   createdAt: string;
   offerCount: number;
+  expiresAt?: string;
 }
 
 export interface Offer {
@@ -45,7 +57,7 @@ export interface Message {
   fromUserId: string;
   fromUserName: string;
   toUserId: string;
-  message: string;
+  content: string;
   read: boolean;
   createdAt: string;
 }
@@ -83,157 +95,90 @@ export const cities = [
   'Diyarbakır'
 ];
 
-// Mock data
-const mockUsers: User[] = [
-  {
-    id: 'user1',
-    name: 'Ahmet Yılmaz',
-    email: 'ahmet@example.com',
-    role: 'both',
-    city: 'İstanbul',
-    rating: 4.8,
-    reviewCount: 23,
-    createdAt: '2024-01-15T10:00:00Z'
-  },
-  {
-    id: 'user2',
-    name: 'Ayşe Demir',
-    email: 'ayse@example.com',
-    role: 'seller',
-    city: 'Ankara',
-    rating: 4.9,
-    reviewCount: 45,
-    createdAt: '2024-01-10T10:00:00Z'
-  },
-  {
-    id: 'user3',
-    name: 'Mehmet Kaya',
-    email: 'mehmet@example.com',
-    role: 'buyer',
-    city: 'İzmir',
-    rating: 4.7,
-    reviewCount: 12,
-    createdAt: '2024-01-20T10:00:00Z'
-  }
-];
-
-const mockListings: Listing[] = [
-  {
-    id: 'listing1',
-    title: 'iPhone 15 Pro Max Aranıyor',
-    description: 'Temiz, hasarsız iPhone 15 Pro Max arıyorum. Tercihen kutu ve aksesuarları ile birlikte olsun.',
-    category: 'Elektronik',
-    budgetMin: 45000,
-    budgetMax: 55000,
-    condition: 'used',
-    city: 'İstanbul',
-    deliveryType: 'both',
-    buyerId: 'user1',
-    buyerName: 'Ahmet Yılmaz',
-    status: 'active',
-    createdAt: '2024-01-25T14:30:00Z',
-    offerCount: 3
-  },
-  {
-    id: 'listing2',
-    title: 'MacBook Air M2 İhtiyacım Var',
-    description: 'Grafik tasarım işleri için MacBook Air M2 arıyorum. 256GB veya 512GB olabilir.',
-    category: 'Elektronik',
-    budgetMin: 25000,
-    budgetMax: 35000,
-    condition: 'any',
-    city: 'Ankara',
-    deliveryType: 'shipping',
-    buyerId: 'user3',
-    buyerName: 'Mehmet Kaya',
-    status: 'active',
-    createdAt: '2024-01-24T09:15:00Z',
-    offerCount: 5
-  },
-  {
-    id: 'listing3',
-    title: 'Vintage Deri Ceket Arıyorum',
-    description: 'Erkek vintage deri ceket arıyorum. L veya XL beden olsun.',
-    category: 'Moda & Giyim',
-    budgetMin: 800,
-    budgetMax: 1500,
-    condition: 'used',
-    city: 'İzmir',
-    deliveryType: 'pickup',
-    buyerId: 'user2',
-    buyerName: 'Ayşe Demir',
-    status: 'active',
-    createdAt: '2024-01-23T16:45:00Z',
-    offerCount: 2
-  },
-  {
-    id: 'listing4',
-    title: 'Gaming Klavye ve Mouse Set',
-    description: 'RGB aydınlatmalı gaming klavye ve mouse seti arıyorum. Mechanical switch tercihim.',
-    category: 'Elektronik',
-    budgetMin: 1000,
-    budgetMax: 2500,
-    condition: 'new',
-    city: 'Bursa',
-    deliveryType: 'both',
-    buyerId: 'user1',
-    buyerName: 'Ahmet Yılmaz',
-    status: 'active',
-    createdAt: '2024-01-22T11:20:00Z',
-    offerCount: 1
-  }
-];
-
-const mockOffers: Offer[] = [
-  {
-    id: 'offer1',
-    listingId: 'listing1',
-    sellerId: 'user2',
-    sellerName: 'Ayşe Demir',
-    sellerRating: 4.9,
-    price: 48000,
-    message: 'Merhaba, iPhone 15 Pro Max 256GB modelim var. Kutu ve tüm aksesuarları mevcut. Fotoğrafları gönderebilirim.',
-    status: 'pending',
-    createdAt: '2024-01-25T15:30:00Z'
-  },
-  {
-    id: 'offer2',
-    listingId: 'listing2',
-    sellerId: 'user2',
-    sellerName: 'Ayşe Demir',
-    sellerRating: 4.9,
-    price: 28000,
-    message: 'MacBook Air M2 512GB modelim var. 6 aylık, garantisi devam ediyor.',
-    status: 'pending',
-    createdAt: '2024-01-24T10:15:00Z'
-  }
-];
-
-const mockMessages: Message[] = [
-  {
-    id: 'msg1',
-    listingId: 'listing1',
-    fromUserId: 'user2',
-    fromUserName: 'Ayşe Demir',
-    toUserId: 'user1',
-    message: 'Merhaba, iPhone teklifiniz hakkında konuşabilir miyiz?',
-    read: false,
-    createdAt: '2024-01-25T16:00:00Z'
-  },
-  {
-    id: 'msg2',
-    listingId: 'listing1',
-    fromUserId: 'user1',
-    fromUserName: 'Ahmet Yılmaz',
-    toUserId: 'user2',
-    message: 'Tabii ki! Telefon hangi renk ve kaç GB?',
-    read: true,
-    createdAt: '2024-01-25T16:05:00Z'
-  }
-];
+// Seed data removed: start with an empty application (no demo users, listings, offers, or messages)
+const mockUsers: User[] = [];
+const mockListings: Listing[] = [];
+const mockOffers: Offer[] = [];
+const mockMessages: Message[] = [];
 
 // DataManager class with all static methods
 export class DataManager {
+  // Mesaj yönetimi
+  // Sadece aşağıdaki versiyonlar kalacak
+  static getAllMessages(): Message[] {
+    this.initializeData();
+    const messagesStr = localStorage.getItem(this.STORAGE_KEYS.MESSAGES);
+    return messagesStr ? JSON.parse(messagesStr) : [];
+  }
+
+  static addMessage(messageData: {
+    listingId: string;
+    fromUserId: string;
+    fromUserName: string;
+    toUserId: string;
+    message: string;
+  }): Message {
+    const messages = this.getAllMessages();
+    const newMessage: Message = {
+      id: `msg_${Date.now()}`,
+      listingId: messageData.listingId,
+      fromUserId: messageData.fromUserId,
+      fromUserName: messageData.fromUserName,
+      toUserId: messageData.toUserId,
+      content: messageData.message,
+      read: false,
+      createdAt: new Date().toISOString()
+    };
+    messages.push(newMessage);
+    localStorage.setItem(this.STORAGE_KEYS.MESSAGES, JSON.stringify(messages));
+    return newMessage;
+  }
+
+  static getConversation(userA: string, userB: string, listingId?: string): Message[] {
+    return this.getAllMessages().filter(m =>
+      ((m.fromUserId === userA && m.toUserId === userB) || (m.fromUserId === userB && m.toUserId === userA)) &&
+      (listingId ? m.listingId === listingId : true)
+    ).sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+  }
+  // Review management
+  static addReview(review: Omit<Review, 'id' | 'createdAt'>): Review {
+    const reviews = this.getAllReviews();
+    const newReview: Review = {
+      ...review,
+      id: `review_${Date.now()}`,
+      createdAt: new Date().toISOString()
+    };
+    reviews.push(newReview);
+    localStorage.setItem('reviews', JSON.stringify(reviews));
+    return newReview;
+  }
+
+  static getAllReviews(): Review[] {
+    const reviewsStr = localStorage.getItem('reviews');
+    return reviewsStr ? JSON.parse(reviewsStr) : [];
+  }
+
+  static getUserReviews(userId: string): Review[] {
+    return this.getAllReviews().filter(r => r.toUserId === userId);
+  }
+
+  static getUserAverageRating(userId: string): number {
+    const reviews = this.getUserReviews(userId);
+    if (reviews.length === 0) return 0;
+    return reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length;
+  }
+
+  static getUserReviewCount(userId: string): number {
+    return this.getUserReviews(userId).length;
+  }
+  static updateListing(id: string, updatedFields: Partial<Listing>): Listing | undefined {
+    const listings = this.getListings();
+    const idx = listings.findIndex(l => l.id === id);
+    if (idx === -1) return undefined;
+    listings[idx] = { ...listings[idx], ...updatedFields };
+    localStorage.setItem(this.STORAGE_KEYS.LISTINGS, JSON.stringify(listings));
+    return listings[idx];
+  }
   private static STORAGE_KEYS = {
     CURRENT_USER: 'currentUser',
     USERS: 'users',
@@ -246,26 +191,46 @@ export class DataManager {
   // Initialize data if not exists
   static initializeData() {
     if (!localStorage.getItem(this.STORAGE_KEYS.USERS)) {
-      localStorage.setItem(this.STORAGE_KEYS.USERS, JSON.stringify(mockUsers));
+      localStorage.setItem(this.STORAGE_KEYS.USERS, JSON.stringify([]));
     }
     if (!localStorage.getItem(this.STORAGE_KEYS.LISTINGS)) {
-      localStorage.setItem(this.STORAGE_KEYS.LISTINGS, JSON.stringify(mockListings));
+      localStorage.setItem(this.STORAGE_KEYS.LISTINGS, JSON.stringify([]));
     }
     if (!localStorage.getItem(this.STORAGE_KEYS.OFFERS)) {
-      localStorage.setItem(this.STORAGE_KEYS.OFFERS, JSON.stringify(mockOffers));
+      localStorage.setItem(this.STORAGE_KEYS.OFFERS, JSON.stringify([]));
     }
     if (!localStorage.getItem(this.STORAGE_KEYS.MESSAGES)) {
-      localStorage.setItem(this.STORAGE_KEYS.MESSAGES, JSON.stringify(mockMessages));
+      localStorage.setItem(this.STORAGE_KEYS.MESSAGES, JSON.stringify([]));
     }
     if (!localStorage.getItem(this.STORAGE_KEYS.FAVORITES)) {
       localStorage.setItem(this.STORAGE_KEYS.FAVORITES, JSON.stringify({}));
     }
   }
 
+  // Optional helper to purge all app data (useful after removing demo content)
+  static resetAllData() {
+    localStorage.setItem(this.STORAGE_KEYS.CURRENT_USER, JSON.stringify(null));
+    localStorage.setItem(this.STORAGE_KEYS.USERS, JSON.stringify([]));
+    localStorage.setItem(this.STORAGE_KEYS.LISTINGS, JSON.stringify([]));
+    localStorage.setItem(this.STORAGE_KEYS.OFFERS, JSON.stringify([]));
+    localStorage.setItem(this.STORAGE_KEYS.MESSAGES, JSON.stringify([]));
+    localStorage.setItem(this.STORAGE_KEYS.FAVORITES, JSON.stringify({}));
+    localStorage.setItem('reviews', JSON.stringify([]));
+  }
+
   // User management
   static getCurrentUser(): User | null {
     const userStr = localStorage.getItem(this.STORAGE_KEYS.CURRENT_USER);
-    return userStr ? JSON.parse(userStr) : null;
+    const stored = userStr ? (JSON.parse(userStr) as User | null) : null;
+    if (!stored) return null;
+    // Validate against current users list (prevents stale demo accounts)
+    const users = this.getUsers();
+    const exists = users.find(u => u.id === stored.id);
+    if (!exists) {
+      localStorage.removeItem(this.STORAGE_KEYS.CURRENT_USER);
+      return null;
+    }
+    return exists;
   }
 
   static login(email: string, password: string): User | null {
@@ -306,7 +271,8 @@ export class DataManager {
       email: userData.email,
       role: userData.role,
       city: userData.city,
-      rating: 5.0,
+      rating: 0,
+      averageRating: 0,
       reviewCount: 0,
       createdAt: new Date().toISOString()
     };
@@ -450,39 +416,6 @@ export class DataManager {
   }
 
   // Messages management
-  static getAllMessages(): Message[] {
-    this.initializeData();
-    const messagesStr = localStorage.getItem(this.STORAGE_KEYS.MESSAGES);
-    return messagesStr ? JSON.parse(messagesStr) : [];
-  }
-
-  static getMessages(listingId: string, userId1: string, userId2: string): Message[] {
-    const messages = this.getAllMessages();
-    return messages.filter(msg =>
-      msg.listingId === listingId &&
-      ((msg.fromUserId === userId1 && msg.toUserId === userId2) ||
-       (msg.fromUserId === userId2 && msg.toUserId === userId1))
-    ).sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
-  }
-
-  static addMessage(messageData: {
-    listingId: string;
-    fromUserId: string;
-    fromUserName: string;
-    toUserId: string;
-    message: string;
-  }): Message {
-    const messages = this.getAllMessages();
-    const newMessage: Message = {
-      id: `msg_${Date.now()}`,
-      ...messageData,
-      read: false,
-      createdAt: new Date().toISOString()
-    };
-    messages.push(newMessage);
-    localStorage.setItem(this.STORAGE_KEYS.MESSAGES, JSON.stringify(messages));
-    return newMessage;
-  }
 
   static markMessagesAsRead(listingId: string, currentUserId: string, otherUserId: string) {
     const messages = this.getAllMessages();
