@@ -64,16 +64,13 @@ async function hmacSha1(keyBytes: Uint8Array, msg: Uint8Array): Promise<Uint8Arr
 
 async function generateTOTP(secretBase32: string, timeStep = 30, digits = 6, timestamp = Date.now()): Promise<string> {
   const key = base32Decode(secretBase32);
-  const counter = Math.floor((timestamp / 1000) / timeStep);
+  // 8 baytlık big-endian counter değeri
+  let counter = Math.floor((timestamp / 1000) / timeStep);
   const msg = new Uint8Array(8);
   for (let i = 7; i >= 0; i--) {
     msg[i] = counter & 0xff;
-    // eslint-disable-next-line no-bitwise
-    counter = (counter >>> 8) as number;
+    counter = Math.floor(counter / 256);
   }
-  // Correct counter big-endian fill
-  let c = Math.floor((timestamp / 1000) / timeStep);
-  for (let i = 7; i >= 0; i--) { msg[i] = c & 0xff; c = Math.floor(c / 256); }
   const hash = await hmacSha1(key, msg);
   const offset = hash[hash.length - 1] & 0x0f;
   const binCode = ((hash[offset] & 0x7f) << 24) | (hash[offset + 1] << 16) | (hash[offset + 2] << 8) | (hash[offset + 3]);
