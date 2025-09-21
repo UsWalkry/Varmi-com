@@ -6,6 +6,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { DataManager } from '@/lib/mockData';
 import MessageCenter from './MessageCenter';
 import AuthModal from './AuthModal';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -111,6 +112,13 @@ export default function Header() {
                         {unreadCount > 0 && (
                           <Badge className="ml-1 bg-red-500 text-white">{unreadCount}</Badge>
                         )}
+                        {/* Profil resmi sağda */}
+                        <Avatar className="h-6 w-6 ml-1">
+                          <AvatarImage src={avatarPreview || user?.avatarUrl || ''} alt={user?.name || 'Profil'} />
+                          <AvatarFallback className="text-[10px]">
+                            {(user?.name || 'U').charAt(0).toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-48">
