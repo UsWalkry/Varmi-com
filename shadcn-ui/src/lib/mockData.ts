@@ -115,7 +115,6 @@ export interface User {
   id: string;
   name: string;
   email: string;
-  role: 'buyer' | 'seller' | 'both';
   city: string;
   rating: number;
   reviewCount: number;
@@ -168,6 +167,10 @@ export interface Listing {
   deliveryType: 'shipping' | 'pickup' | 'both';
   buyerId: string;
   buyerName: string;
+  // İlan sahibi adını gizlemek için seçenek
+  maskOwnerName?: boolean;
+  // Teklif detaylarının herkese görünürlüğü (varsayılan: kapalı)
+  offersPublic?: boolean;
   status: 'active' | 'closed' | 'expired';
   createdAt: string;
   offerCount: number;
@@ -880,7 +883,6 @@ export class DataManager {
     name: string;
     email: string;
     password: string;
-    role: 'buyer' | 'seller' | 'both';
     city: string;
     phone?: string;
   }): User | null {
@@ -900,7 +902,6 @@ export class DataManager {
       id: `user_${Date.now()}`,
       name: userData.name,
       email: userData.email,
-      role: userData.role,
       city: userData.city,
       phone: userData.phone,
       rating: 0,

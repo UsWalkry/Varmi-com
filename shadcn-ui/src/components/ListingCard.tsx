@@ -3,6 +3,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { MapPin, Clock, Package, TrendingUp } from 'lucide-react';
 import { Listing, DataManager } from '@/lib/mockData';
+import { maskDisplayName } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
 
 interface ListingCardProps {
@@ -62,8 +63,8 @@ export default function ListingCard({ listing }: ListingCardProps) {
     >
       {/* Cover image if available */}
       {listing.images && listing.images.length > 0 && (
-        <div className="w-full h-40 overflow-hidden rounded-t-lg">
-          <img src={listing.images[0]} alt={listing.title} className="w-full h-full object-cover" />
+        <div className="w-full overflow-hidden rounded-t-lg bg-muted aspect-[16/9]">
+          <img src={listing.images[0]} alt={listing.title} className="w-full h-full object-cover" loading="lazy" decoding="async" onContextMenu={(e) => e.preventDefault()} draggable={false} />
         </div>
       )}
       <CardHeader className="pb-3">
@@ -126,7 +127,7 @@ export default function ListingCard({ listing }: ListingCardProps) {
         <div className="flex items-center justify-between w-full">
           <div className="text-xs text-muted-foreground">
             <span>İlan sahibi: </span>
-            <span className="font-medium">{listing.buyerName}</span>
+            <span className="font-medium">{listing.maskOwnerName ? maskDisplayName(listing.buyerName) : listing.buyerName}</span>
             {/* Kullanıcı puanı ve değerlendirme sayısı sadece >0 ise göster */}
             {(() => {
               const reviewCount = DataManager.getUserReviewCount(listing.buyerId);

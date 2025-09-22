@@ -7,8 +7,10 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Checkbox } from '@/components/ui/checkbox';
 import { ArrowLeft, Plus, LogOut } from 'lucide-react';
 import { DataManager, categories, cities } from '@/lib/mockData';
+import { applyWatermarkToDataUrl } from '@/lib/watermark';
 import AuthModal from '@/components/AuthModal';
 import { toast } from 'sonner';
 
@@ -28,7 +30,9 @@ export default function CreateListing() {
     condition: 'any',
     city: '',
     deliveryType: 'both',
-    expiresAt: ''
+    expiresAt: '',
+    maskOwnerName: false,
+    offersPublic: false
   });
 
   // Görseller (data URL'ler)
@@ -97,6 +101,8 @@ export default function CreateListing() {
         condition: formData.condition as 'new' | 'used' | 'any',
         city: formData.city,
         deliveryType: formData.deliveryType as 'shipping' | 'pickup' | 'both',
+        maskOwnerName: formData.maskOwnerName,
+        offersPublic: formData.offersPublic,
         status: 'active',
         expiresAt,
         images
@@ -178,7 +184,17 @@ export default function CreateListing() {
       try {
         const raw = await readAsDataUrl(f);
         const compressed = await compressImageDataUrl(raw);
-        toAdd.push(compressed);
+        const watermarked = await applyWatermarkToDataUrl(compressed, {
+          text: 'var mıı?',
+          opacity: 0.22, // beyaz için biraz daha belirgin ama şeffaf
+          fontSize: 48,  // daha büyük filigran yazısı
+          color: '#FFFFFF', // beyaz
+          angle: -30,
+          tileSize: 360, // daha geniş aralıklarla tekrar
+          outType: 'image/webp',
+          quality: 0.9,
+        });
+        toAdd.push(watermarked);
       } catch {
         toast.error(`${f.name}: Dosya okunamadı`);
       }
@@ -262,8 +278,8 @@ export default function CreateListing() {
                   {images.length > 0 && (
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
                       {images.map((src, idx) => (
-                        <div key={idx} className="relative group border rounded-md overflow-hidden bg-muted/20">
-                          <img src={src} alt={`İlan görseli ${idx+1}`} className="h-28 w-full object-cover" />
+                        <div key={idx} className="relative group border rounded-md overflow-hidden bg-muted aspect-square">
+                          <img src={src} alt={`İlan görseli ${idx+1}`} className="w-full h-full object-cover" onContextMenu={(e) => e.preventDefault()} draggable={false} />
                           <button
                             type="button"
                             onClick={() => removeImage(idx)}
@@ -420,6 +436,50 @@ export default function CreateListing() {
                     <Label htmlFor="both">Her İkisi de Olur</Label>
                   </div>
                 </RadioGroup>
+              </div>
+
+              {/* Privacy: Mask Owner Name */}
+              <div className="space-y-2">
+                <Label>Kullanıcı Adı Gizliliği</Label>
+                <div className="flex items-start space-x-2">
+                  <Checkbox
+                    id="maskOwnerName"
+                    checked={formData.maskOwnerName}
+                    onCheckedChange={(checked) =>
+                      setFormData((prev) => ({ ...prev, maskOwnerName: checked === true }))
+                    }
+                  />
+                  <div className="grid gap-1.5 leading-none">
+                    <label htmlFor="maskOwnerName" className="text-sm font-medium">
+                      Kullanıcı adımı gizle
+                    </label>
+                    <p className="text-xs text-muted-foreground">
+                      Listelerde yalnızca adınız görünecek; soyad(lar) '**' ile maskelenecek.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Privacy: Teklif Görünürlüğü */}
+              <div className="space-y-2">
+                <Label>Teklif Detayları</Label>
+                <div className="flex items-start space-x-2">
+                  <Checkbox
+                    id="offersPublic"
+                    checked={formData.offersPublic}
+                    onCheckedChange={(checked) =>
+                      setFormData((prev) => ({ ...prev, offersPublic: checked === true }))
+                    }
+                  />
+                  <div className="grid gap-1.5 leading-none">
+                    <label htmlFor="offersPublic" className="text-sm font-medium">
+                      Teklif detayları herkes tarafından görülebilsin
+                    </label>
+                    <p className="text-xs text-muted-foreground">
+                      Kapalıysa tekliflerin içerik ve satıcı bilgileri yalnızca ilan sahibi tarafından görüntülenir.
+                    </p>
+                  </div>
+                </div>
               </div>
 
               {/* Expiry Date */}

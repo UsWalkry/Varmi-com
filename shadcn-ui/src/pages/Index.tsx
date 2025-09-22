@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Search, MapPin, Clock, TrendingUp, Package, Star } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Listing, DataManager, categories, cities } from '@/lib/mockData';
+import { maskDisplayName } from '@/lib/utils';
 import Header from '@/components/Header';
 import FavoriteButton from '@/components/FavoriteButton';
 
@@ -92,7 +93,7 @@ export default function Index() {
       <section className="bg-gradient-to-r from-blue-600 to-green-600 text-white py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <h1 className="text-4xl md:text-6xl font-bold mb-6">
-            Aradığın Ürün <span className="text-yellow-300">Var mı?</span>
+            Aradığın Ürün <span className="text-yellow-300">var mıı?</span>
           </h1>
           <p className="text-xl md:text-2xl mb-8 opacity-90">
             İstediğin ürünü ilan ver, satıcılar sana teklif versin!
@@ -254,7 +255,7 @@ export default function Index() {
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <span className="text-sm text-muted-foreground">İlan sahibi:</span>
-                          <span className="font-medium">{listing.buyerName || 'Bilinmiyor'}</span>
+                          <span className="font-medium">{listing.maskOwnerName ? maskDisplayName(listing.buyerName) : (listing.buyerName || 'Bilinmiyor')}</span>
                           {(() => {
                             const user = DataManager.getUsers().find(u => u.id === listing.buyerId);
                             const reviewCount = DataManager.getUserReviewCount(listing.buyerId);

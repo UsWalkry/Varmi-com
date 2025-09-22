@@ -27,7 +27,6 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }: AuthModalP
     email: '',
     password: '',
     confirmPassword: '',
-    role: 'buyer' as 'buyer' | 'seller' | 'both',
     city: '',
     phone: ''
   });
@@ -107,7 +106,6 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }: AuthModalP
         name: registerData.name,
         email: registerData.email,
         password: registerData.password,
-        role: registerData.role,
         city: registerData.city,
         phone: normalizedPhone
       });
@@ -123,7 +121,6 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }: AuthModalP
           email: '',
           password: '',
           confirmPassword: '',
-          role: 'buyer',
           city: '',
           phone: ''
         });
@@ -280,24 +277,7 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }: AuthModalP
                     </div>
                   </div>
 
-                  <div>
-                    <Label htmlFor="register-role">Hesap Türü</Label>
-                    <Select 
-                      value={registerData.role} 
-                      onValueChange={(value: 'buyer' | 'seller' | 'both') => 
-                        setRegisterData(prev => ({ ...prev, role: value }))
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="buyer">Alıcı</SelectItem>
-                        <SelectItem value="seller">Satıcı</SelectItem>
-                        <SelectItem value="both">Alıcı ve Satıcı</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+                  {/* Hesap türü (Alıcı/Satıcı) kaldırıldı */}
 
                   <div>
                     <Label htmlFor="register-password">Şifre</Label>

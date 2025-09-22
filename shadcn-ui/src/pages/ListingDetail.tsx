@@ -4,8 +4,9 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { ArrowLeft, MapPin, Clock, Package, TrendingUp, Plus, Star, MessageCircle, Heart, Trash2 } from 'lucide-react';
+import { ArrowLeft, MapPin, Clock, Package, Plus, Star, MessageCircle, Heart, Trash2, Eye, EyeOff } from 'lucide-react';
 import { Listing, Offer, DataManager } from '@/lib/mockData';
+import { maskDisplayName } from '@/lib/utils';
 import OfferCard from '@/components/OfferCard';
 import CreateOfferModal from '@/components/CreateOfferModal';
 import AuthModal from '@/components/AuthModal';
@@ -13,12 +14,11 @@ import MessageModal from '@/components/MessageModal';
 import Header from '@/components/Header.tsx';
 import FavoriteButton from '@/components/FavoriteButton';
 import { toast } from 'sonner';
-import ReviewModal from '@/components/ReviewModal';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
+import ImageMagnifier from '@/components/ImageMagnifier';
 
 export default function ListingDetail() {
-  const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
-  const [reviewTarget, setReviewTarget] = useState<{offerId: string, toUserId: string} | null>(null);
+  // Review akışı kaldırıldı: Gelen Teklifler bölümü görünmeyecek
   const handleEditListing = () => {
     if (listing?.id) {
       navigate(`/edit-listing/${listing.id}`);
@@ -45,8 +45,11 @@ export default function ListingDetail() {
   const [isOfferModalOpen, setIsOfferModalOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isMessageModalOpen, setIsMessageModalOpen] = useState(false);
+  const [messageRecipientId, setMessageRecipientId] = useState<string | null>(null);
+  const [messageRecipientName, setMessageRecipientName] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<'price' | 'rating' | 'date'>('price');
   const [currentUser, setCurrentUser] = useState(DataManager.getCurrentUser());
+  const [activeImage, setActiveImage] = useState(0);
 
   const loadListingAndOffers = useCallback(() => {
     const allListings = DataManager.getListings();
@@ -86,24 +89,7 @@ export default function ListingDetail() {
     });
   };
 
-  const handleSortChange = (newSort: 'price' | 'rating' | 'date') => {
-    setSortBy(newSort);
-    setOffers(sortOffers(offers, newSort));
-  };
-
-  const handleAcceptOffer = (offerId: string) => {
-    toast.success('Teklif kabul edildi! Değerlendirme yapabilirsiniz.');
-    const offer = offers.find(o => o.id === offerId);
-    if (offer && currentUser) {
-      setReviewTarget({ offerId, toUserId: offer.sellerId });
-      setIsReviewModalOpen(true);
-    }
-  };
-
-  const handleRejectOffer = (offerId: string) => {
-    toast.info('Teklif reddedildi');
-    // Update offer status in real implementation
-  };
+  // Sıralama ve kabul/ret aksiyonları kaldırıldı (liste gizli)
 
   const handleWithdrawOffer = (offerId: string) => {
     if (!currentUser) {
@@ -120,17 +106,51 @@ export default function ListingDetail() {
     }
   };
 
-  const handleMessageSeller = (offerId: string) => {
-    if (!currentUser) {
+  // Teklif aksiyonları (ilan sahibi için kabul/ret) ve teklife mesaj
+  const handleAcceptOffer = (offerId: string) => {
+    if (!currentUser || !listing) {
       setIsAuthModalOpen(true);
       return;
     }
-    
-    const offer = offers.find(o => o.id === offerId);
-    if (offer) {
-      // Open message modal with seller info
-      setIsMessageModalOpen(true);
+    const owner = currentUser.id === listing.buyerId;
+    if (!owner) return;
+    const ok = window.confirm('Bu teklifi kabul etmek istediğinize emin misiniz?');
+    if (!ok) return;
+    try {
+      DataManager.acceptOffer(offerId);
+      toast.success('Teklif kabul edildi');
+      loadListingAndOffers();
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'İşlem başarısız';
+      toast.error(msg);
     }
+  };
+
+  const handleRejectOffer = (offerId: string) => {
+    if (!currentUser || !listing) {
+      setIsAuthModalOpen(true);
+      return;
+    }
+    const owner = currentUser.id === listing.buyerId;
+    if (!owner) return;
+    const ok = window.confirm('Bu teklifi reddetmek istediğinize emin misiniz?');
+    if (!ok) return;
+    try {
+      DataManager.rejectOffer(offerId);
+      toast.success('Teklif reddedildi');
+      loadListingAndOffers();
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'İşlem başarısız';
+      toast.error(msg);
+    }
+  };
+
+  const handleMessageToUserFromOffer = (offerId: string) => {
+    const offer = offers.find(o => o.id === offerId);
+    if (!offer) return;
+    setMessageRecipientId(offer.sellerId);
+    setMessageRecipientName(offer.sellerName);
+    setIsMessageModalOpen(true);
   };
 
   const handleOfferCreated = () => {
@@ -159,6 +179,8 @@ export default function ListingDetail() {
       setIsAuthModalOpen(true);
       return;
     }
+    setMessageRecipientId(listing.buyerId);
+    setMessageRecipientName(listing.buyerName);
     setIsMessageModalOpen(true);
   };
 
@@ -175,7 +197,9 @@ export default function ListingDetail() {
 
   const isOwner = currentUser?.id === listing.buyerId;
   const alreadyOffered = currentUser ? DataManager.getOffersForListing(listing.id).some(o => o.sellerId === currentUser.id) : false;
+  const myOfferId = currentUser ? offers.find(o => o.sellerId === currentUser.id)?.id : undefined;
   const canMakeOffer = currentUser && !isOwner && listing.status === 'active' && !alreadyOffered;
+  const canShowOffers = (listing.offersPublic === true) || isOwner;
 
   const getConditionText = (condition: string) => {
     switch (condition) {
@@ -226,10 +250,7 @@ export default function ListingDetail() {
                         <Clock className="h-4 w-4" />
                         <span>{DataManager.getTimeAgo(listing.createdAt)}</span>
                       </div>
-                      <div className="flex items-center gap-1">
-                        <TrendingUp className="h-4 w-4" />
-                        <span>{offers.length} teklif</span>
-                      </div>
+                      {/* Teklif sayısı sadece İlan İstatistikleri kartında gösterilir */}
                     </div>
                   </div>
                   <Badge className={listing.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}>
@@ -241,24 +262,27 @@ export default function ListingDetail() {
                 <div className="space-y-4">
                   {/* Images/Gallery */}
                   {listing.images && listing.images.length > 0 && (
-                    <div className="relative">
-                      <Carousel className="w-full">
-                        <CarouselContent>
+                    <div className="relative space-y-3">
+                      <div className="w-full overflow-hidden rounded-md bg-muted aspect-[4/3] md:aspect-[16/9]">
+                        <ImageMagnifier src={listing.images[activeImage]} alt={`${listing.title} görsel ${activeImage + 1}`} className="w-full h-full" zoom={2.25} zoomPaneSize={380} />
+                      </div>
+                      {listing.images.length > 1 && (
+                        <div className="flex gap-2 overflow-x-auto py-1">
                           {listing.images.map((src, idx) => (
-                            <CarouselItem key={idx}>
-                              <div className="w-full h-64 md:h-80 lg:h-96 overflow-hidden rounded-md">
-                                <img src={src} alt={`${listing.title} görsel ${idx + 1}`} className="w-full h-full object-cover" />
+                            <button
+                              key={idx}
+                              type="button"
+                              onClick={() => setActiveImage(idx)}
+                              className={`shrink-0 rounded border overflow-hidden ${idx === activeImage ? 'ring-2 ring-primary' : 'border-transparent'} bg-muted`}
+                              aria-label={`Görsel ${idx + 1}`}
+                            >
+                              <div className="w-16 h-16 md:w-20 md:h-20">
+                                <img src={src} alt="Küçük görsel" className="w-full h-full object-cover" loading="lazy" decoding="async" onContextMenu={(e) => e.preventDefault()} draggable={false} />
                               </div>
-                            </CarouselItem>
+                            </button>
                           ))}
-                        </CarouselContent>
-                        {listing.images.length > 1 && (
-                          <>
-                            <CarouselPrevious className="-left-3 sm:-left-6" />
-                            <CarouselNext className="-right-3 sm:-right-6" />
-                          </>
-                        )}
-                      </Carousel>
+                        </div>
+                      )}
                     </div>
                   )}
 
@@ -284,12 +308,14 @@ export default function ListingDetail() {
                     </div>
                     <div>
                       <p className="text-sm text-muted-foreground">Son Başvuru</p>
-                      {/* <p className="font-semibold">{DataManager.formatDate(listing.expiresAt)}</p> */}
+                      <p className="font-semibold">
+                        {listing.expiresAt ? DataManager.formatDate(listing.expiresAt) : '-'}
+                      </p>
                     </div>
                     <div>
                       <p className="text-sm text-muted-foreground">İlan Sahibi</p>
                       <div className="flex items-center gap-2">
-                        <p className="font-semibold">{listing.buyerName}</p>
+                        <p className="font-semibold">{listing.maskOwnerName ? maskDisplayName(listing.buyerName) : listing.buyerName}</p>
                         {(() => {
                           const reviewCount = DataManager.getUserReviewCount(listing.buyerId);
                           const averageRating = DataManager.getUserAverageRating(listing.buyerId);
@@ -306,78 +332,80 @@ export default function ListingDetail() {
                         })()}
                       </div>
                     </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Teklif Görünürlüğü</p>
+                      <div className="flex items-center gap-2">
+                        {listing.offersPublic ? (
+                          <>
+                            <Eye className="h-4 w-4 text-green-600" />
+                            <span className="font-semibold">Açık</span>
+                          </>
+                        ) : (
+                          <>
+                            <EyeOff className="h-4 w-4 text-gray-600" />
+                            <span className="font-semibold">Gizli</span>
+                          </>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 </div>
               </CardContent>
             </Card>
 
-            {/* Offers Section */}
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle className="flex items-center gap-2">
-                    <TrendingUp className="h-5 w-5" />
-                    Gelen Teklifler ({offers.length})
-                  </CardTitle>
-                  {offers.length > 0 && (
-                    <div className="flex gap-2">
-                      <Button
-                        variant={sortBy === 'price' ? 'default' : 'outline'}
-                        size="sm"
-                        onClick={() => handleSortChange('price')}
-                      >
-                        Fiyata Göre
-                      </Button>
-                      <Button
-                        variant={sortBy === 'rating' ? 'default' : 'outline'}
-                        size="sm"
-                        onClick={() => handleSortChange('rating')}
-                      >
-                        Puana Göre
-                      </Button>
-                      <Button
-                        variant={sortBy === 'date' ? 'default' : 'outline'}
-                        size="sm"
-                        onClick={() => handleSortChange('date')}
-                      >
-                        Tarihe Göre
-                      </Button>
+            {/* Gelen Teklifler - sadece ilan sahibi veya offersPublic=true ise gösterilir */}
+            {canShowOffers && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Gelen Teklifler</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {offers.length === 0 ? (
+                    <div className="text-center py-12">
+                      <Package className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+                      <h3 className="text-lg font-semibold mb-2">Henüz teklif yok</h3>
+                      <p className="text-muted-foreground mb-0">Bu ilana henüz teklif verilmemiş.</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {offers.map((offer) => (
+                        <OfferCard
+                          key={offer.id}
+                          offer={offer}
+                          showActions={isOwner}
+                          onAccept={isOwner ? handleAcceptOffer : undefined}
+                          onReject={isOwner ? handleRejectOffer : undefined}
+                          onMessage={isOwner ? handleMessageToUserFromOffer : undefined}
+                          onWithdraw={offer.sellerId === currentUser?.id ? handleWithdrawOffer : undefined}
+                        />
+                      ))}
                     </div>
                   )}
-                </div>
-              </CardHeader>
-              <CardContent>
-                {offers.length === 0 ? (
-                  <div className="text-center py-12">
-                    <Package className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-                    <h3 className="text-lg font-semibold mb-2">Henüz teklif yok</h3>
-                    <p className="text-muted-foreground mb-4">
-                      Bu ilana henüz teklif verilmemiş. İlk teklifi siz verin!
-                    </p>
-                    {canMakeOffer && (
-                      <Button onClick={handleCreateOffer}>
-                        <Plus className="h-4 w-4 mr-2" />
-                        İlk Teklifi Ver
-                      </Button>
-                    )}
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    {offers.map(offer => (
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Teklifler gizliyken (offersPublic=false ve kullanıcı sahip değilken) yalnızca kullanıcının kendi teklifini göster */}
+            {!canShowOffers && currentUser && myOfferId && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Teklifim</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {(() => {
+                    const myOffer = offers.find(o => o.id === myOfferId);
+                    if (!myOffer) return null;
+                    return (
                       <OfferCard
-                        key={offer.id}
-                        offer={offer}
-                        showActions={isOwner}
-                        onAccept={handleAcceptOffer}
-                        onReject={handleRejectOffer}
-                        onMessage={handleMessageSeller}
-                        onWithdraw={offer.sellerId === currentUser?.id ? handleWithdrawOffer : undefined}
+                        offer={myOffer}
+                        showActions={false}
+                        onWithdraw={handleWithdrawOffer}
                       />
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+                    );
+                  })()}
+                </CardContent>
+              </Card>
+            )}
           </div>
 
           {/* Sidebar */}
@@ -450,6 +478,27 @@ export default function ListingDetail() {
                 <CardTitle>İlan İstatistikleri</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
+                {/** Kalan süreyi hesaplamak için basit yardımcı */}
+                {(() => {
+                  function getRemainingTimeText(expiresAt?: string): string {
+                    if (!expiresAt) return '-';
+                    const now = new Date();
+                    const end = new Date(expiresAt);
+                    const diffMs = end.getTime() - now.getTime();
+                    if (isNaN(end.getTime())) return '-';
+                    if (diffMs <= 0) return 'Süresi doldu';
+                    const totalMinutes = Math.floor(diffMs / 60000);
+                    const days = Math.floor(totalMinutes / (60 * 24));
+                    const hours = Math.floor((totalMinutes - days * 24 * 60) / 60);
+                    const minutes = totalMinutes % 60;
+                    if (days > 0) return `${days} gün ${hours} saat`;
+                    if (hours > 0) return `${hours} saat ${minutes} dk`;
+                    return `${minutes} dk`;
+                  }
+                  // Değeri dışarıdaki scope'a vermek için component scope'ta saklayalım
+                  // Ancak burada IIFE içinde direkt kullanacağız.
+                  return null;
+                })()}
                 <div className="flex justify-between">
                   <span className="text-sm text-muted-foreground">Toplam Teklif</span>
                   <span className="font-semibold">{offers.length}</span>
@@ -475,7 +524,24 @@ export default function ListingDetail() {
                 <div className="flex justify-between">
                   <span className="text-sm text-muted-foreground">Kalan Süre</span>
                   <span className="font-semibold">
-                    {/* Kalan süre özelliği kaldırıldı */}
+                    {(() => {
+                      function getRemainingTimeText(expiresAt?: string): string {
+                        if (!expiresAt) return '-';
+                        const now = new Date();
+                        const end = new Date(expiresAt);
+                        const diffMs = end.getTime() - now.getTime();
+                        if (isNaN(end.getTime())) return '-';
+                        if (diffMs <= 0) return 'Süresi doldu';
+                        const totalMinutes = Math.floor(diffMs / 60000);
+                        const days = Math.floor(totalMinutes / (60 * 24));
+                        const hours = Math.floor((totalMinutes - days * 24 * 60) / 60);
+                        const minutes = totalMinutes % 60;
+                        if (days > 0) return `${days} gün ${hours} saat`;
+                        if (hours > 0) return `${hours} saat ${minutes} dk`;
+                        return `${minutes} dk`;
+                      }
+                      return getRemainingTimeText(listing.expiresAt);
+                    })()}
                   </span>
                 </div>
               </CardContent>
@@ -519,22 +585,13 @@ export default function ListingDetail() {
       <MessageModal
         isOpen={isMessageModalOpen}
         onClose={() => setIsMessageModalOpen(false)}
-        recipientId={listing.buyerId}
-        recipientName={listing.buyerName}
+        recipientId={messageRecipientId ?? listing.buyerId}
+        recipientName={messageRecipientName ?? listing.buyerName}
         listingTitle={listing.title}
+        listingId={listing.id}
       />
 
-      {/* Review Modal */}
-      {reviewTarget && (
-        <ReviewModal
-          isOpen={isReviewModalOpen}
-          onClose={() => setIsReviewModalOpen(false)}
-          fromUserId={currentUser.id}
-          toUserId={reviewTarget.toUserId}
-          listingId={listing.id}
-          offerId={reviewTarget.offerId}
-        />
-      )}
+      {/* Review Modal kaldırıldı */}
     </div>
   );
 }

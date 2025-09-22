@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { DataManager, Listing, Offer } from '@/lib/mockData';
+import { maskDisplayName } from '@/lib/utils';
 import Header from '@/components/Header';
 import FavoriteButton from '@/components/FavoriteButton';
 
@@ -440,7 +441,7 @@ export default function Dashboard() {
                             <div className="flex items-center justify-between">
                               <div className="flex items-center gap-2">
                                 <span className="text-sm text-muted-foreground">İlan sahibi:</span>
-                                <span className="font-medium">{listing.buyerName}</span>
+                                <span className="font-medium">{listing.maskOwnerName ? maskDisplayName(listing.buyerName) : listing.buyerName}</span>
                               </div>
                               <div className="flex items-center gap-1 text-blue-600">
                                 <TrendingUp className="h-4 w-4" />

@@ -322,7 +322,7 @@ export default function CreateOfferModal({
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
                   {images.map((src, idx) => (
                     <div key={idx} className="relative group border rounded-md overflow-hidden bg-muted/20">
-                      <img src={src} alt={`Teklif görseli ${idx+1}`} className="h-28 w-full object-cover" />
+                      <img src={src} alt={`Teklif görseli ${idx+1}`} className="h-28 w-full object-cover" onContextMenu={(e) => e.preventDefault()} draggable={false} />
                       <button
                         type="button"
                         onClick={() => removeImage(idx)}

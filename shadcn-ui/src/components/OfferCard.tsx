@@ -3,6 +3,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Star, Truck, Clock, Package2, CheckCircle, XCircle, Scale } from 'lucide-react';
 import { Offer, DataManager } from '@/lib/mockData';
+import { useState } from 'react';
+import ImageLightbox from '@/components/ImageLightbox';
 
 interface OfferCardProps {
   offer: Offer;
@@ -66,6 +68,8 @@ export default function OfferCard({
   };
 
   const totalPrice = offer.price + offer.shippingCost;
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState(0);
 
   return (
     <Card className="hover:shadow-md transition-shadow">
@@ -136,6 +140,35 @@ export default function OfferCard({
           <p className="text-sm text-muted-foreground">
             {offer.description}
           </p>
+
+          {/* Images (optional) */}
+          {offer.images && offer.images.length > 0 && (
+            <>
+              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
+                {offer.images.map((src, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    className="w-full bg-muted rounded overflow-hidden aspect-square"
+                    onClick={() => {
+                      setLightboxIndex(idx);
+                      setLightboxOpen(true);
+                    }}
+                    aria-label={`Görseli büyüt (${idx + 1})`}
+                  >
+                    <img src={src} alt={`Teklif görseli ${idx+1}`} className="w-full h-full object-cover" loading="lazy" decoding="async" onContextMenu={(e) => e.preventDefault()} draggable={false} />
+                  </button>
+                ))}
+              </div>
+
+              <ImageLightbox
+                images={offer.images}
+                startIndex={lightboxIndex}
+                open={lightboxOpen}
+                onClose={() => setLightboxOpen(false)}
+              />
+            </>
+          )}
 
           {/* Expiry warning */}
           {isExpiringSoon() && offer.status === 'active' && (

@@ -2,11 +2,14 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useState, useEffect, useRef } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { DataManager, Listing, categories, cities } from '@/lib/mockData';
 import Header from '@/components/Header';
+import { applyWatermarkToDataUrl } from '@/lib/watermark';
 import { toast } from 'sonner';
 
 export default function EditListing() {
@@ -23,7 +26,9 @@ export default function EditListing() {
     category: '',
     condition: 'new',
     deliveryType: 'shipping',
-    expiresAt: ''
+    expiresAt: '',
+    maskOwnerName: false,
+    offersPublic: false
   });
   const [images, setImages] = useState<string[]>([]);
 
@@ -48,7 +53,9 @@ export default function EditListing() {
           category: found.category,
           condition: found.condition,
           deliveryType: found.deliveryType,
-          expiresAt: (found.expiresAt ? new Date(found.expiresAt) : (()=>{ const d=new Date(found.createdAt); d.setDate(d.getDate()+30); return d; })()).toISOString().split('T')[0]
+          expiresAt: (found.expiresAt ? new Date(found.expiresAt) : (()=>{ const d=new Date(found.createdAt); d.setDate(d.getDate()+30); return d; })()).toISOString().split('T')[0],
+          maskOwnerName: found.maskOwnerName ?? false,
+          offersPublic: found.offersPublic ?? false
         });
       }
     }
@@ -89,6 +96,8 @@ export default function EditListing() {
       condition: form.condition as 'new' | 'used' | 'any',
       deliveryType: form.deliveryType as 'shipping' | 'pickup' | 'both',
       expiresAt: form.expiresAt ? new Date(form.expiresAt).toISOString() : listing.expiresAt,
+      maskOwnerName: form.maskOwnerName,
+      offersPublic: form.offersPublic,
       images
     });
     toast.success('İlan başarıyla güncellendi!');
@@ -150,7 +159,17 @@ export default function EditListing() {
       try {
         const raw = await readAsDataUrl(f);
         const compressed = await compressImageDataUrl(raw);
-        toAdd.push(compressed);
+        const watermarked = await applyWatermarkToDataUrl(compressed, {
+          text: 'var mıı?',
+          opacity: 0.22,
+          fontSize: 48,
+          color: '#FFFFFF',
+          angle: -30,
+          tileSize: 360,
+          outType: 'image/webp',
+          quality: 0.9,
+        });
+        toAdd.push(watermarked);
       } catch {
         toast.error(`${f.name}: Dosya okunamadı`);
       }
@@ -189,9 +208,9 @@ export default function EditListing() {
                 <label className="block text-sm font-medium">Görseller</label>
                 {images.length > 0 && (
                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-                    {images.map((src, idx) => (
-                      <div key={idx} className="relative group border rounded-md overflow-hidden bg-muted/20">
-                        <img src={src} alt={`İlan görseli ${idx+1}`} className="h-28 w-full object-cover" />
+                      {images.map((src, idx) => (
+                        <div key={idx} className="relative group border rounded-md overflow-hidden bg-muted aspect-square">
+                          <img src={src} alt={`İlan görseli ${idx+1}`} className="w-full h-full object-cover" onContextMenu={(e) => e.preventDefault()} draggable={false} />
                         <button
                           type="button"
                           onClick={() => removeImage(idx)}
@@ -287,6 +306,50 @@ export default function EditListing() {
                     <option value="pickup">Elden Teslim</option>
                     <option value="both">Kargo/Elden</option>
                   </select>
+                </div>
+              </div>
+
+              {/* Privacy: Mask Owner Name */}
+              <div className="space-y-2">
+                <Label>Kullanıcı Adı Gizliliği</Label>
+                <div className="flex items-start space-x-2">
+                  <Checkbox
+                    id="maskOwnerName"
+                    checked={form.maskOwnerName}
+                    onCheckedChange={(checked) =>
+                      setForm((prev) => ({ ...prev, maskOwnerName: checked === true }))
+                    }
+                  />
+                  <div className="grid gap-1.5 leading-none">
+                    <label htmlFor="maskOwnerName" className="text-sm font-medium">
+                      Kullanıcı adımı gizle
+                    </label>
+                    <p className="text-xs text-muted-foreground">
+                      Listelerde yalnızca adınız görünecek; soyad(lar) '**' ile maskelenecek.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Privacy: Teklif Görünürlüğü */}
+              <div className="space-y-2">
+                <Label>Teklif Detayları</Label>
+                <div className="flex items-start space-x-2">
+                  <Checkbox
+                    id="offersPublic"
+                    checked={form.offersPublic}
+                    onCheckedChange={(checked) =>
+                      setForm((prev) => ({ ...prev, offersPublic: checked === true }))
+                    }
+                  />
+                  <div className="grid gap-1.5 leading-none">
+                    <label htmlFor="offersPublic" className="text-sm font-medium">
+                      Teklif detayları herkes tarafından görülebilsin
+                    </label>
+                    <p className="text-xs text-muted-foreground">
+                      Kapalıysa tekliflerin içerik ve satıcı bilgileri yalnızca ilan sahibi tarafından görüntülenir.
+                    </p>
+                  </div>
                 </div>
               </div>
               <Button type="button" className="w-full mt-4" onClick={handleSave}>
