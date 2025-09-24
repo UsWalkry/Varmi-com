@@ -12,6 +12,7 @@ import { ArrowLeft, Plus, LogOut } from 'lucide-react';
 import { DataManager, categories, cities } from '@/lib/mockData';
 import { applyWatermarkToDataUrl } from '@/lib/watermark';
 import AuthModal from '@/components/AuthModal';
+import Stepper from '@/components/ui/stepper';
 import { toast } from 'sonner';
 
 export default function CreateListing() {
@@ -21,19 +22,23 @@ export default function CreateListing() {
   const [currentUser, setCurrentUser] = useState(DataManager.getCurrentUser());
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
+  // Form durumu: tek state üzerinde tutulur; adımlar arasında paylaşılır
   const [formData, setFormData] = useState({
     title: '',
     description: '',
     category: '',
+    city: '',
+    condition: 'any',
+    deliveryType: 'both',
     budgetMin: '',
     budgetMax: '',
-    condition: 'any',
-    city: '',
-    deliveryType: 'both',
     expiresAt: '',
     maskOwnerName: false,
     offersPublic: false
   });
+
+  // Wizard adımı (1: Temel Bilgiler, 2: Detay & Bütçe, 3: Önizleme & Yayınla)
+  const [step, setStep] = useState(1);
 
   // Görseller (data URL'ler)
   const [images, setImages] = useState<string[]>([]);
@@ -42,54 +47,60 @@ export default function CreateListing() {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
+  const validateStep = (currentStep: number): boolean => {
+    // Adım bazlı minimal doğrulamalar
+    if (currentStep === 1) {
+      if (!formData.title || !formData.description || !formData.category || !formData.city) {
+        toast.error('Lütfen başlık, açıklama, kategori ve şehir alanlarını doldurun');
+        return false;
+      }
+    }
+    if (currentStep === 2) {
+      if (!formData.budgetMin || !formData.budgetMax) {
+        toast.error('Lütfen bütçe aralığını girin');
+        return false;
+      }
+      if (parseInt(formData.budgetMin) >= parseInt(formData.budgetMax)) {
+        toast.error('Maksimum bütçe minimumdan büyük olmalıdır');
+        return false;
+      }
+      if (images.length === 0) {
+        toast.error('En az 1 görsel yüklemelisiniz');
+        return false;
+      }
+      // Tarih kontrolü (girildiyse)
+      const todayStr = new Date().toISOString().split('T')[0];
+      const maxDate = new Date();
+      maxDate.setDate(maxDate.getDate() + 30);
+      const maxStr = maxDate.toISOString().split('T')[0];
+      if (formData.expiresAt) {
+        if (formData.expiresAt < todayStr) {
+          toast.error('Bitiş tarihi bugünden önce olamaz');
+          return false;
+        }
+        if (formData.expiresAt > maxStr) {
+          toast.error('Bitiş tarihi max 30 gün sonrası olabilir');
+          return false;
+        }
+      }
+    }
+    return true;
+  };
+
+  const goNext = () => {
+    if (validateStep(step)) setStep(prev => Math.min(prev + 1, 3));
+  };
+  const goBack = () => setStep(prev => Math.max(prev - 1, 1));
+
+  const handleFinalSubmit = async () => {
     if (!currentUser) {
       setIsAuthModalOpen(true);
       return;
     }
-
-    if (!formData.title || !formData.description || !formData.category || 
-        !formData.budgetMin || !formData.budgetMax || !formData.city) {
-      toast.error('Lütfen tüm zorunlu alanları doldurun');
-      return;
-    }
-
-    // En az 1 görsel zorunlu
-    if (images.length === 0) {
-      toast.error('İlan için en az 1 görsel yüklemelisiniz');
-      return;
-    }
-
-    if (parseInt(formData.budgetMin) >= parseInt(formData.budgetMax)) {
-      toast.error('Maksimum bütçe minimum bütçeden büyük olmalıdır');
-      return;
-    }
-
-    // Tarih kuralları: bugün >= min, max = bugün + 30 gün
-    const todayStr = new Date().toISOString().split('T')[0];
-    const maxDate = new Date();
-    maxDate.setDate(maxDate.getDate() + 30);
-    const maxStr = maxDate.toISOString().split('T')[0];
-
-    if (formData.expiresAt) {
-      if (formData.expiresAt < todayStr) {
-        toast.error('İlan bitiş tarihi bugünden önce olamaz');
-        return;
-      }
-      if (formData.expiresAt > maxStr) {
-        toast.error('İlan bitiş tarihi en fazla 30 gün sonrası olabilir');
-        return;
-      }
-    }
-
+    if (!validateStep(1) || !validateStep(2)) return; // güvenlik
     setIsLoading(true);
-
     try {
-      const expiresAt = formData.expiresAt || 
-        new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(); // 30 gün varsayılan
-
+      const expiresAt = formData.expiresAt || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
       const newListing = DataManager.addListing({
         buyerId: currentUser.id,
         buyerName: currentUser.name,
@@ -107,20 +118,15 @@ export default function CreateListing() {
         expiresAt,
         images
       });
-
       toast.success('İlanınız başarıyla oluşturuldu!');
       navigate(`/listing/${newListing.id}`);
     } catch (error) {
-      const err = error as unknown as { message?: string };
-      const msg = err?.message || 'İlan oluşturulurken bir hata oluştu';
-      // Olası localStorage QUOTA hatası için kullanıcı dostu açıklama
       if (/quota|storage/i.test(String(error))) {
-        toast.error('Tarayıcı depolama sınırı aşıldı. Daha az sayıda veya daha küçük boyutta görsel yükleyin.');
+        toast.error('Tarayıcı depolama sınırı aşıldı. Görselleri azaltın veya küçültün.');
       } else {
-        toast.error(msg);
+        toast.error('İlan oluşturulurken bir hata oluştu');
       }
-      // Geliştirici konsolu için log
-      console.error('CreateListing error:', error);
+      console.error('CreateListing final submit error:', error);
     } finally {
       setIsLoading(false);
     }
@@ -223,6 +229,18 @@ export default function CreateListing() {
   defaultExpiryDate.setDate(defaultExpiryDate.getDate() + 30);
   const defaultExpiryString = defaultExpiryDate.toISOString().split('T')[0];
 
+  // Önizleme için durum etiketleri
+  const conditionLabels: Record<string, string> = {
+    new: 'Sıfır',
+    used: '2. El',
+    any: 'Farketmez'
+  };
+  const deliveryTypeLabels: Record<string, string> = {
+    shipping: 'Kargo',
+    pickup: 'Elden Teslim',
+    both: 'Her İkisi de'
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -268,255 +286,226 @@ export default function CreateListing() {
               Aradığınız ürün veya hizmeti detaylı bir şekilde tanımlayın, satıcılar size teklif versin.
             </p>
           </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Images */}
-              <div className="space-y-2">
-                <Label>İlan Görselleri (en az 1 adet) *</Label>
-                <div className="flex flex-col gap-3">
-                  {/* Önizlemeler */}
-                  {images.length > 0 && (
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-                      {images.map((src, idx) => (
-                        <div key={idx} className="relative group border rounded-md overflow-hidden bg-muted aspect-square">
-                          <img src={src} alt={`İlan görseli ${idx+1}`} className="w-full h-full object-cover" onContextMenu={(e) => e.preventDefault()} draggable={false} />
-                          <button
-                            type="button"
-                            onClick={() => removeImage(idx)}
-                            className="absolute top-1 right-1 inline-flex items-center justify-center rounded-full bg-black/60 text-white text-xs px-2 py-1 opacity-0 group-hover:opacity-100 transition"
-                            aria-label="Görseli kaldır"
-                          >
-                            Kaldır
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  <div className="flex items-center gap-2">
-                    <Input
-                      ref={fileInputRef}
-                      type="file"
-                      accept="image/*"
-                      multiple
-                      onChange={(e) => handleFilesSelected(e.target.files)}
-                    />
-                  </div>
-                  <p className="text-xs text-muted-foreground">Sadece görsel dosyaları kabul edilir. Önerilen tek dosya boyutu ≤ 2MB.</p>
-                </div>
-              </div>
+          <CardContent className="space-y-8">
+            <Stepper
+              current={step}
+              steps={[
+                { id: 1, title: 'Temel Bilgiler', description: 'Başlık, açıklama, kategori, şehir' },
+                { id: 2, title: 'Detay & Bütçe', description: 'Görseller, bütçe, tercihler' },
+                { id: 3, title: 'Önizleme', description: 'Kontrol et & yayınla' }
+              ]}
+              onStepClick={(id) => { if (id < step) setStep(id); }}
+              className="mb-4"
+            />
 
-              {/* Title */}
-              <div className="space-y-2">
-                <Label htmlFor="title">İlan Başlığı *</Label>
-                <Input
-                  id="title"
-                  placeholder="Örn: iPhone 15 Pro Max Aranıyor"
-                  value={formData.title}
-                  onChange={(e) => handleInputChange('title', e.target.value)}
-                  required
-                />
-              </div>
-
-              {/* Description */}
-              <div className="space-y-2">
-                <Label htmlFor="description">Açıklama *</Label>
-                <Textarea
-                  id="description"
-                  placeholder="Aradığınız ürün hakkında detaylı bilgi verin. Marka, model, özellikler, durum vb."
-                  rows={4}
-                  value={formData.description}
-                  onChange={(e) => handleInputChange('description', e.target.value)}
-                  required
-                />
-              </div>
-
-              {/* Category and City */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Adım İçeriği */}
+            {step === 1 && (
+              <div className="space-y-6">
                 <div className="space-y-2">
-                  <Label htmlFor="category">Kategori *</Label>
-                  <Select value={formData.category} onValueChange={(value) => handleInputChange('category', value)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Kategori seçin" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {categories.map(category => (
-                        <SelectItem key={category} value={category}>
-                          {category}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Label htmlFor="title">İlan Başlığı *</Label>
+                  <Input
+                    id="title"
+                    placeholder="Örn: iPhone 15 Pro Max Aranıyor"
+                    value={formData.title}
+                    onChange={(e) => handleInputChange('title', e.target.value)}
+                  />
                 </div>
-
                 <div className="space-y-2">
-                  <Label htmlFor="city">Şehir *</Label>
-                  <Select value={formData.city} onValueChange={(value) => handleInputChange('city', value)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Şehir seçin" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {cities.map(city => (
-                        <SelectItem key={city} value={city}>
-                          {city}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Label htmlFor="description">Açıklama *</Label>
+                  <Textarea
+                    id="description"
+                    placeholder="Aradığınız ürün hakkında detaylı bilgi verin. Marka, model, özellikler, durum vb."
+                    rows={4}
+                    value={formData.description}
+                    onChange={(e) => handleInputChange('description', e.target.value)}
+                  />
                 </div>
-              </div>
-
-              {/* Budget Range */}
-              <div className="space-y-2">
-                <Label>Bütçe Aralığı (TL) *</Label>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Kategori *</Label>
+                    <Select value={formData.category} onValueChange={(value) => handleInputChange('category', value)}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Kategori seçin" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {categories.map(category => (
+                          <SelectItem key={category} value={category}>{category}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Şehir *</Label>
+                    <Select value={formData.city} onValueChange={(value) => handleInputChange('city', value)}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Şehir seçin" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {cities.map(c => (
+                          <SelectItem key={c} value={c}>{c}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {step === 2 && (
+              <div className="space-y-6">
+                <div className="space-y-2">
+                  <Label>İlan Görselleri (en az 1) *</Label>
+                  <div className="flex flex-col gap-3">
+                    {images.length > 0 && (
+                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                        {images.map((src, idx) => (
+                          <div key={idx} className="relative group border rounded-md overflow-hidden bg-muted aspect-square">
+                            <img src={src} alt={`İlan görseli ${idx+1}`} className="w-full h-full object-cover" onContextMenu={(e) => e.preventDefault()} draggable={false} />
+                            <button
+                              type="button"
+                              onClick={() => removeImage(idx)}
+                              className="absolute top-1 right-1 inline-flex items-center justify-center rounded-full bg-black/60 text-white text-xs px-2 py-1 opacity-0 group-hover:opacity-100 transition"
+                              aria-label="Görseli kaldır"
+                            >
+                              Kaldır
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    <div className="flex items-center gap-2">
+                      <Input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        onChange={(e) => handleFilesSelected(e.target.files)}
+                      />
+                    </div>
+                    <p className="text-xs text-muted-foreground">Önerilen tek dosya boyutu ≤ 2MB.</p>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Bütçe Aralığı (TL) *</Label>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="budgetMin" className="text-sm">Minimum Bütçe</Label>
+                      <Input id="budgetMin" type="number" placeholder="1000" value={formData.budgetMin} onChange={(e) => handleInputChange('budgetMin', e.target.value)} />
+                    </div>
+                    <div>
+                      <Label htmlFor="budgetMax" className="text-sm">Maksimum Bütçe</Label>
+                      <Input id="budgetMax" type="number" placeholder="5000" value={formData.budgetMax} onChange={(e) => handleInputChange('budgetMax', e.target.value)} />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <Label>Ürün Durumu</Label>
+                  <RadioGroup value={formData.condition} onValueChange={(value) => handleInputChange('condition', value)}>
+                    <div className="flex items-center space-x-2"><RadioGroupItem value="new" id="new" /><Label htmlFor="new">Sıfır</Label></div>
+                    <div className="flex items-center space-x-2"><RadioGroupItem value="used" id="used" /><Label htmlFor="used">2. El</Label></div>
+                    <div className="flex items-center space-x-2"><RadioGroupItem value="any" id="any" /><Label htmlFor="any">Farketmez</Label></div>
+                  </RadioGroup>
+                </div>
+
+                <div className="space-y-3">
+                  <Label>Teslimat Tercihi</Label>
+                  <RadioGroup value={formData.deliveryType} onValueChange={(value) => handleInputChange('deliveryType', value)}>
+                    <div className="flex items-center space-x-2"><RadioGroupItem value="shipping" id="shipping" /><Label htmlFor="shipping">Kargo</Label></div>
+                    <div className="flex items-center space-x-2"><RadioGroupItem value="pickup" id="pickup" /><Label htmlFor="pickup">Elden Teslim</Label></div>
+                    <div className="flex items-center space-x-2"><RadioGroupItem value="both" id="both" /><Label htmlFor="both">Her İkisi de</Label></div>
+                  </RadioGroup>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="expiresAt">İlan Bitiş Tarihi</Label>
+                  <Input id="expiresAt" type="date" value={formData.expiresAt || defaultExpiryString} onChange={(e) => handleInputChange('expiresAt', e.target.value)} min={new Date().toISOString().split('T')[0]} max={defaultExpiryString} />
+                  <p className="text-xs text-muted-foreground">Boş bırakılırsa 30 gün sonra kapanır.</p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <Label>Kullanıcı Adı Gizliliği</Label>
+                    <div className="flex items-start space-x-2">
+                      <Checkbox id="maskOwnerName" checked={formData.maskOwnerName} onCheckedChange={(checked) => setFormData(p => ({ ...p, maskOwnerName: checked === true }))} />
+                      <div className="grid gap-1.5 leading-none">
+                        <label htmlFor="maskOwnerName" className="text-sm font-medium">Kullanıcı adımı gizle</label>
+                        <p className="text-xs text-muted-foreground">Soyad(lar) '**' ile maskelenir.</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Teklif Detayları</Label>
+                    <div className="flex items-start space-x-2">
+                      <Checkbox id="offersPublic" checked={formData.offersPublic} onCheckedChange={(checked) => setFormData(p => ({ ...p, offersPublic: checked === true }))} />
+                      <div className="grid gap-1.5 leading-none">
+                        <label htmlFor="offersPublic" className="text-sm font-medium">Herkes teklifleri görebilsin</label>
+                        <p className="text-xs text-muted-foreground">Kapalıysa sadece siz görürsünüz.</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {step === 3 && (
+              <div className="space-y-6">
+                <div className="space-y-1">
+                  <h3 className="text-lg font-semibold">Önizleme</h3>
+                  <p className="text-sm text-muted-foreground">Bilgileri kontrol edin, gerekirse önceki adımlara dönün.</p>
+                </div>
+                <div className="grid gap-4">
                   <div>
-                    <Label htmlFor="budgetMin" className="text-sm">Minimum Bütçe</Label>
-                    <Input
-                      id="budgetMin"
-                      type="number"
-                      placeholder="1000"
-                      value={formData.budgetMin}
-                      onChange={(e) => handleInputChange('budgetMin', e.target.value)}
-                      required
-                    />
+                    <h4 className="font-medium mb-1">Başlık</h4>
+                    <p className="text-sm text-muted-foreground">{formData.title}</p>
                   </div>
                   <div>
-                    <Label htmlFor="budgetMax" className="text-sm">Maksimum Bütçe</Label>
-                    <Input
-                      id="budgetMax"
-                      type="number"
-                      placeholder="5000"
-                      value={formData.budgetMax}
-                      onChange={(e) => handleInputChange('budgetMax', e.target.value)}
-                      required
-                    />
+                    <h4 className="font-medium mb-1">Açıklama</h4>
+                    <p className="whitespace-pre-wrap text-sm text-muted-foreground">{formData.description}</p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div><span className="font-medium">Kategori:</span> {formData.category}</div>
+                    <div><span className="font-medium">Şehir:</span> {formData.city}</div>
+                    <div><span className="font-medium">Durum:</span> {conditionLabels[formData.condition] || formData.condition}</div>
+                    <div><span className="font-medium">Teslimat:</span> {deliveryTypeLabels[formData.deliveryType] || formData.deliveryType}</div>
+                    <div><span className="font-medium">Bütçe:</span> {formData.budgetMin} - {formData.budgetMax} TL</div>
+                    <div><span className="font-medium">Bitiş:</span> {formData.expiresAt || defaultExpiryString}</div>
+                    <div><span className="font-medium">Ad Gizleme:</span> {formData.maskOwnerName ? 'Evet' : 'Hayır'}</div>
+                    <div><span className="font-medium">Teklifler Herkese Açık:</span> {formData.offersPublic ? 'Evet' : 'Hayır'}</div>
+                  </div>
+                  <div>
+                    <h4 className="font-medium mb-2">Görseller</h4>
+                    {images.length === 0 ? (
+                      <p className="text-xs text-muted-foreground">Görsel yok</p>
+                    ) : (
+                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                        {images.map((src, i) => (
+                          <img key={i} src={src} className="rounded-md border object-cover aspect-square" />
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
+            )}
 
-              {/* Condition */}
-              <div className="space-y-3">
-                <Label>Ürün Durumu</Label>
-                <RadioGroup
-                  value={formData.condition}
-                  onValueChange={(value) => handleInputChange('condition', value)}
-                >
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="new" id="new" />
-                    <Label htmlFor="new">Sıfır</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="used" id="used" />
-                    <Label htmlFor="used">2. El</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="any" id="any" />
-                    <Label htmlFor="any">Farketmez</Label>
-                  </div>
-                </RadioGroup>
-              </div>
-
-              {/* Delivery Type */}
-              <div className="space-y-3">
-                <Label>Teslimat Tercihi</Label>
-                <RadioGroup
-                  value={formData.deliveryType}
-                  onValueChange={(value) => handleInputChange('deliveryType', value)}
-                >
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="shipping" id="shipping" />
-                    <Label htmlFor="shipping">Kargo</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="pickup" id="pickup" />
-                    <Label htmlFor="pickup">Elden Teslim</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="both" id="both" />
-                    <Label htmlFor="both">Her İkisi de Olur</Label>
-                  </div>
-                </RadioGroup>
-              </div>
-
-              {/* Privacy: Mask Owner Name */}
-              <div className="space-y-2">
-                <Label>Kullanıcı Adı Gizliliği</Label>
-                <div className="flex items-start space-x-2">
-                  <Checkbox
-                    id="maskOwnerName"
-                    checked={formData.maskOwnerName}
-                    onCheckedChange={(checked) =>
-                      setFormData((prev) => ({ ...prev, maskOwnerName: checked === true }))
-                    }
-                  />
-                  <div className="grid gap-1.5 leading-none">
-                    <label htmlFor="maskOwnerName" className="text-sm font-medium">
-                      Kullanıcı adımı gizle
-                    </label>
-                    <p className="text-xs text-muted-foreground">
-                      Listelerde yalnızca adınız görünecek; soyad(lar) '**' ile maskelenecek.
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Privacy: Teklif Görünürlüğü */}
-              <div className="space-y-2">
-                <Label>Teklif Detayları</Label>
-                <div className="flex items-start space-x-2">
-                  <Checkbox
-                    id="offersPublic"
-                    checked={formData.offersPublic}
-                    onCheckedChange={(checked) =>
-                      setFormData((prev) => ({ ...prev, offersPublic: checked === true }))
-                    }
-                  />
-                  <div className="grid gap-1.5 leading-none">
-                    <label htmlFor="offersPublic" className="text-sm font-medium">
-                      Teklif detayları herkes tarafından görülebilsin
-                    </label>
-                    <p className="text-xs text-muted-foreground">
-                      Kapalıysa tekliflerin içerik ve satıcı bilgileri yalnızca ilan sahibi tarafından görüntülenir.
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Expiry Date */}
-              <div className="space-y-2">
-                <Label htmlFor="expiresAt">İlan Bitiş Tarihi</Label>
-                <Input
-                  id="expiresAt"
-                  type="date"
-                  value={formData.expiresAt || defaultExpiryString}
-                  onChange={(e) => handleInputChange('expiresAt', e.target.value)}
-                  min={new Date().toISOString().split('T')[0]}
-                  max={defaultExpiryString}
-                />
-                <p className="text-sm text-muted-foreground">
-                  Boş bırakılırsa 30 gün sonra otomatik olarak kapanır (maksimum +30 gün)
-                </p>
-              </div>
-
-              {/* Submit Button */}
-              <div className="flex gap-4">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => navigate('/')}
-                  className="flex-1"
-                >
-                  İptal
+            {/* Navigation Buttons */}
+            <div className="flex flex-col sm:flex-row gap-3 pt-4">
+              <Button type="button" variant="outline" onClick={() => (step === 1 ? navigate('/') : goBack())} className="flex-1">
+                {step === 1 ? 'Vazgeç' : 'Geri'}
+              </Button>
+              {step < 3 && (
+                <Button type="button" onClick={goNext} className="flex-1">
+                  Devam
                 </Button>
-                <Button
-                  type="submit"
-                  disabled={isLoading}
-                  className="flex-1"
-                >
-                  {isLoading ? 'İlan Oluşturuluyor...' : 'İlanı Yayınla'}
+              )}
+              {step === 3 && (
+                <Button type="button" onClick={handleFinalSubmit} disabled={isLoading} className="flex-1">
+                  {isLoading ? 'Yayınlanıyor...' : 'İlanı Yayınla'}
                 </Button>
-              </div>
-            </form>
+              )}
+            </div>
           </CardContent>
         </Card>
       </div>

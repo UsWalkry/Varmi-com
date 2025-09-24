@@ -26,6 +26,7 @@ export default function Dashboard() {
   const [myListings, setMyListings] = useState<Listing[]>([]);
   const [myOffers, setMyOffers] = useState<Offer[]>([]);
   const [favoriteListings, setFavoriteListings] = useState<Listing[]>([]);
+  const [incomingOffers, setIncomingOffers] = useState<Offer[]>([]); // Aldığım teklifler (ilanlarıma gelen)
   const [isLoading, setIsLoading] = useState(true);
 
   const currentUser = DataManager.getCurrentUser();
@@ -46,10 +47,15 @@ export default function Dashboard() {
           listing && listing.buyerId === userId
         );
         
-        // Get user's offers
+        // Get all offers
         const allOffers = DataManager.getAllOffers();
+        // Outgoing: user gave these offers as satıcı
         const userOffers = allOffers.filter(offer => 
           offer && offer.sellerId === userId
+        );
+        // Incoming: offers given by others on user's listings
+        const offersOnMyListings = allOffers.filter(offer => 
+          offer && offer.sellerId !== userId && userListings.some(l => l.id === offer.listingId)
         );
         
         // Get favorite listings
@@ -58,8 +64,9 @@ export default function Dashboard() {
           listing && favoriteIds.includes(listing.id)
         );
 
-        setMyListings(userListings);
-        setMyOffers(userOffers);
+  setMyListings(userListings);
+  setMyOffers(userOffers);
+  setIncomingOffers(offersOnMyListings);
         setFavoriteListings(favorites);
       } catch (error) {
         console.error('Error loading dashboard data:', error);
@@ -104,6 +111,20 @@ export default function Dashboard() {
       setMyOffers(userOffers);
     } catch (error) {
       console.error('Error handling offer:', error);
+    }
+  };
+
+  const handleWithdrawOffer = (offerId: string) => {
+    if (!userId) return;
+    try {
+      DataManager.withdrawOffer(offerId, userId);
+      const allOffers = DataManager.getAllOffers();
+      const userOffers = allOffers.filter(o => o && o.sellerId === userId);
+      const offersOnMyListings = allOffers.filter(o => o && o.sellerId !== userId && myListings.some(l => l.id === o.listingId));
+      setMyOffers(userOffers);
+      setIncomingOffers(offersOnMyListings);
+    } catch (e) {
+      console.error('withdraw error', e);
     }
   };
 
@@ -200,7 +221,7 @@ export default function Dashboard() {
         <Tabs defaultValue="listings" className="space-y-6">
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="listings">İlanlarım ({stats.totalListings})</TabsTrigger>
-            <TabsTrigger value="offers">Teklifler ({stats.totalOffers})</TabsTrigger>
+            <TabsTrigger value="offers">Teklifler</TabsTrigger>
             <TabsTrigger value="favorites">Favoriler ({stats.totalFavorites})</TabsTrigger>
           </TabsList>
 
@@ -285,85 +306,110 @@ export default function Dashboard() {
             </Card>
           </TabsContent>
 
-          {/* Offers Tab */}
+          {/* Offers Tab (split into outgoing/incoming) */}
           <TabsContent value="offers">
             <Card>
               <CardHeader>
-                <CardTitle>Gelen Teklifler</CardTitle>
+                <CardTitle>Teklifler</CardTitle>
               </CardHeader>
               <CardContent>
-                {myOffers.length === 0 ? (
-                  <div className="text-center py-12">
-                    <TrendingUp className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-                    <h3 className="text-lg font-semibold mb-2">Henüz teklif yok</h3>
-                    <p className="text-muted-foreground">
-                      İlanlarına satıcılar teklif vermeye başladığında burada görünecek.
-                    </p>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    {myOffers.map(offer => {
-                      const listing = DataManager.getListings().find(l => l.id === offer.listingId);
-                      return (
-                        <Card key={offer.id}>
-                          <CardContent className="p-6">
-                            <div className="flex items-start justify-between">
-                              <div className="flex-1">
-                                <h4 className="font-semibold mb-2">{listing?.title}</h4>
-                                <div className="flex items-center gap-4 text-sm text-muted-foreground mb-3">
-                                  <div className="flex items-center gap-1">
-                                    <Star className="h-4 w-4" />
-                                    <span>{offer.sellerName}</span>
-                                  </div>
-                                  <div className="flex items-center gap-1">
-                                    <Clock className="h-3 w-3" />
+                <Tabs defaultValue="outgoing" className="space-y-6">
+                  <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="outgoing">Verdiğim Teklifler ({myOffers.length})</TabsTrigger>
+                    <TabsTrigger value="incoming">Aldığım Teklifler ({incomingOffers.length})</TabsTrigger>
+                  </TabsList>
+                  {/* Outgoing Offers */}
+                  <TabsContent value="outgoing" className="space-y-4">
+                    {myOffers.length === 0 ? (
+                      <div className="text-center py-10">
+                        <TrendingUp className="h-14 w-14 text-muted-foreground mx-auto mb-4" />
+                        <h3 className="text-lg font-semibold mb-2">Henüz teklif vermedin</h3>
+                        <p className="text-muted-foreground text-sm max-w-md mx-auto">İlanlara girerek teklif verebilirsin. Verdiğin teklifler burada listelenir.</p>
+                      </div>
+                    ) : (
+                      myOffers.map(offer => {
+                        const listing = DataManager.getListings().find(l => l.id === offer.listingId);
+                        return (
+                          <Card key={offer.id} className="border">
+                            <CardContent className="p-5">
+                              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                                <div className="flex-1 min-w-0">
+                                  <h4 className="font-semibold mb-1 line-clamp-1">{listing?.title}</h4>
+                                  <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground mb-2">
                                     <span>{DataManager.getTimeAgo(offer.createdAt)}</span>
+                                    <span>Durum: {offer.status === 'active' ? 'Bekliyor' : offer.status === 'accepted' ? 'Kabul Edildi' : offer.status === 'rejected' ? 'Reddedildi' : offer.status === 'withdrawn' ? 'Geri Çekildi' : offer.status}</span>
+                                  </div>
+                                  {offer.message && <p className="text-sm text-muted-foreground mb-2 line-clamp-2">{offer.message}</p>}
+                                  <div className="flex items-center gap-4">
+                                    <span className="font-semibold text-green-600">{DataManager.formatPrice(offer.price)}</span>
+                                    {offer.shippingCost > 0 && <span className="text-xs text-muted-foreground">+ {DataManager.formatPrice(offer.shippingCost)} kargo</span>}
                                   </div>
                                 </div>
-                                <p className="text-sm mb-3">{offer.message}</p>
-                                <div className="flex items-center gap-4">
-                                  <span className="font-semibold text-green-600 text-lg">
-                                    {DataManager.formatPrice(offer.price)}
-                                  </span>
-                                  <Badge 
-                                    variant={
-                                      offer.status === 'pending' ? 'secondary' :
-                                      offer.status === 'accepted' ? 'default' : 'destructive'
-                                    }
-                                  >
-                                    {offer.status === 'pending' ? 'Bekliyor' :
-                                     offer.status === 'accepted' ? 'Kabul Edildi' : 'Reddedildi'}
+                                <div className="flex flex-col items-end gap-2 min-w-[130px]">
+                                  <Badge variant={offer.status === 'active' ? 'secondary' : offer.status === 'accepted' ? 'default' : offer.status === 'rejected' ? 'destructive' : offer.status === 'withdrawn' ? 'outline' : 'outline'}>
+                                    {offer.status === 'active' ? 'Bekliyor' : offer.status === 'accepted' ? 'Kabul Edildi' : offer.status === 'rejected' ? 'Reddedildi' : offer.status === 'withdrawn' ? 'Geri Çekildi' : offer.status}
                                   </Badge>
+                                  {offer.status === 'active' && (
+                                    <Button size="sm" variant="outline" className="text-red-600 border-red-300 hover:bg-red-50" onClick={() => handleWithdrawOffer(offer.id)}>Geri Çek</Button>
+                                  )}
                                 </div>
                               </div>
-                              
-                              {offer.status === 'pending' && (
-                                <div className="flex gap-2 ml-4">
-                                  <Button
-                                    size="sm"
-                                    onClick={() => handleOfferAction(offer.id, 'accept')}
-                                    className="bg-green-600 hover:bg-green-700"
-                                  >
-                                    <CheckCircle className="h-4 w-4 mr-1" />
-                                    Kabul Et
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => handleOfferAction(offer.id, 'reject')}
-                                  >
-                                    <XCircle className="h-4 w-4 mr-1" />
-                                    Reddet
-                                  </Button>
+                            </CardContent>
+                          </Card>
+                        );
+                      })
+                    )}
+                  </TabsContent>
+                  {/* Incoming Offers */}
+                  <TabsContent value="incoming" className="space-y-4">
+                    {incomingOffers.length === 0 ? (
+                      <div className="text-center py-10">
+                        <TrendingUp className="h-14 w-14 text-muted-foreground mx-auto mb-4" />
+                        <h3 className="text-lg font-semibold mb-2">İlanlarına henüz teklif gelmedi</h3>
+                        <p className="text-muted-foreground text-sm max-w-md mx-auto">Satıcılar ilanlarına teklif verdiğinde burada görüntülenecek.</p>
+                      </div>
+                    ) : (
+                      incomingOffers.map(offer => {
+                        const listing = DataManager.getListings().find(l => l.id === offer.listingId);
+                        return (
+                          <Card key={offer.id} className="border">
+                            <CardContent className="p-5">
+                              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                                <div className="flex-1 min-w-0">
+                                  <h4 className="font-semibold mb-1 line-clamp-1">{listing?.title}</h4>
+                                  <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground mb-2">
+                                    <span>Satıcı: {offer.sellerName}</span>
+                                    <span>{DataManager.getTimeAgo(offer.createdAt)}</span>
+                                  </div>
+                                  {offer.message && <p className="text-sm text-muted-foreground mb-2 line-clamp-2">{offer.message}</p>}
+                                  <div className="flex items-center gap-4">
+                                    <span className="font-semibold text-green-600">{DataManager.formatPrice(offer.price)}</span>
+                                    {offer.shippingCost > 0 && <span className="text-xs text-muted-foreground">+ {DataManager.formatPrice(offer.shippingCost)} kargo</span>}
+                                  </div>
                                 </div>
-                              )}
-                            </div>
-                          </CardContent>
-                        </Card>
-                      );
-                    })}
-                  </div>
-                )}
+                                <div className="flex flex-col sm:items-end gap-2 min-w-[140px]">
+                                  <Badge variant={offer.status === 'active' ? 'secondary' : offer.status === 'accepted' ? 'default' : offer.status === 'rejected' ? 'destructive' : 'outline'}>
+                                    {offer.status === 'active' ? 'Bekliyor' : offer.status === 'accepted' ? 'Kabul Edildi' : offer.status === 'rejected' ? 'Reddedildi' : offer.status === 'withdrawn' ? 'Geri Çekildi' : offer.status}
+                                  </Badge>
+                                  {offer.status === 'active' && (
+                                    <div className="flex gap-2">
+                                      <Button size="sm" onClick={() => handleOfferAction(offer.id, 'accept')} className="bg-green-600 hover:bg-green-700">
+                                        <CheckCircle className="h-4 w-4 mr-1" /> Kabul
+                                      </Button>
+                                      <Button size="sm" variant="outline" onClick={() => handleOfferAction(offer.id, 'reject')}>
+                                        <XCircle className="h-4 w-4 mr-1" /> Reddet
+                                      </Button>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        );
+                      })
+                    )}
+                  </TabsContent>
+                </Tabs>
               </CardContent>
             </Card>
           </TabsContent>

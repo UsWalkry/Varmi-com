@@ -195,8 +195,8 @@ export interface Offer {
   // Kargo için desi aralığı (yalnızca deliveryType = 'shipping' ise)
   shippingDesi?: DesiBracket;
   shippingCost?: number;
-  etaDays?: number; // teslimat süresi gün
-  status: 'active' | 'pending' | 'accepted' | 'rejected';
+  etaDays?: number; // kargoya teslim süresi (gün)
+  status: 'active' | 'accepted' | 'rejected' | 'withdrawn';
   validUntil?: string; // ISO, teklif geçerlilik tarihi
   message?: string; // backward compatibility
   createdAt: string;
@@ -1226,23 +1226,55 @@ export class DataManager {
   static acceptOffer(offerId: string): boolean {
     const offers = this.getOffers();
     const offerIndex = offers.findIndex(o => o.id === offerId);
-    if (offerIndex !== -1) {
-      offers[offerIndex].status = 'accepted';
-      localStorage.setItem(this.STORAGE_KEYS.OFFERS, JSON.stringify(offers));
-      return true;
+    if (offerIndex === -1) return false;
+    const target = offers[offerIndex];
+    if (target.status !== 'active') return false; // sadece bekleyen
+    // Kabul et
+    offers[offerIndex].status = 'accepted';
+    // Aynı ilana ait diğer aktif teklifleri reddet
+    for (let i = 0; i < offers.length; i++) {
+      if (i === offerIndex) continue;
+      const o = offers[i];
+      if (o.listingId === target.listingId && o.status === 'active') {
+        o.status = 'rejected';
+      }
     }
-    return false;
+    localStorage.setItem(this.STORAGE_KEYS.OFFERS, JSON.stringify(offers));
+    // İlanı kapat
+    const listings = this.getListings();
+    const lidx = listings.findIndex(l => l.id === target.listingId);
+    if (lidx !== -1 && listings[lidx].status === 'active') {
+      listings[lidx].status = 'closed';
+      localStorage.setItem(this.STORAGE_KEYS.LISTINGS, JSON.stringify(listings));
+    }
+    return true;
   }
 
   static rejectOffer(offerId: string): boolean {
     const offers = this.getOffers();
     const offerIndex = offers.findIndex(o => o.id === offerId);
-    if (offerIndex !== -1) {
-      offers[offerIndex].status = 'rejected';
-      localStorage.setItem(this.STORAGE_KEYS.OFFERS, JSON.stringify(offers));
-      return true;
+    if (offerIndex === -1) return false;
+    if (offers[offerIndex].status !== 'active') return false;
+    offers[offerIndex].status = 'rejected';
+    localStorage.setItem(this.STORAGE_KEYS.OFFERS, JSON.stringify(offers));
+    return true;
+  }
+
+  static withdrawOffer(offerId: string, requesterId: string): boolean {
+    const offers = this.getOffers();
+    const idx = offers.findIndex(o => o.id === offerId);
+    if (idx === -1) return false;
+    const offer = offers[idx];
+    if (offer.sellerId !== requesterId) {
+      throw new Error('Bu teklifi geri çekme yetkiniz yok');
     }
-    return false;
+    if (offer.status !== 'active') {
+      // sadece aktif (bekleyen) teklif geri çekilebilir
+      return false;
+    }
+    offers[idx].status = 'withdrawn';
+    localStorage.setItem(this.STORAGE_KEYS.OFFERS, JSON.stringify(offers));
+    return true;
   }
 
   // Offer delete (only seller can delete own offer)

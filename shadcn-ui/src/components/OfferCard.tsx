@@ -1,7 +1,7 @@
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Star, Truck, Clock, Package2, CheckCircle, XCircle, Scale } from 'lucide-react';
+import { Truck, Clock, Package2, CheckCircle, XCircle, Scale } from 'lucide-react';
 import { Offer, DataManager } from '@/lib/mockData';
 import { useState } from 'react';
 import ImageLightbox from '@/components/ImageLightbox';
@@ -76,12 +76,8 @@ export default function OfferCard({
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
           <div className="flex-1">
-            <div className="flex items-center gap-2 mb-2">
+            <div className="flex items-center mb-2">
               <h4 className="font-semibold">{offer.sellerName}</h4>
-              <div className="flex items-center gap-1">
-                <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                <span className="text-sm font-medium">{offer.sellerRating}</span>
-              </div>
             </div>
             {offer.brand && offer.model && (
               <p className="text-sm text-muted-foreground">

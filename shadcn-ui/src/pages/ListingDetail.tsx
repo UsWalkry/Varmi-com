@@ -6,6 +6,8 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { ArrowLeft, MapPin, Clock, Package, Plus, Star, MessageCircle, Heart, Trash2, Eye, EyeOff } from 'lucide-react';
 import { Listing, Offer, DataManager } from '@/lib/mockData';
+import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
 import { maskDisplayName } from '@/lib/utils';
 import OfferCard from '@/components/OfferCard';
 import CreateOfferModal from '@/components/CreateOfferModal';
@@ -47,7 +49,14 @@ export default function ListingDetail() {
   const [isMessageModalOpen, setIsMessageModalOpen] = useState(false);
   const [messageRecipientId, setMessageRecipientId] = useState<string | null>(null);
   const [messageRecipientName, setMessageRecipientName] = useState<string | null>(null);
-  const [sortBy, setSortBy] = useState<'price' | 'rating' | 'date'>('price');
+  // Filtre & sıralama durumları
+  const [sortBy, setSortBy] = useState<'price' | 'date'>('price');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+  const [filterDelivery, setFilterDelivery] = useState<'all' | 'shipping' | 'pickup'>('all');
+  const [filterCondition, setFilterCondition] = useState<'all' | 'new' | 'used'>('all');
+  const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'accepted' | 'rejected' | 'withdrawn'>('all');
+  const [minPrice, setMinPrice] = useState('');
+  const [maxPrice, setMaxPrice] = useState('');
   const [currentUser, setCurrentUser] = useState(DataManager.getCurrentUser());
   const [activeImage, setActiveImage] = useState(0);
 
@@ -63,8 +72,8 @@ export default function ListingDetail() {
 
     setListing(foundListing);
     const listingOffers = DataManager.getOffersForListing(id!);
-    setOffers(sortOffers(listingOffers, sortBy));
-  }, [id, sortBy, navigate]);
+    setOffers(listingOffers);
+  }, [id, navigate]);
 
   useEffect(() => {
     if (id) {
@@ -72,22 +81,24 @@ export default function ListingDetail() {
     }
   }, [id, loadListingAndOffers]);
 
-  
-
-  const sortOffers = (offers: Offer[], sortType: 'price' | 'rating' | 'date') => {
-    return [...offers].sort((a, b) => {
-      switch (sortType) {
-        case 'price':
-          return a.price - b.price;
-        case 'rating':
-          return b.sellerRating - a.sellerRating;
-        case 'date':
-          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-        default:
-          return 0;
-      }
+  // Görüntülenecek teklifleri filtreleyip sıralayan türev liste
+  const displayedOffers = (() => {
+    let list = [...offers];
+    // Filtreler
+    if (filterDelivery !== 'all') list = list.filter(o => o.deliveryType === filterDelivery);
+    if (filterCondition !== 'all') list = list.filter(o => o.condition === filterCondition);
+    if (filterStatus !== 'all') list = list.filter(o => o.status === filterStatus);
+    const min = parseFloat(minPrice); const max = parseFloat(maxPrice);
+    if (!isNaN(min)) list = list.filter(o => o.price >= min);
+    if (!isNaN(max)) list = list.filter(o => o.price <= max);
+    // Sıralama
+    list.sort((a,b) => {
+      let cmp = 0;
+      if (sortBy === 'price') cmp = a.price - b.price; else if (sortBy === 'date') cmp = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+      return sortDir === 'asc' ? cmp : -cmp;
     });
-  };
+    return list;
+  })();
 
   // Sıralama ve kabul/ret aksiyonları kaldırıldı (liste gizli)
 
@@ -368,7 +379,79 @@ export default function ListingDetail() {
                     </div>
                   ) : (
                     <div className="space-y-4">
-                      {offers.map((offer) => (
+                      {/* Filtre & Sıralama Paneli */}
+                      <div className="p-4 border rounded-md bg-muted/30 space-y-3">
+                        <div className="flex flex-wrap gap-3">
+                          <div className="w-40">
+                            <label className="block text-xs font-medium mb-1">Sırala</label>
+                            <Select value={sortBy} onValueChange={(v: 'price' | 'date') => setSortBy(v)}>
+                              <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="price">Fiyat</SelectItem>
+                                <SelectItem value="date">Tarih</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="w-32">
+                            <label className="block text-xs font-medium mb-1">Yön</label>
+                            <Select value={sortDir} onValueChange={(v: 'asc' | 'desc') => setSortDir(v)}>
+                              <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="asc">Artan</SelectItem>
+                                <SelectItem value="desc">Azalan</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="w-40">
+                            <label className="block text-xs font-medium mb-1">Teslimat</label>
+                            <Select value={filterDelivery} onValueChange={(v: 'all' | 'shipping' | 'pickup') => setFilterDelivery(v)}>
+                              <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="all">Hepsi</SelectItem>
+                                <SelectItem value="shipping">Kargo</SelectItem>
+                                <SelectItem value="pickup">Elden</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="w-40">
+                            <label className="block text-xs font-medium mb-1">Durum</label>
+                            <Select value={filterCondition} onValueChange={(v: 'all' | 'new' | 'used') => setFilterCondition(v)}>
+                              <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="all">Hepsi</SelectItem>
+                                <SelectItem value="new">Sıfır</SelectItem>
+                                <SelectItem value="used">2. El</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="w-40">
+                            <label className="block text-xs font-medium mb-1">Teklif Durumu</label>
+                            <Select value={filterStatus} onValueChange={(v: 'all' | 'active' | 'accepted' | 'rejected' | 'withdrawn') => setFilterStatus(v)}>
+                              <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="all">Hepsi</SelectItem>
+                                <SelectItem value="active">Bekliyor</SelectItem>
+                                <SelectItem value="accepted">Kabul</SelectItem>
+                                <SelectItem value="rejected">Red</SelectItem>
+                                <SelectItem value="withdrawn">Geri Çekildi</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="w-32">
+                            <label className="block text-xs font-medium mb-1">Min Fiyat</label>
+                            <Input value={minPrice} onChange={e=>setMinPrice(e.target.value)} type="number" className="h-8 text-xs" placeholder="₺" />
+                          </div>
+                          <div className="w-32">
+                            <label className="block text-xs font-medium mb-1">Max Fiyat</label>
+                            <Input value={maxPrice} onChange={e=>setMaxPrice(e.target.value)} type="number" className="h-8 text-xs" placeholder="₺" />
+                          </div>
+                          <div className="flex items-end">
+                            <Button variant="outline" className="h-8 text-xs" onClick={() => { setFilterDelivery('all'); setFilterCondition('all'); setFilterStatus('all'); setMinPrice(''); setMaxPrice(''); setSortBy('price'); setSortDir('asc'); }}>Sıfırla</Button>
+                          </div>
+                        </div>
+                        <div className="flex justify-end text-[11px] text-muted-foreground">{displayedOffers.length} / {offers.length} teklif gösteriliyor</div>
+                      </div>
+                      {displayedOffers.map((offer) => (
                         <OfferCard
                           key={offer.id}
                           offer={offer}
@@ -455,10 +538,13 @@ export default function ListingDetail() {
                   </div>
                 )}
 
-                <Button variant="outline" className="w-full" onClick={handleMessageOwner}>
-                  <MessageCircle className="h-4 w-4 mr-2" />
-                  İlan Sahibine Mesaj
-                </Button>
+                {/* İlan sahibi kendine mesaj atamasın */}
+                {!isOwner && (
+                  <Button variant="outline" className="w-full" onClick={handleMessageOwner}>
+                    <MessageCircle className="h-4 w-4 mr-2" />
+                    İlan Sahibine Mesaj
+                  </Button>
+                )}
 
                 {currentUser && (
                   <FavoriteButton 
@@ -501,13 +587,13 @@ export default function ListingDetail() {
                 })()}
                 <div className="flex justify-between">
                   <span className="text-sm text-muted-foreground">Toplam Teklif</span>
-                  <span className="font-semibold">{offers.length}</span>
+                  <span className="font-semibold">{displayedOffers.length}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm text-muted-foreground">En Düşük Teklif</span>
                   <span className="font-semibold text-green-600">
-                    {offers.length > 0 
-                      ? DataManager.formatPrice(Math.min(...offers.map(o => o.price)))
+                    {displayedOffers.length > 0 
+                      ? DataManager.formatPrice(Math.min(...displayedOffers.map(o => o.price)))
                       : '-'
                     }
                   </span>
@@ -515,8 +601,8 @@ export default function ListingDetail() {
                 <div className="flex justify-between">
                   <span className="text-sm text-muted-foreground">Ortalama Teklif</span>
                   <span className="font-semibold">
-                    {offers.length > 0 
-                      ? DataManager.formatPrice(offers.reduce((sum, o) => sum + o.price, 0) / offers.length)
+                    {displayedOffers.length > 0 
+                      ? DataManager.formatPrice(displayedOffers.reduce((sum, o) => sum + o.price, 0) / displayedOffers.length)
                       : '-'
                     }
                   </span>
