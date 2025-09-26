@@ -171,6 +171,8 @@ export interface Listing {
   maskOwnerName?: boolean;
   // Teklif detaylarının herkese görünürlüğü (varsayılan: kapalı)
   offersPublic?: boolean;
+  // Diğer kullanıcılar tekliflerden satın alabilsin (ilan sahibi hakkı saklı)
+  offersPurchasable?: boolean;
   status: 'active' | 'closed' | 'expired';
   createdAt: string;
   offerCount: number;
@@ -184,6 +186,8 @@ export interface Offer {
   sellerName: string;
   sellerRating: number;
   price: number;
+  // Teklif edilen ürün adedi (varsayılan 1)
+  quantity?: number;
   // Teklife eklenebilen görseller (max 5)
   images?: string[];
   // Optional details for richer offers
@@ -199,6 +203,8 @@ export interface Offer {
   status: 'active' | 'accepted' | 'rejected' | 'withdrawn';
   validUntil?: string; // ISO, teklif geçerlilik tarihi
   message?: string; // backward compatibility
+  // Bu tekliften diğer kullanıcılarca satılan adet (ilan sahibi hariç)
+  soldToOthers?: number;
   createdAt: string;
 }
 
@@ -1119,18 +1125,22 @@ export class DataManager {
       throw new Error('Teklife en fazla 5 görsel yükleyebilirsiniz');
     }
     const alreadyOffered = offers.some(
-      (o) => o.listingId === offer.listingId && o.sellerId === offer.sellerId
+      (o) => o.listingId === mutableOffer.listingId && o.sellerId === mutableOffer.sellerId
     );
     if (alreadyOffered) {
       throw new Error('Aynı ilana birden fazla teklif verilemez');
     }
 
-    // validUntil doğrulaması (varsa)
-    if (offer.validUntil) {
+  // quantity doğrulaması
+  const qty = Math.max(1, Number(offer.quantity ?? 1));
+  const mutableOffer: Omit<Offer, 'id' | 'createdAt'> = { ...offer, quantity: qty };
+
+  // validUntil doğrulaması (varsa)
+    if (mutableOffer.validUntil) {
       const now = new Date();
       const minValid = new Date(now);
       minValid.setDate(minValid.getDate() + 1); // min 1 gün
-      const valid = new Date(offer.validUntil);
+      const valid = new Date(mutableOffer.validUntil);
       if (valid.getTime() < minValid.getTime()) {
         throw new Error('Teklif en az 1 gün geçerli olmalıdır');
       }
@@ -1144,36 +1154,36 @@ export class DataManager {
 
     // İlanın ürün durumu kısıtı: 'any' değilse teklif condition aynı olmalı
     if (listing.condition !== 'any') {
-      if (!offer.condition || offer.condition !== listing.condition) {
+      if (!mutableOffer.condition || mutableOffer.condition !== listing.condition) {
         throw new Error('Bu ilan için yalnızca ilanla aynı ürün durumu ile teklif verebilirsiniz');
       }
     } else {
       // any ise condition belirtilmeli ve 'new' | 'used' olmalı
-      if (!offer.condition || (offer.condition !== 'new' && offer.condition !== 'used')) {
+      if (!mutableOffer.condition || (mutableOffer.condition !== 'new' && mutableOffer.condition !== 'used')) {
         throw new Error('Ürün durumu geçersiz');
       }
     }
 
     // Teslim şekli kısıtı: ilan 'both' değilse teklif deliveryType aynı olmalı
     if (listing.deliveryType !== 'both') {
-      if (!offer.deliveryType || offer.deliveryType !== listing.deliveryType) {
+      if (!mutableOffer.deliveryType || mutableOffer.deliveryType !== listing.deliveryType) {
         throw new Error('Bu ilan için yalnızca belirtilen teslimat şekliyle teklif verebilirsiniz');
       }
     } else {
       // both ise sadece 'shipping' | 'pickup' olmalı
-      if (!offer.deliveryType || (offer.deliveryType !== 'shipping' && offer.deliveryType !== 'pickup')) {
+      if (!mutableOffer.deliveryType || (mutableOffer.deliveryType !== 'shipping' && mutableOffer.deliveryType !== 'pickup')) {
         throw new Error('Teslimat şekli geçersiz');
       }
     }
 
     // Kargo/desi kuralları
-    if (offer.deliveryType === 'shipping') {
+    if (mutableOffer.deliveryType === 'shipping') {
       // Desi seçimi zorunlu
-      if (!offer.shippingDesi) {
+      if (!mutableOffer.shippingDesi) {
         throw new Error('Kargo gönderiminde desi aralığı seçilmelidir');
       }
-      const range = getDesiRange(offer.shippingDesi);
-      const cost = offer.shippingCost ?? 0;
+      const range = getDesiRange(mutableOffer.shippingDesi);
+      const cost = mutableOffer.shippingCost ?? 0;
       if (!Number.isFinite(cost) || cost <= 0) {
         throw new Error('Geçerli bir kargo ücreti giriniz');
       }
@@ -1187,12 +1197,12 @@ export class DataManager {
           throw new Error(`100+ desi için kargo ücreti en az ${this.formatPrice(range.min)} olmalıdır`);
         }
       }
-    } else if (offer.deliveryType === 'pickup') {
+    } else if (mutableOffer.deliveryType === 'pickup') {
       // Elden teslim: desi ve kargo ücreti olmamalı / 0 olmalı
-      if (offer.shippingDesi) {
+      if (mutableOffer.shippingDesi) {
         throw new Error('Elden teslimde desi seçilemez');
       }
-      if ((offer.shippingCost ?? 0) !== 0) {
+      if ((mutableOffer.shippingCost ?? 0) !== 0) {
         throw new Error('Elden teslimde kargo ücreti 0 olmalıdır');
       }
     }
@@ -1200,13 +1210,14 @@ export class DataManager {
     // Minimum teklif tutarı: ilan bütçe min + kategori bazlı alt kar
     const marginPercent = getMarginPercentFor(listing.category, listing.budgetMin);
     const minAllowed = Math.ceil(listing.budgetMin * (1 + marginPercent));
-    if (offer.price < minAllowed) {
+    if (mutableOffer.price < minAllowed) {
       throw new Error(`Teklif en az ${this.formatPrice(minAllowed)} olmalı (kategori alt kar oranı dahil)`);
     }
 
     const newOffer: Offer = {
-      ...offer,
+      ...mutableOffer,
       id: `offer_${Date.now()}`,
+      soldToOthers: 0,
       createdAt: new Date().toISOString()
     };
     offers.push(newOffer);
@@ -1299,6 +1310,44 @@ export class DataManager {
       localStorage.setItem(this.STORAGE_KEYS.LISTINGS, JSON.stringify(listings));
     }
     return true;
+  }
+
+  // Başkalarının bir teklifi doğrudan satın alması
+  // Kurallar:
+  // - İlan offersPurchasable=true olmalı
+  // - Satın alan kullanıcı ilan sahibi veya teklifi veren olmamalı
+  // - Offer.status === 'active' olmalı ve geçerlilik süresi dolmamış olmalı
+  // - Satılabilir adet = max(0, (offer.quantity||1) - 1 - (offer.soldToOthers||0))
+  //   (1 adet daima ilan sahibinin hakkı olarak ayrılır)
+  static purchaseFromOffer(offerId: string, buyerUserId: string): { success: boolean; message?: string } {
+    const offers = this.getOffers();
+    const idx = offers.findIndex(o => o.id === offerId);
+    if (idx === -1) return { success: false, message: 'Teklif bulunamadı' };
+    const offer = offers[idx];
+    if (offer.status !== 'active') return { success: false, message: 'Teklif aktif değil' };
+
+    const listing = this.getListing(offer.listingId);
+    if (!listing) return { success: false, message: 'İlan bulunamadı' };
+    if (listing.offersPurchasable !== true) return { success: false, message: 'Bu ilanda tekliflerden satın alma açık değil' };
+    // İlan sahibi kendi hakkı haricinde bu akışı kullanmamalı
+    if (buyerUserId === listing.buyerId) return { success: false, message: 'İlan sahibi bu akışı kullanamaz' };
+    // Teklifi veren kişi kendi teklifini buradan satın alamaz
+    if (buyerUserId === offer.sellerId) return { success: false, message: 'Kendi teklifinizi satın alamazsınız' };
+
+    // Geçerlilik
+    if (offer.validUntil && new Date(offer.validUntil).getTime() < Date.now()) {
+      return { success: false, message: 'Teklifin süresi dolmuş' };
+    }
+
+    const qty = offer.quantity ?? 1;
+    const sold = offer.soldToOthers ?? 0;
+    const purchasable = Math.max(0, qty - 1 - sold);
+    if (purchasable <= 0) return { success: false, message: 'Satın alınabilir adet kalmadı' };
+
+    // Satışı kaydet: sadece sayaç arttırıyoruz. Ödeme/teslim akışı bu örnekte yok.
+    offers[idx] = { ...offer, soldToOthers: sold + 1 };
+    localStorage.setItem(this.STORAGE_KEYS.OFFERS, JSON.stringify(offers));
+    return { success: true };
   }
 
   // Messages management

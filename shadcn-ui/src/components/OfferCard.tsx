@@ -13,6 +13,7 @@ interface OfferCardProps {
   onReject?: (offerId: string) => void;
   onMessage?: (offerId: string) => void;
   onWithdraw?: (offerId: string) => void; // teklif sahibi için sil/geri çek
+  onPurchase?: (offerId: string) => void; // diğer kullanıcı için satın al
 }
 
 export default function OfferCard({ 
@@ -22,6 +23,7 @@ export default function OfferCard({
   onReject, 
   onMessage,
   onWithdraw,
+  onPurchase,
 }: OfferCardProps) {
   
   const getConditionText = (condition: string) => {
@@ -70,6 +72,15 @@ export default function OfferCard({
   const totalPrice = offer.price + offer.shippingCost;
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState(0);
+  const [descExpanded, setDescExpanded] = useState(false);
+
+  const MAX_DESC = 240;
+  const fullDesc = offer.description || '';
+  const isLongDesc = fullDesc.length > MAX_DESC;
+  const shownDesc = !isLongDesc || descExpanded ? fullDesc : truncateAtWord(fullDesc, MAX_DESC);
+  const qty = offer.quantity ?? 1;
+  const soldToOthers = offer.soldToOthers ?? 0;
+  const purchasableLeft = Math.max(0, qty - 1 - soldToOthers);
 
   return (
     <Card className="hover:shadow-md transition-shadow">
@@ -132,10 +143,27 @@ export default function OfferCard({
             </Badge>
           </div>
 
-          {/* Description */}
-          <p className="text-sm text-muted-foreground">
-            {offer.description}
-          </p>
+          {/* Quantity info */}
+          <div className="text-xs text-muted-foreground">
+            Toplam adet: {qty} • Diğer kullanıcılara açık: {Math.max(0, qty - 1)} • Kalan: {purchasableLeft}
+          </div>
+
+          {/* Description with show more/less */}
+          {fullDesc && (
+            <div className="text-sm text-muted-foreground">
+              {shownDesc}
+              {isLongDesc && (
+                <button
+                  type="button"
+                  aria-expanded={descExpanded}
+                  className="ml-2 text-primary hover:underline font-medium"
+                  onClick={() => setDescExpanded((v) => !v)}
+                >
+                  {descExpanded ? 'Daha az göster' : 'Daha fazla göster'}
+                </button>
+              )}
+            </div>
+          )}
 
           {/* Images (optional) */}
           {offer.images && offer.images.length > 0 && (
@@ -213,6 +241,17 @@ export default function OfferCard({
         </CardFooter>
       )}
 
+      {/* Diğer kullanıcılar için satın alma aksiyonu (opsiyonel) */}
+      {onPurchase && offer.status === 'active' && purchasableLeft > 0 && (
+        <CardFooter className="pt-0">
+          <div className="flex w-full">
+            <Button className="ml-auto" size="sm" onClick={() => onPurchase?.(offer.id)}>
+              <Truck className="h-4 w-4 mr-1" /> Bu Teklifi Satın Al
+            </Button>
+          </div>
+        </CardFooter>
+      )}
+
       {/* Teklif sahibi için Sil/Geri Çek */}
       {offer.status === 'active' && onWithdraw && (
         <CardFooter className="pt-0">
@@ -230,4 +269,12 @@ export default function OfferCard({
       )}
     </Card>
   );
+}
+
+function truncateAtWord(text: string, limit: number): string {
+  if (text.length <= limit) return text;
+  const slice = text.slice(0, limit);
+  const lastSpace = slice.lastIndexOf(' ');
+  const safe = lastSpace > 0 ? slice.slice(0, lastSpace) : slice;
+  return safe.replace(/[\s,.!?:;-]+$/, '') + '…';
 }

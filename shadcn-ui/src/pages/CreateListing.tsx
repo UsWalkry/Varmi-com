@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -34,7 +34,8 @@ export default function CreateListing() {
     budgetMax: '',
     expiresAt: '',
     maskOwnerName: false,
-    offersPublic: false
+    offersPublic: false,
+    offersPurchasable: false
   });
 
   // Wizard adımı (1: Temel Bilgiler, 2: Detay & Bütçe, 3: Önizleme & Yayınla)
@@ -42,6 +43,13 @@ export default function CreateListing() {
 
   // Görseller (data URL'ler)
   const [images, setImages] = useState<string[]>([]);
+
+  // offersPurchasable seçilirse offersPublic otomatik işaretlensin
+  useEffect(() => {
+    if (formData.offersPurchasable && !formData.offersPublic) {
+      setFormData(prev => ({ ...prev, offersPublic: true }));
+    }
+  }, [formData.offersPurchasable, formData.offersPublic]);
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -114,6 +122,7 @@ export default function CreateListing() {
         deliveryType: formData.deliveryType as 'shipping' | 'pickup' | 'both',
         maskOwnerName: formData.maskOwnerName,
         offersPublic: formData.offersPublic,
+        offersPurchasable: formData.offersPurchasable,
         status: 'active',
         expiresAt,
         images
@@ -436,12 +445,19 @@ export default function CreateListing() {
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <Label>Teklif Detayları</Label>
+                    <Label>Teklif Görünürlüğü</Label>
                     <div className="flex items-start space-x-2">
                       <Checkbox id="offersPublic" checked={formData.offersPublic} onCheckedChange={(checked) => setFormData(p => ({ ...p, offersPublic: checked === true }))} />
                       <div className="grid gap-1.5 leading-none">
                         <label htmlFor="offersPublic" className="text-sm font-medium">Herkes teklifleri görebilsin</label>
                         <p className="text-xs text-muted-foreground">Kapalıysa sadece siz görürsünüz.</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start space-x-2 mt-3">
+                      <Checkbox id="offersPurchasable" checked={formData.offersPurchasable} onCheckedChange={(checked) => setFormData(p => ({ ...p, offersPurchasable: checked === true }))} />
+                      <div className="grid gap-1.5 leading-none">
+                        <label htmlFor="offersPurchasable" className="text-sm font-medium">Diğer kullanıcılar tekliften satın alabilsin</label>
+                        <p className="text-xs text-muted-foreground">Teklif sahibi 1’den fazla adet girdiyse, 1 adet daima sizin hakkınız olarak ayrılır.</p>
                       </div>
                     </div>
                   </div>

@@ -28,6 +28,7 @@ export default function CreateOfferModal({
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [formData, setFormData] = useState({
     price: '',
+    quantity: '1',
     condition: 'new',
     brand: '',
     model: '',
@@ -81,6 +82,11 @@ export default function CreateOfferModal({
         toast.error('Geçerli bir fiyat giriniz');
         return false;
       }
+      const qty = parseInt(formData.quantity);
+      if (!Number.isFinite(qty) || qty < 1) {
+        toast.error('Adet en az 1 olmalıdır');
+        return false;
+      }
       const minAllowed = DataManager.getMinAllowedOfferPriceForListing(listing);
       const price = parseFloat(formData.price);
       if (price < minAllowed || price > listing.budgetMax) {
@@ -126,7 +132,8 @@ export default function CreateOfferModal({
     if (!validateStep(1) || !validateStep(2)) return;
     const existing = DataManager.getOffersForListing(listing.id).some(o => o.sellerId === currentUser.id);
     if (existing) { toast.error('Bu ilana zaten bir teklif verdiniz'); return; }
-    const price = parseFloat(formData.price);
+  const price = parseFloat(formData.price);
+  const quantity = Math.max(1, parseInt(formData.quantity));
     const shippingCost = parseFloat(formData.shippingCost);
     const etaDays = parseInt(formData.etaDays);
     // validUntil ISO hesapla
@@ -140,12 +147,13 @@ export default function CreateOfferModal({
     }
     setIsSubmitting(true);
     try {
-      DataManager.addOffer({
+  DataManager.addOffer({
         listingId: listing.id,
         sellerId: currentUser.id,
         sellerName: currentUser.name,
         sellerRating: currentUser.rating,
-        price,
+    price,
+    quantity,
         condition: formData.condition as 'new' | 'used',
         brand: formData.brand || undefined,
         model: formData.model || undefined,
@@ -161,7 +169,7 @@ export default function CreateOfferModal({
       toast.success('Teklifiniz başarıyla gönderildi!');
       onOfferCreated();
       onClose();
-  setFormData({ price: '', condition: 'new', brand: '', model: '', description: '', deliveryType: 'shipping', shippingDesi: '', shippingPackage: '', largeWidth: '', largeHeight: '', largeLength: '', computedDesi: '', shippingCost: '0', etaDays: '3', validUntil: '' });
+  setFormData({ price: '', quantity: '1', condition: 'new', brand: '', model: '', description: '', deliveryType: 'shipping', shippingDesi: '', shippingPackage: '', largeWidth: '', largeHeight: '', largeLength: '', computedDesi: '', shippingCost: '0', etaDays: '3', validUntil: '' });
       setImages([]);
       setStep(1);
     } catch (e) {
@@ -333,6 +341,11 @@ export default function CreateOfferModal({
                   <Label htmlFor="price">Fiyat (TL) *</Label>
                   <Input id="price" type="number" min="1" step="0.01" value={formData.price} onChange={(e) => setFormData({ ...formData, price: e.target.value })} />
                   <p className="text-xs text-muted-foreground mt-1">Min: {DataManager.formatPrice(uiMinAllowed)} / Max: {DataManager.formatPrice(listing.budgetMax)}</p>
+                </div>
+                <div>
+                  <Label htmlFor="quantity">Adet *</Label>
+                  <Input id="quantity" type="number" min="1" value={formData.quantity} onChange={(e) => setFormData({ ...formData, quantity: e.target.value })} />
+                  <p className="text-[11px] text-muted-foreground mt-1">! İlan sahibi daima 1 adet öncelik hakkına sahiptir. Diğer kullanıcılar yalnızca fazla adetleri satın alabilir.</p>
                 </div>
                 <div>
                   <Label>Ürün Durumu *</Label>

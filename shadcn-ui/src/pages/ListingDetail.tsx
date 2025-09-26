@@ -195,6 +195,24 @@ export default function ListingDetail() {
     setIsMessageModalOpen(true);
   };
 
+  const handlePurchaseOffer = (offerId: string) => {
+    if (!currentUser || !listing) {
+      setIsAuthModalOpen(true);
+      return;
+    }
+    if (currentUser.id === listing.buyerId) {
+      toast.error('İlan sahibi bu akışı kullanamaz');
+      return;
+    }
+    const res = DataManager.purchaseFromOffer(offerId, currentUser.id);
+    if (res.success) {
+      toast.success('Tekliften başarıyla satın alındı');
+      loadListingAndOffers();
+    } else {
+      toast.error(res.message || 'Satın alma başarısız');
+    }
+  };
+
   if (!listing) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -210,7 +228,7 @@ export default function ListingDetail() {
   const alreadyOffered = currentUser ? DataManager.getOffersForListing(listing.id).some(o => o.sellerId === currentUser.id) : false;
   const myOfferId = currentUser ? offers.find(o => o.sellerId === currentUser.id)?.id : undefined;
   const canMakeOffer = currentUser && !isOwner && listing.status === 'active' && !alreadyOffered;
-  const canShowOffers = (listing.offersPublic === true) || isOwner;
+  const canShowOffers = (listing.offersPublic === true) || isOwner || listing.offersPurchasable === true;
 
   const getConditionText = (condition: string) => {
     switch (condition) {
@@ -460,6 +478,13 @@ export default function ListingDetail() {
                           onReject={isOwner ? handleRejectOffer : undefined}
                           onMessage={isOwner ? handleMessageToUserFromOffer : undefined}
                           onWithdraw={offer.sellerId === currentUser?.id ? handleWithdrawOffer : undefined}
+                          onPurchase={
+                            !isOwner &&
+                            listing.offersPurchasable &&
+                            offer.sellerId !== currentUser?.id
+                              ? handlePurchaseOffer
+                              : undefined
+                          }
                         />
                       ))}
                     </div>
