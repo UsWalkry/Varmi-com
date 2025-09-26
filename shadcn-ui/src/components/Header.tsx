@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { MessageCircle, User, LogOut, BarChart3 } from 'lucide-react';
+import { MessageCircle, User, LogOut, BarChart3, ShoppingCart } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { DataManager } from '@/lib/mockData';
 import MessageCenter from './MessageCenter';
@@ -23,12 +23,14 @@ export default function Header() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [user, setUser] = useState(DataManager.getCurrentUser());
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [cartCount, setCartCount] = useState(0);
 
   useEffect(() => {
     const updateState = () => {
       const current = DataManager.getCurrentUser();
       setUser(current);
       setUnreadCount(current ? DataManager.getUnreadMessageCount(current.id) : 0);
+      setCartCount(current ? DataManager.getCart(current.id).reduce((s, i)=>s + i.quantity, 0) : 0);
     };
 
     updateState();
@@ -47,10 +49,13 @@ export default function Header() {
     const clearAvatarPreview = () => setAvatarPreview(null);
     window.addEventListener('user-avatar-preview', handleAvatarPreview as EventListener);
     window.addEventListener('user-avatar-preview-clear', clearAvatarPreview as EventListener);
+    const onCart = () => updateState();
+    window.addEventListener('cart-updated', onCart);
     return () => {
       window.removeEventListener('storage', updateState);
       window.removeEventListener('user-updated', updateState as EventListener);
       window.removeEventListener('messages-updated', updateState as EventListener);
+      window.removeEventListener('cart-updated', onCart);
       window.removeEventListener('user-avatar-preview', handleAvatarPreview as EventListener);
       window.removeEventListener('user-avatar-preview-clear', clearAvatarPreview as EventListener);
     };
@@ -90,6 +95,9 @@ export default function Header() {
               <Button type="button" variant="ghost" asChild>
                 <Link to="/">Ana Sayfa</Link>
               </Button>
+              <Button type="button" variant="ghost" asChild>
+                <Link to="/create-product">Ürün Ekle</Link>
+              </Button>
               <Button type="button" variant="default" size="lg" asChild className="shadow-md shadow-blue-200 hover:shadow-lg hover:shadow-blue-300">
                 <Link to="/create-listing">İlan Ver</Link>
               </Button>
@@ -97,7 +105,17 @@ export default function Header() {
 
             {/* User Actions */}
             <div className="flex items-center space-x-4">
+              {/* Cart */}
+              <Button type="button" variant="outline" size="sm" onClick={()=>navigate('/cart')} className="relative">
+                <ShoppingCart className="h-4 w-4" />
+                {cartCount > 0 && (
+                  <span className="absolute -top-2 -right-2 text-[10px] bg-green-600 text-white rounded-full px-1.5 py-0.5">{cartCount}</span>
+                )}
+              </Button>
               {/* Mobile CTA: her sayfada görünür belirgin İlan Ver butonu */}
+              <Button type="button" variant="outline" className="md:hidden" asChild>
+                <Link to="/create-product">Ürün Ekle</Link>
+              </Button>
               <Button type="button" className="md:hidden" asChild>
                 <Link to="/create-listing">İlan Ver</Link>
               </Button>

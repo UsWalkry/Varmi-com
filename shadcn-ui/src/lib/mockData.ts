@@ -57,8 +57,14 @@ async function hmacSha1(keyBytes: Uint8Array, msg: Uint8Array): Promise<Uint8Arr
   if (!cryptoObj || !cryptoObj.subtle) {
     throw new Error('WebCrypto not available');
   }
-  const key = await cryptoObj.subtle.importKey('raw', keyBytes, { name: 'HMAC', hash: 'SHA-1' }, false, ['sign']);
-  const sig = await cryptoObj.subtle.sign('HMAC', key, msg);
+  // WebCrypto, ArrayBuffer bekler; TypedArray'ların alttaki buffer'ını slice ile saf ArrayBuffer'a dönüştürelim
+  const keyBuf = keyBytes.buffer.slice(
+    keyBytes.byteOffset,
+    keyBytes.byteOffset + keyBytes.byteLength
+  ) as ArrayBuffer;
+  const msgBuf = msg.buffer.slice(msg.byteOffset, msg.byteOffset + msg.byteLength) as ArrayBuffer;
+  const key = await cryptoObj.subtle.importKey('raw', keyBuf, { name: 'HMAC', hash: 'SHA-1' }, false, ['sign']);
+  const sig = await cryptoObj.subtle.sign('HMAC', key, msgBuf);
   return new Uint8Array(sig);
 }
 
@@ -200,6 +206,44 @@ export interface Offer {
   validUntil?: string; // ISO, teklif geçerlilik tarihi
   message?: string; // backward compatibility
   createdAt: string;
+}
+
+// Basit ürün modeli (mağaza ürünü). İlanlardan bağımsız.
+export interface Product {
+  id: string;
+  title: string;
+  description: string; // HTML veya düz metin
+  images: string[]; // data URL veya uzak URL
+  category: string;
+  price: number;
+  condition: 'new' | 'used';
+  city: string;
+  deliveryType: 'shipping' | 'pickup' | 'both';
+  sellerId: string;
+  sellerName: string;
+  stock: number;
+  status: 'active' | 'inactive';
+  createdAt: string;
+  // Görsel amaçlı/opsiyonel alanlar
+  rating?: number;
+  ratingCount?: number;
+  inCartsCount?: number;
+  isBestSeller?: boolean;
+  verticalLabel?: string;
+  promoText?: string;
+  favoritesCount?: number;
+  oldPrice?: number;
+  discountPercent?: number;
+  couponText?: string;
+  fastDelivery?: boolean;
+  freeShipping?: boolean;
+  extraCartDiscountText?: string;
+  campaignBannerText?: string;
+  otherSellers?: Array<{ sellerName: string; price: number; shipping?: string; stock?: number }>;
+  reviews?: Array<{ userName: string; rating: number; comment: string; date?: string }>;
+  specs?: Array<{ label: string; value: string }>;
+  highlights?: string[];
+  disclaimers?: string[];
 }
 
 export interface Message {
@@ -582,6 +626,34 @@ const mockMessages: Message[] = [];
 
 // DataManager class with all static methods
 export class DataManager {
+  // Test kullanıcılarını seed et (CURRENT_USER'a dokunmadan). Aynı email varsa atla.
+  static seedTestUsers(usersToSeed: Array<{ name: string; email: string; city: string; phone?: string }>): number {
+    this.initializeData();
+    const users = this.getUsers();
+    let added = 0;
+    for (const u of usersToSeed || []) {
+      if (!u || !u.email) continue;
+      const exists = users.find((x) => x.email === u.email);
+      if (exists) continue;
+      const newUser: User = {
+        id: `user_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+        name: u.name || u.email.split('@')[0],
+        email: u.email,
+        city: u.city || 'İstanbul',
+        phone: u.phone,
+        rating: 0,
+        averageRating: 0,
+        reviewCount: 0,
+        createdAt: new Date().toISOString(),
+      };
+      users.push(newUser);
+      added++;
+    }
+    if (added > 0) {
+      localStorage.setItem(this.STORAGE_KEYS.USERS, JSON.stringify(users));
+    }
+    return added;
+  }
   // Mesaj yönetimi
   // Sadece aşağıdaki versiyonlar kalacak
   static getAllMessages(): Message[] {
@@ -670,10 +742,14 @@ export class DataManager {
     OFFERS: 'offers',
     MESSAGES: 'messages',
     FAVORITES: 'favorites',
+    PRODUCT_FAVORITES: 'productFavorites', // map: userId -> productId[]
+    FOLLOWING: 'following', // map: userId -> sellerIds[]
+    CARTS: 'carts', // map: userId -> CartItem[]
     SESSIONS: 'sessions', // map: userId -> Session[]
     LOGIN_LOGS: 'loginLogs', // map: userId -> LoginLog[]
     PENDING_LOGIN: 'pendingLogin', // { userId: string, createdAt: string }
     PENDING_AUTH_SETUP: 'pendingAuthSetup', // map: userId -> secret
+    PRODUCTS: 'products',
   };
 
   // Sessions and login logs
@@ -720,8 +796,20 @@ export class DataManager {
     if (!localStorage.getItem(this.STORAGE_KEYS.FAVORITES)) {
       localStorage.setItem(this.STORAGE_KEYS.FAVORITES, JSON.stringify({}));
     }
+    if (!localStorage.getItem(this.STORAGE_KEYS.PRODUCT_FAVORITES)) {
+      localStorage.setItem(this.STORAGE_KEYS.PRODUCT_FAVORITES, JSON.stringify({}));
+    }
+    if (!localStorage.getItem(this.STORAGE_KEYS.FOLLOWING)) {
+      localStorage.setItem(this.STORAGE_KEYS.FOLLOWING, JSON.stringify({}));
+    }
+    if (!localStorage.getItem(this.STORAGE_KEYS.CARTS)) {
+      localStorage.setItem(this.STORAGE_KEYS.CARTS, JSON.stringify({}));
+    }
     if (!localStorage.getItem(this.STORAGE_KEYS.PENDING_AUTH_SETUP)) {
       localStorage.setItem(this.STORAGE_KEYS.PENDING_AUTH_SETUP, JSON.stringify({}));
+    }
+    if (!localStorage.getItem(this.STORAGE_KEYS.PRODUCTS)) {
+      localStorage.setItem(this.STORAGE_KEYS.PRODUCTS, JSON.stringify([]));
     }
   }
 
@@ -733,7 +821,11 @@ export class DataManager {
     localStorage.setItem(this.STORAGE_KEYS.OFFERS, JSON.stringify([]));
     localStorage.setItem(this.STORAGE_KEYS.MESSAGES, JSON.stringify([]));
     localStorage.setItem(this.STORAGE_KEYS.FAVORITES, JSON.stringify({}));
+    localStorage.setItem(this.STORAGE_KEYS.PRODUCT_FAVORITES, JSON.stringify({}));
+    localStorage.setItem(this.STORAGE_KEYS.FOLLOWING, JSON.stringify({}));
+    localStorage.setItem(this.STORAGE_KEYS.CARTS, JSON.stringify({}));
     localStorage.setItem('reviews', JSON.stringify([]));
+    localStorage.setItem(this.STORAGE_KEYS.PRODUCTS, JSON.stringify([]));
   }
 
   // User management
@@ -1402,6 +1494,126 @@ export class DataManager {
     return allListings.filter(listing => favoriteIds.includes(listing.id));
   }
 
+  // Product favorites management
+  static getProductFavorites(userId: string): string[] {
+    this.initializeData();
+    const raw = localStorage.getItem(this.STORAGE_KEYS.PRODUCT_FAVORITES);
+    const map = raw ? (JSON.parse(raw) as Record<string, string[]>) : {};
+    return map[userId] || [];
+  }
+
+  static addProductToFavorites(userId: string, productId: string) {
+    const raw = localStorage.getItem(this.STORAGE_KEYS.PRODUCT_FAVORITES);
+    const map = raw ? (JSON.parse(raw) as Record<string, string[]>) : {};
+    const arr = map[userId] || [];
+    if (!arr.includes(productId)) arr.push(productId);
+    map[userId] = arr;
+    localStorage.setItem(this.STORAGE_KEYS.PRODUCT_FAVORITES, JSON.stringify(map));
+  }
+
+  static removeProductFromFavorites(userId: string, productId: string): boolean {
+    const raw = localStorage.getItem(this.STORAGE_KEYS.PRODUCT_FAVORITES);
+    const map = raw ? (JSON.parse(raw) as Record<string, string[]>) : {};
+    const arr = map[userId] || [];
+    const idx = arr.indexOf(productId);
+    if (idx > -1) {
+      arr.splice(idx, 1);
+      map[userId] = arr;
+      localStorage.setItem(this.STORAGE_KEYS.PRODUCT_FAVORITES, JSON.stringify(map));
+      return true;
+    }
+    return false;
+  }
+
+  static isProductFavorite(userId: string, productId: string): boolean {
+    return this.getProductFavorites(userId).includes(productId);
+  }
+
+  // Following sellers
+  static getFollowing(userId: string): string[] {
+    const raw = localStorage.getItem(this.STORAGE_KEYS.FOLLOWING);
+    const map = raw ? (JSON.parse(raw) as Record<string, string[]>) : {};
+    return map[userId] || [];
+  }
+
+  static followSeller(userId: string, sellerId: string) {
+    const raw = localStorage.getItem(this.STORAGE_KEYS.FOLLOWING);
+    const map = raw ? (JSON.parse(raw) as Record<string, string[]>) : {};
+    const arr = map[userId] || [];
+    if (!arr.includes(sellerId)) arr.push(sellerId);
+    map[userId] = arr;
+    localStorage.setItem(this.STORAGE_KEYS.FOLLOWING, JSON.stringify(map));
+  }
+
+  static unfollowSeller(userId: string, sellerId: string): boolean {
+    const raw = localStorage.getItem(this.STORAGE_KEYS.FOLLOWING);
+    const map = raw ? (JSON.parse(raw) as Record<string, string[]>) : {};
+    const arr = map[userId] || [];
+    const idx = arr.indexOf(sellerId);
+    if (idx > -1) {
+      arr.splice(idx, 1);
+      map[userId] = arr;
+      localStorage.setItem(this.STORAGE_KEYS.FOLLOWING, JSON.stringify(map));
+      return true;
+    }
+    return false;
+  }
+
+  static isFollowingSeller(userId: string, sellerId: string): boolean {
+    return this.getFollowing(userId).includes(sellerId);
+  }
+
+  // Cart management
+  static getCart(userId: string): Array<{ productId: string; quantity: number; addedAt: string }> {
+    this.initializeData();
+    const raw = localStorage.getItem(this.STORAGE_KEYS.CARTS);
+    const map = raw ? (JSON.parse(raw) as Record<string, Array<{ productId: string; quantity: number; addedAt: string }>>) : {};
+    return map[userId] || [];
+  }
+
+  static saveCart(userId: string, items: Array<{ productId: string; quantity: number; addedAt: string }>) {
+    const raw = localStorage.getItem(this.STORAGE_KEYS.CARTS);
+    const map = raw ? (JSON.parse(raw) as Record<string, Array<{ productId: string; quantity: number; addedAt: string }>>) : {};
+    map[userId] = items;
+    localStorage.setItem(this.STORAGE_KEYS.CARTS, JSON.stringify(map));
+    try { window.dispatchEvent(new Event('cart-updated')); } catch (e) {
+      // ignore in non-browser contexts
+    }
+  }
+
+  static addToCart(userId: string, productId: string, quantity: number = 1) {
+    if (!Number.isFinite(quantity) || quantity <= 0) return;
+    const items = this.getCart(userId);
+    const idx = items.findIndex(i => i.productId === productId);
+    if (idx === -1) {
+      items.push({ productId, quantity, addedAt: new Date().toISOString() });
+    } else {
+      items[idx].quantity += quantity;
+    }
+    this.saveCart(userId, items);
+  }
+
+  static updateCartItem(userId: string, productId: string, quantity: number) {
+    const items = this.getCart(userId);
+    const idx = items.findIndex(i => i.productId === productId);
+    if (idx === -1) return;
+    if (quantity <= 0) {
+      items.splice(idx, 1);
+    } else {
+      items[idx].quantity = quantity;
+    }
+    this.saveCart(userId, items);
+  }
+
+  static removeFromCart(userId: string, productId: string) {
+    const items = this.getCart(userId).filter(i => i.productId !== productId);
+    this.saveCart(userId, items);
+  }
+
+  static clearCart(userId: string) {
+    this.saveCart(userId, []);
+  }
+
   // Utility functions
   static formatPrice(price: number): string {
     return new Intl.NumberFormat('tr-TR', {
@@ -1471,6 +1683,90 @@ export class DataManager {
 
   static getShippingCostRangeForDesi(bracket: DesiBracket): { min: number; max?: number } {
     return getDesiRange(bracket);
+  }
+
+  // Products management (mağaza ürünleri)
+  static getProducts(): Product[] {
+    this.initializeData();
+    const raw = localStorage.getItem(this.STORAGE_KEYS.PRODUCTS);
+    return raw ? (JSON.parse(raw) as Product[]) : [];
+  }
+
+  static addProduct(product: Omit<Product, 'id' | 'createdAt' | 'status'>): Product {
+    this.initializeData();
+    const products = this.getProducts();
+    const imgs = product.images || [];
+    if (!imgs.length) throw new Error('Ürün için en az 1 görsel yüklemelisiniz');
+    if (!product.title?.trim()) throw new Error('Başlık zorunludur');
+    if (!product.description?.trim()) throw new Error('Açıklama zorunludur');
+    if (!Number.isFinite(product.price) || product.price <= 0) throw new Error('Geçerli bir fiyat giriniz');
+    const stock = Math.max(1, product.stock || 1);
+    const newProduct: Product = {
+      ...product,
+      id: `product_${Date.now()}`,
+      stock,
+      status: 'active',
+      createdAt: new Date().toISOString(),
+    };
+    products.push(newProduct);
+    localStorage.setItem(this.STORAGE_KEYS.PRODUCTS, JSON.stringify(products));
+    return newProduct;
+  }
+
+  static getProduct(id: string): Product | undefined {
+    return this.getProducts().find((p) => p.id === id);
+  }
+
+  // Backward compatibility alias
+  static getProductById(id: string): Product | undefined {
+    return this.getProduct(id);
+  }
+
+  static searchProducts(
+    query: string = '',
+    filters: { category?: string; city?: string; condition?: 'new' | 'used' } = {}
+  ): Product[] {
+    let products = this.getProducts().filter((p) => p.status === 'active');
+    if (query) {
+      const q = query.toLowerCase();
+      products = products.filter(
+        (p) => p.title.toLowerCase().includes(q) || p.description.toLowerCase().includes(q)
+      );
+    }
+    if (filters.category && filters.category !== 'all') {
+      products = products.filter((p) => p.category === filters.category);
+    }
+    if (filters.city && filters.city !== 'all') {
+      products = products.filter((p) => p.city === filters.city);
+    }
+    if (filters.condition) {
+      products = products.filter((p) => p.condition === filters.condition);
+    }
+    return products;
+  }
+
+  static purchaseProduct(
+    productId: string,
+    buyerId: string,
+    buyerName: string,
+    quantity: number = 1
+  ): boolean {
+    if (!Number.isFinite(quantity) || quantity <= 0) {
+      throw new Error('Geçerli bir adet giriniz');
+    }
+    const products = this.getProducts();
+    const idx = products.findIndex((p) => p.id === productId);
+    if (idx === -1) throw new Error('Ürün bulunamadı');
+    const p = products[idx];
+    if (p.status !== 'active') throw new Error('Ürün satışta değil');
+    if ((p.stock || 0) < quantity) throw new Error('Yeterli stok yok');
+    // Stok düş
+    const newStock = (p.stock || 0) - quantity;
+    const inCarts = (p.inCartsCount || 0) + quantity;
+    products[idx] = { ...p, stock: newStock, inCartsCount: inCarts, status: newStock > 0 ? 'active' : 'inactive' };
+    localStorage.setItem(this.STORAGE_KEYS.PRODUCTS, JSON.stringify(products));
+    // Basitçe true dönüyoruz; ileride sipariş kaydı eklenebilir
+    return true;
   }
 }
 

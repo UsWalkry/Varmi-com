@@ -11,6 +11,10 @@ import NotFound from './pages/NotFound';
 import Inbox from './pages/Inbox';
 import LocalErrorBoundary from '@/components/ui/LocalErrorBoundary';
 import Profile from './pages/Profile';
+import CreateProduct from './pages/CreateProduct';
+import ProductDetail from './pages/ProductDetail';
+import Store from './pages/Store';
+import Cart from './pages/Cart';
 
 const queryClient = new QueryClient();
 
@@ -30,6 +34,10 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/listing/:id" element={<ListingDetail />} />
             <Route path="/create-listing" element={<CreateListing />} />
+            <Route path="/create-product" element={<CreateProduct />} />
+            <Route path="/product/:id" element={<ProductDetail />} />
+            <Route path="/store/:id" element={<Store />} />
+            <Route path="/cart" element={<Cart />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/edit-listing/:id" element={<EditListing />} />

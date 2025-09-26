@@ -1,38 +1,48 @@
-# Copilot Instructions for AI Coding Agents
+## AI Kod Ajanları İçin Odaklı Talimatlar
 
-## Proje Özeti ve Yığın
+Bu belge yalnızca bu depo için gerekli, uygulamaya hızlı adapte olmanız amaçlanmıştır. Gereksiz genel tavsiyelerden kaçının.
 
-- Stack: Vite + React + TypeScript + Tailwind CSS + shadcn-ui
-- UI bileşenleri: `src/components/ui/**` altında hazır. Alias: `@` → `src` (örn. `@/components/ui/button`).
-- Giriş: `src/main.tsx` `App.tsx`'i mount eder; global stiller `src/index.css`.
+### 1. Teknoloji ve Giriş Noktaları
 
-## Mimari ve Yönlendirme
+- Stack: Vite + React 19 + TypeScript + Tailwind + shadcn-ui (Radix tabanlı) + Zustand yok (ancak depend olarak var), veri remote değil.
+- Alias: `@` → `src`. UI bileşenleri: `@/components/ui/*` (kopyalanmış shadcn seti).
+- Mount zinciri: `src/main.tsx` → `<App />` (router + provider sarmalayıcıları). Global stiller: `src/index.css`.
 
-- Sayfalar: `src/pages/**` (örn. `Index.tsx`, `Dashboard.tsx`, `Profile.tsx`). Router tanımı `src/App.tsx` içinde.
-- Router modu: `BrowserRouter` varsayılan; Codespaces (`*.app.github.dev`) veya `VITE_ROUTER_MODE=hash` olduğunda otomatik `HashRouter` kullanılır.
-- Sağlayıcılar: `QueryClientProvider` (react-query), `TooltipProvider`, `Toaster` (`src/components/ui/sonner.tsx`). Veri uzaktan değil; sağlayıcılar UI için hazır.
+### 2. Yönlendirme ve Provider Katmanı
 
-## Veri Katmanı ve Kurallar (src/lib/mockData.ts)
+- Router seçimi dinamik: Codespaces domaini veya `VITE_ROUTER_MODE=hash` ise `HashRouter`, aksi halde `BrowserRouter` (`src/App.tsx`).
+- Ortak providerlar: `QueryClientProvider`, `TooltipProvider`, `Toaster`. React Query şu an gerçek fetch kullanmıyor; gelecek entegrasyonlara hazır.
+- Hata yönetimi: Üst seviye `LocalErrorBoundary` (iki konum: `components/ui` ve `components/`). Yeni kritik UI bileşenleri eklerken lokal boundary kullanın.
 
-- Tüm veri localStorage ile yönetilir; merkezi servis: `DataManager` (senkron ağırlıklı; 2FA doğrulama gibi bazı metodlar async).
-- Kullanıcı: basit kayıt/giriş, oturum ve login logları tutulur. 2FA (TOTP) destekli akış: `startLogin` → (gerekirse) `verifyAuthenticatorCode`. Kurulum: `beginAuthenticatorSetup` → `verifyAndEnableAuthenticator`.
-- İlan: `addListing` en az 1 görsel zorunlu, `updateListing`, `deleteListing` (sahibi olmayan silemez; ilişkili teklif/mesaj/favoriler de temizlenir).
-- Teklif: her satıcı bir ilana en fazla 1 teklif; `validUntil` en az +1 gün ve varsa ilan bitişini aşamaz; ilan `condition` ve `deliveryType` ile uyum şart; kargo için desi ve ücret aralık kontrolleri; kategoriye göre minimum kar marjı uygulanır.
-- Mesaj/Favoriler: konuşma, okunma, favori listeleme ekleme/çıkarma yardımcıları mevcuttur.
+### 3. Veri Katmanı - `src/lib/mockData.ts`
 
-Örnek – UI bileşeni ve veri kullanımı:
+- Tüm kalıcı durum localStorage; model objeleri: User, Listing, Offer, Message, Review, Session, LoginLog.
+- Merkezi API: `DataManager` (yalın statik metotlar). Okumalar senkron; TOTP / 2FA doğrulama metotları async.
+- Önemli kurallar (mutasyon eklerken koru):
+  1. Listing eklerken en az 1 görsel zorunlu (`addListing`).
+  2. Aynı seller aynı listing'e ikinci teklif veremez (`addOffer`).
+  3. Teklif `validUntil` >= (şu an +1 gün) ve `listing.expiresAt`'ı aşamaz.
+  4. Listing `condition != 'any'` ise teklif condition aynı olmalı; deliveryType için benzer kural (`both` dışında tam eşleşme).
+  5. Shipping tekliflerinde: `shippingDesi` zorunlu, ücret ilgili desi min–max aralığında; pickup'ta desi/ücret girilmez (0 olmalı).
+  6. Minimum teklif: `budgetMin * (1 + kategori kar oranı)`; oran `getMinAllowedOfferPriceForListing` üzerinden hesaplanmalı.
+  7. Offer kabulünde: diğer aktif teklifler otomatik `rejected`, listing `closed`.
+  8. Silme işlemleri (listing/offer) ilişkili sayaç ve ilişkili kayıtları (messages/favorites/offers) temizler.
+- 2FA Akışı: `startLogin` → (gerekirse) pending login kaydı → `verifyAuthenticatorCode`; kurulum: `beginAuthenticatorSetup` → `verifyAndEnableAuthenticator`.
 
-```tsx
-import { Button } from "@/components/ui/button";
-import { DataManager } from "@/lib/mockData";
-// En az 1 görsel ile ilan oluşturun
-const listing = DataManager.addListing({
-  title: "…",
-  description: "…",
+### 4. UI ve Komponent Desenleri
+
+- Sayfalar: `src/pages/*` (örn. `Index`, `ListingDetail`, `CreateListing`). Router konfigürasyonu yalnızca `App.tsx` içinde tutulur.
+- Parçalama: Görsel / interaktif widgetlar `components/` altında; saf stil + form kontrolleri `components/ui/*`.
+- Örnek DataManager kullanımı (Listing oluşturma):
+
+```ts
+DataManager.addListing({
+  title: "Başlık",
+  description: "Açıklama",
   images: ["data:"],
   category: "Elektronik",
   budgetMin: 1000,
-  budgetMax: 2000,
+  budgetMax: 1800,
   condition: "any",
   city: "İstanbul",
   deliveryType: "both",
@@ -42,42 +52,48 @@ const listing = DataManager.addListing({
 });
 ```
 
-Örnek – Teklif kısıtları:
+- Örnek Offer (shipping kısıtları):
 
 ```ts
 DataManager.addOffer({
-  listingId: listing.id,
+  listingId: l.id,
   sellerId: me.id,
   sellerName: me.name,
   sellerRating: 0,
-  price: 1200,
+  price: 1250,
   condition: "new",
   deliveryType: "shipping",
   shippingDesi: "2-3",
   shippingCost: 60,
   status: "active",
 });
-// Not: kargo ücreti desi aralığına uymalı; aynı satıcı aynı ilana ikinci kez teklif veremez.
 ```
 
-## Geliştirme Akışı ve Komutlar (package.json)
+### 5. Geliştirme Komutları
 
-- Kurulum: `pnpm i` | Geliştirme: `pnpm dev` (veya `pnpm dev:host`) | Build: `pnpm build` | Öni̇zleme: `pnpm preview`
-- Kalite: `pnpm lint` (ESLint), `pnpm typecheck` (tsc). İzleme varyantları: `lint:watch`, `typecheck:watch`.
-- Ortam: `VITE_PORT` ile port; `VITE_ROUTER_MODE=hash` ile hash router zorlanabilir.
+- Kurulum: `pnpm i`
+- Dev: `pnpm dev` (gerekirse host: `pnpm dev:host`)
+- Lint / Tip: `pnpm lint`, `pnpm typecheck` (watch varyantları mevcut)
+- Build / Preview: `pnpm build`, `pnpm preview`
+- Ortam Değişkenleri: `VITE_PORT`, `VITE_ROUTER_MODE` (`hash` veya boş).
 
-## Desenler ve Konvansiyonlar
+### 6. Konvansiyonlar ve İpuçları
 
-- İçe aktarımlar: `@/…` alias'ını kullanın; UI bileşenleri `@/components/ui/**` altından gelir.
-- Bildirim/toast: `import { toast } from 'sonner'` veya `@/lib/sonner` kısa yolu.
-- Hata yakalama: `src/components/ui/LocalErrorBoundary.tsx` ve `src/components/LocalErrorBoundary.tsx` mevcut.
-- Tailwind: `tailwind.config.ts` altında özelleştirmeler (renkler, radius, animasyonlar). İçerik globları `./src/**/*.{ts,tsx}` dahil.
+- Her yeni domain kuralı mockData içine tek sorumluluklu statik metot olarak eklenmeli; UI dosyalarında iş kuralı yinelenmez.
+- Fiyat & tarih formatı için `DataManager.formatPrice / formatDate / getTimeAgo` kullanın, duplike etmeyin.
+- Kullanıcı gizleme: Listing `maskOwnerName` varsa UI `maskDisplayName` (`lib/utils.ts`) ile render eder.
+- Toast: ya `import { toast } from 'sonner'` ya da `@/components/ui/sonner`/`@/lib/sonner` üzerinden.
+- Performans: localStorage çağrıları basit; ağır liste işlemlerinde önce filtre sonra map/sort sırası korunmalı (bkz. `searchListings`).
 
-## Entegrasyonlar ve Notlar
+### 7. Ne Yapmamalısınız
 
-- Gerçek backend bağlantısı yok; tüm veri localStorage'da. `@supabase/supabase-js` bağımlılığı ekli ama kullanılmıyor.
-- Vite eklentisi: `@metagptx/vite-plugin-source-locator` (prefix: `mgx`) kaynak eşlemeyi zenginleştirir.
+- Teklif validasyonunu UI'da yeniden yazmayın; DataManager hatasını yüzeye taşıyın.
+- LocalStorage anahtarlarını dışarıdan manipüle etmeyin (merkezi metotları çağırın).
+- Router konfigünü birden fazla yerde çoğaltmayın; yeni route yalnız `App.tsx`.
 
-Ana dosyalar: `src/App.tsx`, `src/pages/**`, `src/lib/mockData.ts`, `src/components/ui/**`, `vite.config.ts`, `tailwind.config.ts`, `tsconfig*.json`.
+### 8. Genişletme Önerileri (Belgeyi güncellerken kaldırılabilir)
 
-Belirsiz kalan bir akış veya kural görürseniz bu dosyayı güncelleyin; proje kodundaki kalıpları (özellikle `DataManager`) temel alın.
+- Kalıcı backend eklenecekse DataManager metodları adaptör katmanına taşınabilir; imzaları koruyun ve UI değişikliğini minimize edin.
+- React Query entegrasyonu için her DataManager okuması bir queryFn içine sarılabilir (örn. `['listings'] → DataManager.getListings()`).
+
+Belirsiz bir kural tespit ederseniz kod referansı ekleyerek bu belgeyi güncelleyin. Önce mevcut desenleri (tekil statik servis, şeffaf localStorage) bozmayın.

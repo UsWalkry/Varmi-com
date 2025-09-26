@@ -1,4 +1,21 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+// Test kullanıcıları
+const TEST_USERS = Array.from({ length: 10 }).map((_, i) => ({
+  name: `Test Kullanıcı ${i + 1}`,
+  email: `test${i + 1}@varmi.dev`,
+  password: '123456',
+  city: cities[i % cities.length],
+  phone: `+9050000000${i}`
+}));
+// Seed tetikleyici
+function seedTestUsers() {
+  try {
+    // CURRENT_USER'a dokunmadan çoğalt
+    DataManager.seedTestUsers?.(TEST_USERS.map(({ name, email, city, phone }) => ({ name, email, city, phone })));
+  } catch {
+    // Eski sürümlerde metot yoksa sessiz geç
+  }
+}
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -16,6 +33,14 @@ interface AuthModalProps {
 }
 
 export default function AuthModal({ isOpen, onClose, onAuthSuccess }: AuthModalProps) {
+  // Mount sırasında test kullanıcılarını seed et
+  useEffect(() => {
+    if (isOpen) seedTestUsers();
+  }, [isOpen]);
+  // Test profili butonları için handler
+  const handleTestUserFill = (user: typeof TEST_USERS[0]) => {
+    setLoginData({ identifier: user.email, password: user.password });
+  };
   const [loginData, setLoginData] = useState({
     identifier: '',
     password: ''
@@ -167,9 +192,6 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }: AuthModalP
                       required
                     />
                   </div>
-
-                  
-                  
                   <div>
                     <Label htmlFor="password">Şifre</Label>
                     <Input
@@ -180,9 +202,7 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }: AuthModalP
                       placeholder="Şifrenizi girin"
                       disabled={twoFA.required}
                     />
-                    
                   </div>
-
                   {twoFA.required && (
                     <div>
                       <Label htmlFor="twofa-code">Authenticator Kodu</Label>
@@ -199,11 +219,21 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }: AuthModalP
                       />
                     </div>
                   )}
-
                   <Button type="submit" className="w-full" disabled={isLoading}>
                     {isLoading ? (twoFA.required ? 'Doğrulanıyor...' : 'Giriş yapılıyor...') : (twoFA.required ? 'Kodu Doğrula' : 'Giriş Yap')}
                   </Button>
                 </form>
+                {/* Test kullanıcı butonları */}
+                <div className="mt-6">
+                  <div className="mb-2 text-xs text-muted-foreground">Test kullanıcıları:</div>
+                  <div className="grid grid-cols-2 gap-2">
+                    {TEST_USERS.map((user, idx) => (
+                      <Button key={user.email} variant="outline" size="sm" type="button" onClick={() => handleTestUserFill(user)}>
+                        {user.name}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>

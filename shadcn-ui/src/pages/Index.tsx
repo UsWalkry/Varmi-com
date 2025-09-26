@@ -4,16 +4,19 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Search, MapPin, Clock, TrendingUp, Package, Star } from 'lucide-react';
+import { Search, MapPin, Clock, TrendingUp, Package, Star, ShoppingCart } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { Listing, DataManager, categories, cities } from '@/lib/mockData';
+import { Listing, DataManager, categories, cities, Product } from '@/lib/mockData';
 import { maskDisplayName } from '@/lib/utils';
 import Header from '@/components/Header';
 import FavoriteButton from '@/components/FavoriteButton';
+import ProductCard from '@/components/ProductCard';
 
 export default function Index() {
   const navigate = useNavigate();
   const [listings, setListings] = useState<Listing[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [tab, setTab] = useState<'listings' | 'products'>('listings');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedCity, setSelectedCity] = useState('all');
@@ -36,9 +39,17 @@ export default function Index() {
 
         const filteredListings = DataManager.searchListings(searchQuery, filters);
         setListings(filteredListings || []);
+        const productFilters = {
+          category: selectedCategory !== 'all' ? selectedCategory : undefined,
+          city: selectedCity !== 'all' ? selectedCity : undefined,
+          condition: selectedCondition === 'new' || selectedCondition === 'used' ? (selectedCondition as 'new'|'used') : undefined,
+        };
+        const filteredProducts = DataManager.searchProducts(searchQuery, productFilters);
+        setProducts(filteredProducts || []);
       } catch (error) {
         console.error('Error loading listings:', error);
         setListings([]);
+        setProducts([]);
       } finally {
         setIsLoading(false);
       }
@@ -96,19 +107,43 @@ export default function Index() {
             Aradığın Ürün <span className="text-yellow-300">var mıı?</span>
           </h1>
           <p className="text-xl md:text-2xl mb-8 opacity-90">
-            İstediğin ürünü ilan ver, satıcılar sana teklif versin!
+            İstediğin ürünü ara, satıcıların tekliflerini gör!
           </p>
-          <Button 
-            size="lg" 
-            className="bg-white text-blue-600 hover:bg-gray-100 text-lg px-8 py-3"
-            onClick={() => navigate('/create-listing')}
-          >
-            Hemen İlan Ver
-          </Button>
+          <div className="mx-auto max-w-2xl">
+            <div className="flex items-stretch gap-2">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-blue-700/80" />
+                <Input
+                  placeholder="Ürün ara..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      // Arama zaten reaktif; UX için inputtan odağı kaldırıyoruz
+                      (e.currentTarget as HTMLInputElement).blur();
+                    }
+                  }}
+                  className="w-full h-12 pl-10 text-gray-900"
+                />
+              </div>
+              <Button
+                className="h-12 bg-yellow-300 text-blue-900 hover:bg-yellow-200"
+                onClick={() => setSearchQuery((q) => q.trim())}
+              >
+                Ara
+              </Button>
+            </div>
+            <p className="mt-2 text-sm opacity-80">Arama, aşağıdaki ilanları anında filtreler.</p>
+          </div>
         </div>
       </section>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Tabs */}
+        <div className="mb-6 flex gap-2">
+          <button className={`px-4 py-2 rounded-md border ${tab==='listings' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white'}`} onClick={()=>setTab('listings')}>İlanlar</button>
+          <button className={`px-4 py-2 rounded-md border ${tab==='products' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white'}`} onClick={()=>setTab('products')}>Ürünler</button>
+        </div>
         {/* Search and Filters */}
         <Card className="mb-8">
           <CardHeader>
@@ -171,9 +206,11 @@ export default function Index() {
         </Card>
 
         {/* Results */}
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-bold">Aktif İlanlar ({listings.length})</h2>
-        </div>
+        {tab==='listings' && (
+          <div>
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold">Aktif İlanlar ({listings.length})</h2>
+            </div>
 
         {listings.length === 0 ? (
           <Card>
@@ -281,6 +318,50 @@ export default function Index() {
                 </Card>
               );
             })}
+          </div>
+        )}
+          </div>
+        )}
+
+        {tab==='products' && (
+          <div>
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold">Satılık Ürünler ({products.length})</h2>
+              <Button onClick={()=>navigate('/create-product')}>Ürün Ekle</Button>
+            </div>
+            {products.length===0 ? (
+              <Card>
+                <CardContent className="text-center py-12">
+                  <Package className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">Ürün bulunamadı</h3>
+                  <p className="text-muted-foreground mb-4">İlk ürünü siz ekleyin veya filtreleri değiştirin.</p>
+                  <Button onClick={()=>navigate('/create-product')}>İlk Ürünü Siz Ekleyin</Button>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {products.map(p=> (
+                  <ProductCard
+                    key={p.id}
+                    product={p}
+                    onClick={()=>navigate(`/product/${p.id}`)}
+                    onBuy={() => {
+                      if (!currentUser) { navigate('/profile'); return; }
+                      try {
+                        DataManager.purchaseProduct(p.id, currentUser.id, currentUser.name, 1);
+                        setProducts(DataManager.searchProducts(searchQuery, {
+                          category: selectedCategory !== 'all' ? selectedCategory : undefined,
+                          city: selectedCity !== 'all' ? selectedCity : undefined,
+                          condition: selectedCondition === 'new' || selectedCondition === 'used' ? (selectedCondition as 'new'|'used') : undefined,
+                        }));
+                      } catch (e) {
+                        alert(String(e));
+                      }
+                    }}
+                  />
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>
