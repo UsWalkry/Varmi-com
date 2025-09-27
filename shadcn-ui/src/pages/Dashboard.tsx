@@ -171,14 +171,15 @@ export default function Dashboard() {
           {orderDialogOffer && (() => {
             const listing = DataManager.getListing(orderDialogOffer.listingId);
             const acceptedAt = orderDialogOffer.acceptedAt ? DataManager.formatDate(orderDialogOffer.acceptedAt) : '-';
-            // Basit örnek aşamalar
+            // Dinamik aşamalar
             const steps = [
               { id: 1, title: 'Teklif Kabul Edildi', description: `Tarih: ${acceptedAt}` },
               { id: 2, title: 'Satıcıdan Onay/İşleme', description: 'Satıcı ürünü hazırlıyor.' },
-              { id: 3, title: 'Kargo / Teslimat', description: orderDialogOffer.deliveryType === 'shipping' ? 'Kargoya verilecek.' : 'Elden teslim planlanacak.' },
-              { id: 4, title: 'Tamamlandı', description: 'İşlem başarıyla tamamlanacak.' }
+              { id: 3, title: 'Kargo / Teslimat', description: orderDialogOffer.deliveryType === 'shipping' ? (orderDialogOffer.trackingNo ? `Kargoya verildi • Takip No: ${orderDialogOffer.trackingNo}` : 'Kargoya verilecek.') : 'Elden teslim planlanacak.' },
+              { id: 4, title: 'Tamamlandı', description: 'İşlem başarıyla tamamlandı.' }
             ];
-            const current = 2; // Demo: örnek olarak 2. adımda
+            const stageMap: Record<NonNullable<Offer['orderStage']>, number> = { accepted: 1, processing: 2, shipped: 3, delivered: 4 } as const;
+            const current = orderDialogOffer.orderStage ? stageMap[orderDialogOffer.orderStage] : 1;
             return (
               <div className="space-y-4">
                 <div className="space-y-1">
@@ -188,7 +189,7 @@ export default function Dashboard() {
                 </div>
                 <Stepper current={current} steps={steps} />
                 <div className="text-xs text-muted-foreground">
-                  Not: Bu demo akışıdır; gerçek kargo takibi ve teslimat entegrasyonu yapılmadı.
+                  Son güncelleme: {orderDialogOffer.orderUpdatedAt ? DataManager.formatDate(orderDialogOffer.orderUpdatedAt) : '-'}
                 </div>
               </div>
             );

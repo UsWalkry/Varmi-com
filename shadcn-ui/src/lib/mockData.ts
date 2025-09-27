@@ -203,6 +203,11 @@ export interface Offer {
   status: 'active' | 'accepted' | 'rejected' | 'withdrawn';
   // Kabul edilen teklifler için zaman damgası
   acceptedAt?: string;
+  // Sipariş/teslimat basit durumları
+  orderStage?: 'accepted' | 'processing' | 'shipped' | 'delivered';
+  trackingNo?: string;
+  orderNotes?: string;
+  orderUpdatedAt?: string;
   validUntil?: string; // ISO, teklif geçerlilik tarihi
   message?: string; // backward compatibility
   // Bu tekliften diğer kullanıcılarca satılan adet (ilan sahibi hariç)
@@ -1245,6 +1250,8 @@ export class DataManager {
     // Kabul et
     offers[offerIndex].status = 'accepted';
     offers[offerIndex].acceptedAt = new Date().toISOString();
+    offers[offerIndex].orderStage = 'accepted';
+    offers[offerIndex].orderUpdatedAt = new Date().toISOString();
     // Aynı ilana ait diğer aktif teklifleri reddet
     for (let i = 0; i < offers.length; i++) {
       if (i === offerIndex) continue;
@@ -1261,6 +1268,43 @@ export class DataManager {
       listings[lidx].status = 'closed';
       localStorage.setItem(this.STORAGE_KEYS.LISTINGS, JSON.stringify(listings));
     }
+    return true;
+  }
+
+  // Basit sipariş durum güncelleme yardımcıları (demo amaçlı)
+  static setOfferProcessing(offerId: string, note?: string) {
+    const offers = this.getOffers();
+    const idx = offers.findIndex(o => o.id === offerId);
+    if (idx === -1) return false;
+    if (offers[idx].status !== 'accepted') return false;
+    offers[idx].orderStage = 'processing';
+    offers[idx].orderNotes = note || offers[idx].orderNotes;
+    offers[idx].orderUpdatedAt = new Date().toISOString();
+    localStorage.setItem(this.STORAGE_KEYS.OFFERS, JSON.stringify(offers));
+    return true;
+  }
+
+  static setOfferShipped(offerId: string, trackingNo: string) {
+    const offers = this.getOffers();
+    const idx = offers.findIndex(o => o.id === offerId);
+    if (idx === -1) return false;
+    if (offers[idx].status !== 'accepted') return false;
+    offers[idx].orderStage = 'shipped';
+    offers[idx].trackingNo = trackingNo;
+    offers[idx].orderUpdatedAt = new Date().toISOString();
+    localStorage.setItem(this.STORAGE_KEYS.OFFERS, JSON.stringify(offers));
+    return true;
+  }
+
+  static setOfferDelivered(offerId: string, note?: string) {
+    const offers = this.getOffers();
+    const idx = offers.findIndex(o => o.id === offerId);
+    if (idx === -1) return false;
+    if (offers[idx].status !== 'accepted') return false;
+    offers[idx].orderStage = 'delivered';
+    offers[idx].orderNotes = note || offers[idx].orderNotes;
+    offers[idx].orderUpdatedAt = new Date().toISOString();
+    localStorage.setItem(this.STORAGE_KEYS.OFFERS, JSON.stringify(offers));
     return true;
   }
 
