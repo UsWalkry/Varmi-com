@@ -24,6 +24,9 @@ export default function Checkout() {
   const [cvv, setCvv] = useState('123');
   const [isPaying, setIsPaying] = useState(false);
   const [qty, setQty] = useState<number>(1);
+  // İlan sahibi adet girişi: yazarken boş/değerli durumları desteklemek için string olarak tutuyoruz
+  const [ownerQtyInput, setOwnerQtyInput] = useState<string>('');
+  const [ownerQtyTouched, setOwnerQtyTouched] = useState<boolean>(false);
 
   const currentUser = DataManager.getCurrentUser();
 
@@ -34,20 +37,34 @@ export default function Checkout() {
     if (found) setListing(DataManager.getListing(found.listingId) || null);
   }, [offerId]);
 
+  // İlan sahibi için seçilebilir maksimum adet = teklif adedi - diğer kullanıcılara satılan
+  const maxOwnerQty = useMemo(() => {
+    if (!offer) return 1;
+    const qtyOffer = Math.max(1, Number(offer.quantity ?? 1));
+    const sold = Math.max(0, Number(offer.soldToOthers ?? 0));
+    return Math.max(1, qtyOffer - sold);
+  }, [offer]);
+
   const total = useMemo(() => {
     if (!offer) return 0;
     const isBuyerNotOwner = !!currentUser && (!listing || currentUser.id !== listing.buyerId);
-    const baseUnits = isBuyerNotOwner ? qty : (offer.quantity ?? 1);
+    const ownerEntered = Math.floor(Number(ownerQtyInput));
+    const ownerUnitsRaw = Number.isFinite(ownerEntered) && ownerEntered > 0 ? ownerEntered : (offer.ownerPurchasedQuantity || offer.quantity || 1);
+    const ownerUnits = Math.max(1, Math.min(maxOwnerQty, ownerUnitsRaw));
+    const baseUnits = isBuyerNotOwner ? qty : ownerUnits;
     const base = offer.price * baseUnits;
     const shipping = offer.deliveryType === 'shipping' ? (offer.shippingCost ?? 0) + (offer.shippingExtraFee ?? 0) : 0;
     return base + shipping;
-  }, [offer, qty, currentUser, listing]);
+  }, [offer, qty, ownerQtyInput, currentUser, listing, maxOwnerQty]);
 
   const computedUnits = useMemo(() => {
     if (!offer) return 0;
     const isBuyerNotOwner = !!currentUser && (!listing || currentUser.id !== listing.buyerId);
-    return isBuyerNotOwner ? qty : (offer.quantity ?? 1);
-  }, [offer, qty, currentUser, listing]);
+    const ownerEntered = Math.floor(Number(ownerQtyInput));
+    const ownerUnitsRaw = Number.isFinite(ownerEntered) && ownerEntered > 0 ? ownerEntered : (offer.ownerPurchasedQuantity || offer.quantity || 1);
+    const ownerUnits = Math.max(1, Math.min(maxOwnerQty, ownerUnitsRaw));
+    return isBuyerNotOwner ? qty : ownerUnits;
+  }, [offer, qty, ownerQtyInput, currentUser, listing, maxOwnerQty]);
 
   // Alıcı için satın alınabilir maksimum adet (ilan sahibinin 1 adet hakkı ayrıdır)
   const maxPurchasable = useMemo(() => {
@@ -57,6 +74,24 @@ export default function Checkout() {
     const sold = offer.soldToOthers ?? 0;
     return Math.max(0, offerQty - 1 - sold);
   }, [offer, currentUser, listing]);
+
+  
+
+  // İlan sahibi için başlangıçta ownerQtyInput'i tek seferlik üst sınıra çek
+  useEffect(() => {
+    if (!offer || !currentUser || !listing) return;
+    if (currentUser.id !== listing.buyerId) return; // sadece ilan sahibi
+    if (ownerQtyTouched) return; // kullanıcı düzenlemeye başladıysa dokunma
+    setOwnerQtyInput(String(Math.max(1, maxOwnerQty)));
+  }, [offer, currentUser, listing, maxOwnerQty, ownerQtyTouched]);
+
+  // Üst sınır değişirse ve mevcut değer onu aşıyorsa kibarca kırp
+  useEffect(() => {
+    const entered = Math.floor(Number(ownerQtyInput));
+    if (Number.isFinite(entered) && entered > maxOwnerQty) {
+      setOwnerQtyInput(String(maxOwnerQty));
+    }
+  }, [maxOwnerQty, ownerQtyInput]);
 
   const handlePay = async () => {
     if (!currentUser) {
@@ -92,7 +127,11 @@ export default function Checkout() {
         }
       } else if (currentUser && listing && currentUser.id === listing.buyerId) {
         // İlan sahibi: ödeme sonrası teklifi kabul et
-        DataManager.acceptOffer(offer.id);
+  const entered = Math.floor(Number(ownerQtyInput));
+  const fallback = Math.floor(Number(offer.ownerPurchasedQuantity || offer.quantity || 1));
+  const toUse = Number.isFinite(entered) && entered > 0 ? entered : fallback;
+  const chosen = Math.max(1, Math.min(maxOwnerQty, toUse));
+        DataManager.acceptOffer(offer.id, chosen);
       }
       toast.success('Ödeme başarılı!');
       // Alıcı tarafında sipariş durumu görüntülemek üzere dashboard’a yönlendirelim
@@ -166,8 +205,33 @@ export default function Checkout() {
                         setQty(maxPurchasable > 0 ? Math.min(next, maxPurchasable) : 1);
                       }}
                     />
+                    {/* Maksimum bilgisi kaldırıldı */}
+                  </div>
+                )}
+                {currentUser && listing && currentUser.id === listing.buyerId && (
+                  <div>
+                    <label className="text-sm">Adet (Sahip)</label>
+                    <Input
+                      type="number"
+                      min={1}
+                      max={maxOwnerQty}
+                      value={ownerQtyInput}
+                      onChange={(e) => {
+                        setOwnerQtyTouched(true);
+                        // Boş bırakmaya izin ver (kullanıcı yeni değer yazarken)
+                        const raw = e.target.value;
+                        // Sadece rakamları tut (negatif ve ondalıkları engelle)
+                        const cleaned = raw.replace(/[^0-9]/g, '');
+                        setOwnerQtyInput(cleaned);
+                      }}
+                      onBlur={() => {
+                        const entered = Math.floor(Number(ownerQtyInput));
+                        const clamped = Math.max(1, Math.min(maxOwnerQty, Number.isFinite(entered) && entered > 0 ? entered : maxOwnerQty));
+                        setOwnerQtyInput(String(clamped));
+                      }}
+                    />
                     <div className="text-xs text-muted-foreground mt-1">
-                      Maksimum satın alınabilir: {maxPurchasable}
+                      Maksimum: {maxOwnerQty}
                     </div>
                   </div>
                 )}

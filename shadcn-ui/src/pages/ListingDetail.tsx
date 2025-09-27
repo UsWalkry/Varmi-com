@@ -300,6 +300,9 @@ export default function ListingDetail() {
                         <span>{DataManager.getTimeAgo(listing.createdAt)}</span>
                       </div>
                       {/* Teklif sayısı sadece İlan İstatistikleri kartında gösterilir */}
+                      {listing.exactProductOnly && (
+                        <Badge className="bg-blue-100 text-blue-800">Aynı Ürün Zorunlu</Badge>
+                      )}
                     </div>
                   </div>
                   <Badge className={listing.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}>
@@ -364,6 +367,9 @@ export default function ListingDetail() {
                       <Package className="h-3 w-3 mr-1" />
                       {getDeliveryText(listing.deliveryType)}
                     </Badge>
+                    {listing.exactProductOnly && (
+                      <Badge className="bg-blue-100 text-blue-800">Aynı Ürün Zorunlu</Badge>
+                    )}
                   </div>
 
                   <Separator />

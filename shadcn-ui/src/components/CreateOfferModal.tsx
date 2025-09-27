@@ -30,8 +30,7 @@ export default function CreateOfferModal({
     price: '',
     quantity: '1',
     condition: 'new',
-    brand: '',
-    model: '',
+    productName: '',
     description: '',
     deliveryType: 'shipping',
     shippingDesi: '' as '' | DesiBracket,
@@ -95,6 +94,10 @@ export default function CreateOfferModal({
       }
     }
     if (s === 2) {
+      if (!formData.productName.trim()) {
+        toast.error('Ürün adı zorunlu');
+        return false;
+      }
       if (!formData.description.trim()) {
         toast.error('Ürün açıklaması zorunlu');
         return false;
@@ -155,8 +158,7 @@ export default function CreateOfferModal({
     price,
     quantity,
         condition: formData.condition as 'new' | 'used',
-        brand: formData.brand || undefined,
-        model: formData.model || undefined,
+        productName: formData.productName || undefined,
         description: formData.description,
         deliveryType: formData.deliveryType as 'shipping' | 'pickup',
         shippingDesi: formData.deliveryType === 'shipping' ? (formData.shippingDesi as DesiBracket) : undefined,
@@ -169,7 +171,7 @@ export default function CreateOfferModal({
       toast.success('Teklifiniz başarıyla gönderildi!');
       onOfferCreated();
       onClose();
-  setFormData({ price: '', quantity: '1', condition: 'new', brand: '', model: '', description: '', deliveryType: 'shipping', shippingDesi: '', shippingPackage: '', largeWidth: '', largeHeight: '', largeLength: '', computedDesi: '', shippingCost: '0', etaDays: '3', validUntil: '' });
+  setFormData({ price: '', quantity: '1', condition: 'new', productName: '', description: '', deliveryType: 'shipping', shippingDesi: '', shippingPackage: '', largeWidth: '', largeHeight: '', largeLength: '', computedDesi: '', shippingCost: '0', etaDays: '3', validUntil: '' });
       setImages([]);
       setStep(1);
     } catch (e) {
@@ -274,6 +276,12 @@ export default function CreateOfferModal({
     } else if (listing.deliveryType === 'pickup' && formData.deliveryType !== 'pickup') {
       setFormData(prev => ({ ...prev, deliveryType: 'pickup', shippingDesi: '', shippingPackage: '', shippingCost: '0', largeWidth: '', largeHeight: '', largeLength: '', computedDesi: '' }));
     }
+    // İlan aynı ürünü istiyorsa ürün adını başlıktan ön-doldur ("Var mıı?" son ekini temizle)
+    if (listing.exactProductOnly) {
+      const title = (listing.title || '').trim();
+      const cleaned = title.replace(/\s*Var mıı\?$/i, '').replace(/[\s?]+$/g, '');
+      setFormData(prev => ({ ...prev, productName: cleaned }));
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, listing.condition, listing.deliveryType]);
 
@@ -327,8 +335,8 @@ export default function CreateOfferModal({
           <Stepper
             current={step}
             steps={[
-              { id: 1, title: 'Fiyat & Temel', description: 'Fiyat, durum, marka/model' },
-              { id: 2, title: 'Detaylar', description: 'Açıklama, kargo & süre' },
+              { id: 1, title: 'Fiyat & Temel', description: 'Fiyat, durum, adet' },
+              { id: 2, title: 'Detaylar', description: 'Ürün adı, açıklama, kargo & süre' },
               { id: 3, title: 'Önizleme', description: 'Kontrol & gönder' }
             ]}
             onStepClick={(id) => { if (id < step) setStep(id); }}
@@ -359,21 +367,26 @@ export default function CreateOfferModal({
                   {isFixedCondition && <p className="text-xs text-muted-foreground mt-1">Sabit durum: {listing.condition === 'new' ? 'Sıfır' : '2. El'}</p>}
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label>Marka</Label>
-                  <Input value={formData.brand} onChange={(e) => setFormData({ ...formData, brand: e.target.value })} placeholder="Apple" />
-                </div>
-                <div>
-                  <Label>Model</Label>
-                  <Input value={formData.model} onChange={(e) => setFormData({ ...formData, model: e.target.value })} placeholder="iPhone 15 Pro" />
-                </div>
-              </div>
+              {/* Marka/Model kaldırıldı */}
             </div>
           )}
 
           {step === 2 && (
             <div className="space-y-6">
+              <div>
+                <Label>Ürün Adı *</Label>
+                <Input
+                  value={formData.productName}
+                  onChange={(e) => setFormData({ ...formData, productName: e.target.value })}
+                  placeholder="Ürün adını girin (ör. iPhone 15 Pro, Dyson V12...)"
+                  disabled={Boolean(listing.exactProductOnly)}
+                />
+                {listing.exactProductOnly && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Bu ilanda ürün adı kilitli ve ilan başlığı ile eşleşmelidir.
+                  </p>
+                )}
+              </div>
               <div className="space-y-2">
                 <Label>Ürün Görselleri (opsiyonel, max 5)</Label>
                 <div className="flex flex-col gap-3">
@@ -467,8 +480,7 @@ export default function CreateOfferModal({
                   <div className="grid grid-cols-2 gap-2">
                     <div><span className="font-medium">Fiyat:</span> {formData.price} TL</div>
                     <div><span className="font-medium">Durum:</span> {formData.condition === 'new' ? 'Sıfır' : '2. El'}</div>
-                    <div><span className="font-medium">Marka:</span> {formData.brand || '-'}</div>
-                    <div><span className="font-medium">Model:</span> {formData.model || '-'}</div>
+                    <div className="col-span-2"><span className="font-medium">Ürün Adı:</span> {formData.productName || '-'}</div>
                     <div><span className="font-medium">Teslimat:</span> {formData.deliveryType === 'shipping' ? 'Kargo' : 'Elden Teslim'}</div>
                     {formData.deliveryType === 'shipping' && <div><span className="font-medium">Paket:</span> {formData.shippingPackage ? PACKAGE_LABELS[formData.shippingPackage] : '-'}</div>}
                     {formData.deliveryType === 'shipping' && formData.shippingPackage === 'large' && <div><span className="font-medium">Hesaplanan Desi:</span> {formData.computedDesi || '-'}</div>}

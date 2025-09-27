@@ -33,6 +33,7 @@ export default function CreateListing() {
     budgetMin: '',
     budgetMax: '',
     expiresAt: '',
+    exactProductOnly: false,
     maskOwnerName: false,
     offersPublic: false,
     offersPurchasable: false
@@ -109,10 +110,19 @@ export default function CreateListing() {
     setIsLoading(true);
     try {
       const expiresAt = formData.expiresAt || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+      // Başlık sonuna otomatik "Var mıı?" ekle (UI tarafında da uygula)
+      const withSuffix = (() => {
+        const base = (formData.title || '').trim();
+        const lower = base.toLowerCase();
+        const suffix = ' var mıı?';
+        if (lower.endsWith(suffix)) return base;
+        const cleaned = base.replace(/[\s?]+$/g, '');
+        return cleaned + ' Var mıı?';
+      })();
       const newListing = DataManager.addListing({
         buyerId: currentUser.id,
         buyerName: currentUser.name,
-        title: formData.title,
+        title: withSuffix,
         description: formData.description,
         category: formData.category,
         budgetMin: parseInt(formData.budgetMin),
@@ -120,6 +130,7 @@ export default function CreateListing() {
         condition: formData.condition as 'new' | 'used' | 'any',
         city: formData.city,
         deliveryType: formData.deliveryType as 'shipping' | 'pickup' | 'both',
+        exactProductOnly: formData.exactProductOnly,
         maskOwnerName: formData.maskOwnerName,
         offersPublic: formData.offersPublic,
         offersPurchasable: formData.offersPurchasable,
@@ -329,6 +340,14 @@ export default function CreateListing() {
                     onChange={(e) => handleInputChange('description', e.target.value)}
                   />
                 </div>
+                <div className="space-y-2">
+                  <Label>Ürün Eşleşme Tercihi</Label>
+                  <RadioGroup value={formData.exactProductOnly ? 'exact' : 'similar'} onValueChange={(v) => setFormData(p => ({ ...p, exactProductOnly: v === 'exact' }))}>
+                    <div className="flex items-center space-x-2"><RadioGroupItem value="exact" id="exact" /><Label htmlFor="exact">İlanımda belirtilen ürünle tam uyumlu / aynı nitelikte teklifler gelsin</Label></div>
+                    <div className="flex items-center space-x-2"><RadioGroupItem value="similar" id="similar" /><Label htmlFor="similar">Benzer ürünlerin de teklifleri gelebilir</Label></div>
+                  </RadioGroup>
+                  <p className="text-xs text-muted-foreground">Aynı ürün seçiliyse, satıcı teklif verirken ürün adı otomatik ilan başlığından gelir (düzenleyebilirsiniz).</p>
+                </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Kategori *</Label>
@@ -487,6 +506,7 @@ export default function CreateListing() {
                     <div><span className="font-medium">Teslimat:</span> {deliveryTypeLabels[formData.deliveryType] || formData.deliveryType}</div>
                     <div><span className="font-medium">Bütçe:</span> {formData.budgetMin} - {formData.budgetMax} TL</div>
                     <div><span className="font-medium">Bitiş:</span> {formData.expiresAt || defaultExpiryString}</div>
+                    <div><span className="font-medium">Ürün Eşleşme:</span> {formData.exactProductOnly ? 'Aynı Ürün' : 'Benzer Olur'}</div>
                     <div><span className="font-medium">Ad Gizleme:</span> {formData.maskOwnerName ? 'Evet' : 'Hayır'}</div>
                     <div><span className="font-medium">Teklifler Herkese Açık:</span> {formData.offersPublic ? 'Evet' : 'Hayır'}</div>
                   </div>

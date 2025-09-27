@@ -90,11 +90,11 @@ export default function OfferCard({
             <div className="flex items-center mb-2">
               <h4 className="font-semibold">{offer.sellerName}</h4>
             </div>
-            {offer.brand && offer.model && (
-              <p className="text-sm text-muted-foreground">
-                {offer.brand} - {offer.model}
-              </p>
-            )}
+            {offer.productName ? (
+              <p className="text-sm text-muted-foreground">{offer.productName}</p>
+            ) : (offer.brand && offer.model ? (
+              <p className="text-sm text-muted-foreground">{offer.brand} - {offer.model}</p>
+            ) : null)}
           </div>
           <Badge className={getStatusColor(offer.status)}>
             {getStatusText(offer.status)}

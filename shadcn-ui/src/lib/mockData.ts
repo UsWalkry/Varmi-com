@@ -173,6 +173,8 @@ export interface Listing {
   deliveryType: 'shipping' | 'pickup' | 'both';
   buyerId: string;
   buyerName: string;
+  // Yeni: Sadece aynı ürün mü isteniyor? (true: aynı ürün, false: benzer de olur)
+  exactProductOnly?: boolean;
   // İlan sahibi adını gizlemek için seçenek
   maskOwnerName?: boolean;
   // Teklif detaylarının herkese görünürlüğü (varsayılan: kapalı)
@@ -198,10 +200,14 @@ export interface Offer {
   images?: string[];
   // Optional details for richer offers
   condition?: 'new' | 'used';
+  // Yeni: Ürün adı (satıcı tarafından girilen)
+  productName?: string;
   brand?: string;
   model?: string;
   description?: string;
   deliveryType?: 'shipping' | 'pickup';
+  // İlan sahibinin satın aldığı adet (ödemede belirlenir)
+  ownerPurchasedQuantity?: number;
   // Kargo için desi aralığı (yalnızca deliveryType = 'shipping' ise)
   shippingDesi?: DesiBracket;
   shippingCost?: number;
@@ -1191,8 +1197,20 @@ export class DataManager {
     if (!imgs || imgs.length === 0) {
       throw new Error('İlan için en az 1 görsel yüklemelisiniz');
     }
+    // Başlık sonuna otomatik "Var mıı?" eklensin (çift eklemeyi önle)
+    const ensureTitleSuffix = (t: string) => {
+      const base = (t || '').trim();
+      const lower = base.toLowerCase();
+      const suffix = ' var mıı?';
+      if (lower.endsWith(suffix)) return base; // zaten eklendi
+      // Sondaki gereksiz soru işaretlerini ve boşlukları temizle
+      const cleaned = base.replace(/[\s?]+$/g, '');
+      return cleaned + ' Var mıı?';
+    };
+    const finalTitle = ensureTitleSuffix((listing as Listing).title);
     const newListing: Listing = {
       ...listing,
+      title: finalTitle,
       id: `listing_${Date.now()}`,
       createdAt: new Date().toISOString(),
       offerCount: 0
@@ -1343,7 +1361,7 @@ export class DataManager {
     return newOffer;
   }
 
-  static acceptOffer(offerId: string): boolean {
+  static acceptOffer(offerId: string, ownerQuantity?: number): boolean {
     const offers = this.getOffers();
     const offerIndex = offers.findIndex(o => o.id === offerId);
     if (offerIndex === -1) return false;
@@ -1352,6 +1370,12 @@ export class DataManager {
     // Kabul et
     offers[offerIndex].status = 'accepted';
     offers[offerIndex].acceptedAt = new Date().toISOString();
+  // İlan sahibinin satın aldığı adet bilgisini kaydet (kalan stok kadar)
+  const totalQty = Math.max(1, Number(target.quantity ?? 1));
+  const sold = Math.max(0, Number(target.soldToOthers ?? 0));
+  const remaining = Math.max(1, totalQty - sold);
+  const q = Math.max(1, Math.min(remaining, Math.floor(ownerQuantity ?? remaining)));
+    offers[offerIndex].ownerPurchasedQuantity = q;
     // Yeni akış: ilk aşama 'received'
     offers[offerIndex].orderStage = 'received';
     offers[offerIndex].orderUpdatedAt = new Date().toISOString();

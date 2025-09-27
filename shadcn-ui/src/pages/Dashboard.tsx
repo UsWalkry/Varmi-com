@@ -357,7 +357,20 @@ export default function Dashboard() {
                 <div className="space-y-1">
                   <div className="font-semibold">{listing?.title || 'İlan'}</div>
                   <div className="text-sm text-muted-foreground">Satıcı: {orderDialogOffer.sellerName}</div>
-                  <div className="text-sm text-muted-foreground">Teklif: {DataManager.formatPrice(orderDialogOffer.price)}{orderDialogOffer.shippingCost > 0 ? ` + ${DataManager.formatPrice(orderDialogOffer.shippingCost)} kargo` : ''}</div>
+                  <div className="text-sm text-muted-foreground">
+                    {(() => {
+                      const baseUnits = Math.max(1, Number(orderDialogOffer.quantity ?? 1));
+                      // İlan sahibi için ödeme esnasında seçilen adet (ownerPurchasedQuantity) varsa onu göster
+                      const u = Math.max(1, Number(orderDialogOffer.ownerPurchasedQuantity ?? baseUnits));
+                      const subtotal = orderDialogOffer.price * u;
+                      return (
+                        <>
+                          Teklif: {DataManager.formatPrice(orderDialogOffer.price)} × {u} = {DataManager.formatPrice(subtotal)}
+                          {orderDialogOffer.shippingCost > 0 ? ` + ${DataManager.formatPrice(orderDialogOffer.shippingCost)} kargo` : ''}
+                        </>
+                      );
+                    })()}
+                  </div>
                 </div>
                 <Stepper current={current} steps={steps} />
                 {showConfirmSection && (
@@ -411,7 +424,20 @@ export default function Dashboard() {
                 <div className="space-y-1">
                   <div className="font-semibold">{listing?.title || 'İlan'}</div>
                   <div className="text-sm text-muted-foreground">Alıcı: {listing?.buyerName}</div>
-                  <div className="text-sm text-muted-foreground">Teklif: {DataManager.formatPrice(sellerDialogOffer.price)}{sellerDialogOffer.shippingCost && sellerDialogOffer.shippingCost > 0 ? ` + ${DataManager.formatPrice(sellerDialogOffer.shippingCost)} kargo` : ''}</div>
+                  <div className="text-sm text-muted-foreground">
+                    {(() => {
+                      // İlan sahibi ödeme sırasında farklı bir adet seçtiyse onu (ownerPurchasedQuantity) baz al
+                      const fallbackQty = Math.max(1, Number(sellerDialogOffer.quantity ?? 1));
+                      const u = Math.max(1, Number(sellerDialogOffer.ownerPurchasedQuantity ?? fallbackQty));
+                      const subtotal = sellerDialogOffer.price * u;
+                      return (
+                        <>
+                          Teklif: {DataManager.formatPrice(sellerDialogOffer.price)} × {u} = {DataManager.formatPrice(subtotal)}
+                          {sellerDialogOffer.shippingCost && sellerDialogOffer.shippingCost > 0 ? ` + ${DataManager.formatPrice(sellerDialogOffer.shippingCost)} kargo` : ''}
+                        </>
+                      );
+                    })()}
+                  </div>
                 </div>
                 <Stepper current={current} steps={steps} />
 
@@ -485,7 +511,18 @@ export default function Dashboard() {
                 <div className="space-y-1">
                   <div className="font-semibold">{listing?.title || 'İlan'}</div>
                   <div className="text-sm text-muted-foreground">Satıcı: {tpBuyerOrder.sellerName}</div>
-                  <div className="text-sm text-muted-foreground">Teklif: {DataManager.formatPrice(tpBuyerOrder.price)}{tpBuyerOrder.shippingCost > 0 ? ` + ${DataManager.formatPrice(tpBuyerOrder.shippingCost)} kargo` : ''}</div>
+                  <div className="text-sm text-muted-foreground">
+                    {(() => {
+                      const u = Math.max(1, Number(tpBuyerOrder.quantity ?? 1));
+                      const subtotal = tpBuyerOrder.price * u;
+                      return (
+                        <>
+                          Teklif: {DataManager.formatPrice(tpBuyerOrder.price)} × {u} = {DataManager.formatPrice(subtotal)}
+                          {tpBuyerOrder.shippingCost > 0 ? ` + ${DataManager.formatPrice(tpBuyerOrder.shippingCost)} kargo` : ''}
+                        </>
+                      );
+                    })()}
+                  </div>
                 </div>
                 <Stepper current={current} steps={steps} />
                 {(current === 3 || current === 4) && (
@@ -534,7 +571,18 @@ export default function Dashboard() {
                 <div className="space-y-1">
                   <div className="font-semibold">{listing?.title || 'İlan'}</div>
                   <div className="text-sm text-muted-foreground">Alıcı: {tpSellerOrder.buyerName}</div>
-                  <div className="text-sm text-muted-foreground">Teklif: {DataManager.formatPrice(tpSellerOrder.price)}{tpSellerOrder.shippingCost && tpSellerOrder.shippingCost > 0 ? ` + ${DataManager.formatPrice(tpSellerOrder.shippingCost)} kargo` : ''}</div>
+                  <div className="text-sm text-muted-foreground">
+                    {(() => {
+                      const u = Math.max(1, Number(tpSellerOrder.quantity ?? 1));
+                      const subtotal = tpSellerOrder.price * u;
+                      return (
+                        <>
+                          Teklif: {DataManager.formatPrice(tpSellerOrder.price)} × {u} = {DataManager.formatPrice(subtotal)}
+                          {tpSellerOrder.shippingCost && tpSellerOrder.shippingCost > 0 ? ` + ${DataManager.formatPrice(tpSellerOrder.shippingCost)} kargo` : ''}
+                        </>
+                      );
+                    })()}
+                  </div>
                 </div>
                 <Stepper current={current} steps={steps} />
                 <div className="space-y-3">

@@ -99,6 +99,9 @@ export default function ListingCard({ listing }: ListingCardProps) {
             <Package className="h-3 w-3 mr-1" />
             {getDeliveryText(listing.deliveryType)}
           </Badge>
+          {listing.exactProductOnly && (
+            <Badge className="bg-blue-100 text-blue-800 border-blue-200">Aynı Ürün Zorunlu</Badge>
+          )}
         </div>
 
         <div className="flex items-center justify-between">
