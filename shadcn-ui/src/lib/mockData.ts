@@ -201,6 +201,8 @@ export interface Offer {
   shippingCost?: number;
   etaDays?: number; // kargoya teslim süresi (gün)
   status: 'active' | 'accepted' | 'rejected' | 'withdrawn';
+  // Kabul edilen teklifler için zaman damgası
+  acceptedAt?: string;
   validUntil?: string; // ISO, teklif geçerlilik tarihi
   message?: string; // backward compatibility
   // Bu tekliften diğer kullanıcılarca satılan adet (ilan sahibi hariç)
@@ -1242,6 +1244,7 @@ export class DataManager {
     if (target.status !== 'active') return false; // sadece bekleyen
     // Kabul et
     offers[offerIndex].status = 'accepted';
+    offers[offerIndex].acceptedAt = new Date().toISOString();
     // Aynı ilana ait diğer aktif teklifleri reddet
     for (let i = 0; i < offers.length; i++) {
       if (i === offerIndex) continue;

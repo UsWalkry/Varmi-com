@@ -20,6 +20,8 @@ import { DataManager, Listing, Offer } from '@/lib/mockData';
 import { maskDisplayName } from '@/lib/utils';
 import Header from '@/components/Header';
 import FavoriteButton from '@/components/FavoriteButton';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import Stepper from '@/components/ui/stepper';
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -28,6 +30,8 @@ export default function Dashboard() {
   const [favoriteListings, setFavoriteListings] = useState<Listing[]>([]);
   const [incomingOffers, setIncomingOffers] = useState<Offer[]>([]); // Aldığım teklifler (ilanlarıma gelen)
   const [isLoading, setIsLoading] = useState(true);
+  const [orderDialogOpen, setOrderDialogOpen] = useState(false);
+  const [orderDialogOffer, setOrderDialogOffer] = useState<Offer | null>(null);
 
   const currentUser = DataManager.getCurrentUser();
   const userId = currentUser?.id;
@@ -158,6 +162,39 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
+      {/* Kabul edilen teklif için sipariş durumu diyaloğu */}
+      <Dialog open={orderDialogOpen} onOpenChange={(v) => { if (!v) { setOrderDialogOpen(false); setOrderDialogOffer(null); } }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Sipariş Durumu</DialogTitle>
+          </DialogHeader>
+          {orderDialogOffer && (() => {
+            const listing = DataManager.getListing(orderDialogOffer.listingId);
+            const acceptedAt = orderDialogOffer.acceptedAt ? DataManager.formatDate(orderDialogOffer.acceptedAt) : '-';
+            // Basit örnek aşamalar
+            const steps = [
+              { id: 1, title: 'Teklif Kabul Edildi', description: `Tarih: ${acceptedAt}` },
+              { id: 2, title: 'Satıcıdan Onay/İşleme', description: 'Satıcı ürünü hazırlıyor.' },
+              { id: 3, title: 'Kargo / Teslimat', description: orderDialogOffer.deliveryType === 'shipping' ? 'Kargoya verilecek.' : 'Elden teslim planlanacak.' },
+              { id: 4, title: 'Tamamlandı', description: 'İşlem başarıyla tamamlanacak.' }
+            ];
+            const current = 2; // Demo: örnek olarak 2. adımda
+            return (
+              <div className="space-y-4">
+                <div className="space-y-1">
+                  <div className="font-semibold">{listing?.title || 'İlan'}</div>
+                  <div className="text-sm text-muted-foreground">Satıcı: {orderDialogOffer.sellerName}</div>
+                  <div className="text-sm text-muted-foreground">Teklif: {DataManager.formatPrice(orderDialogOffer.price)}{orderDialogOffer.shippingCost > 0 ? ` + ${DataManager.formatPrice(orderDialogOffer.shippingCost)} kargo` : ''}</div>
+                </div>
+                <Stepper current={current} steps={steps} />
+                <div className="text-xs text-muted-foreground">
+                  Not: Bu demo akışıdır; gerçek kargo takibi ve teslimat entegrasyonu yapılmadı.
+                </div>
+              </div>
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
       
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
@@ -400,6 +437,11 @@ export default function Dashboard() {
                                         <XCircle className="h-4 w-4 mr-1" /> Reddet
                                       </Button>
                                     </div>
+                                  )}
+                                  {offer.status === 'accepted' && (
+                                    <Button size="sm" variant="outline" onClick={() => { setOrderDialogOffer(offer); setOrderDialogOpen(true); }}>
+                                      <Package className="h-4 w-4 mr-1" /> Sipariş Durumu
+                                    </Button>
                                   )}
                                 </div>
                               </div>
