@@ -1125,7 +1125,7 @@ export class DataManager {
       throw new Error('Teklife en fazla 5 görsel yükleyebilirsiniz');
     }
     const alreadyOffered = offers.some(
-      (o) => o.listingId === mutableOffer.listingId && o.sellerId === mutableOffer.sellerId
+      (o) => o.listingId === offer.listingId && o.sellerId === offer.sellerId
     );
     if (alreadyOffered) {
       throw new Error('Aynı ilana birden fazla teklif verilemez');
