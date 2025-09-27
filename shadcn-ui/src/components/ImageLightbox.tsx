@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { X, ChevronLeft, ChevronRight } from 'lucide-react';
 
@@ -49,6 +49,10 @@ export default function ImageLightbox({ images, startIndex = 0, open, onClose }:
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-[95vw] w-[95vw] h-[90vh] p-0 overflow-hidden">
+        {/* Erişilebilirlik için başlık (gizli) */}
+        <DialogHeader className="sr-only">
+          <DialogTitle>Görsel Galerisi</DialogTitle>
+        </DialogHeader>
         {/* Top bar */}
         <div className="absolute top-2 right-2 z-20 flex gap-2">
           <Button size="icon" variant="secondary" onClick={onClose} aria-label="Kapat">

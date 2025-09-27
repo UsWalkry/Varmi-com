@@ -233,6 +233,10 @@ export default function MessageCenter({ isOpen, onClose }: MessageCenterProps) {
     <>
       <Dialog open={isOpen} onOpenChange={memoizedOnClose}>
         <DialogContent className={dialogContentClassName}>
+          {/* Erişilebilirlik için başlık (gizli) */}
+          <DialogHeader className="sr-only">
+            <DialogTitle>Mesaj Merkezi</DialogTitle>
+          </DialogHeader>
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 border-b">
             <div className="flex items-center gap-2">
