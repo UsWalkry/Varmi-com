@@ -59,6 +59,7 @@ export default function ListingDetail() {
   const [maxPrice, setMaxPrice] = useState('');
   const [currentUser, setCurrentUser] = useState(DataManager.getCurrentUser());
   const [activeImage, setActiveImage] = useState(0);
+  const [descExpanded, setDescExpanded] = useState(false);
 
   const loadListingAndOffers = useCallback(() => {
     const allListings = DataManager.getListings();
@@ -315,7 +316,27 @@ export default function ListingDetail() {
                     </div>
                   )}
 
-                  <p className="text-gray-700 leading-relaxed">{listing.description}</p>
+                  {(() => {
+                    const fullDesc = listing.description || '';
+                    const MAX_DESC = 240;
+                    const isLong = fullDesc.length > MAX_DESC;
+                    const shown = !isLong || descExpanded ? fullDesc : truncateAtWord(fullDesc, MAX_DESC);
+                    return (
+                      <div className="text-gray-700 leading-relaxed">
+                        {shown}
+                        {isLong && (
+                          <button
+                            type="button"
+                            aria-expanded={descExpanded}
+                            className="ml-2 text-primary hover:underline font-medium text-sm"
+                            onClick={() => setDescExpanded(v => !v)}
+                          >
+                            {descExpanded ? 'Daha az göster' : 'Daha fazla göster'}
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })()}
                   
                   <div className="flex flex-wrap gap-2">
                     <Badge variant="secondary">{listing.category}</Badge>
@@ -705,4 +726,12 @@ export default function ListingDetail() {
       {/* Review Modal kaldırıldı */}
     </div>
   );
+}
+
+function truncateAtWord(text: string, limit: number): string {
+  if (text.length <= limit) return text;
+  const slice = text.slice(0, limit);
+  const lastSpace = slice.lastIndexOf(' ');
+  const safe = lastSpace > 0 ? slice.slice(0, lastSpace) : slice;
+  return safe.replace(/[\s,.!?:;-]+$/, '') + '…';
 }
