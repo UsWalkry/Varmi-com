@@ -16,11 +16,13 @@ import {
   XCircle
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { DataManager, Listing, Offer } from '@/lib/mockData';
+import { DataManager, Listing, Offer, ThirdPartyOrder } from '@/lib/mockData';
 import { maskDisplayName } from '@/lib/utils';
 import Header from '@/components/Header';
 import FavoriteButton from '@/components/FavoriteButton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+// removed Input and Textarea imports as manual inputs are no longer used
 import Stepper from '@/components/ui/stepper';
 
 export default function Dashboard() {
@@ -29,9 +31,22 @@ export default function Dashboard() {
   const [myOffers, setMyOffers] = useState<Offer[]>([]);
   const [favoriteListings, setFavoriteListings] = useState<Listing[]>([]);
   const [incomingOffers, setIncomingOffers] = useState<Offer[]>([]); // Aldığım teklifler (ilanlarıma gelen)
+  // Üçüncü taraf siparişler (tekliften satın aldıklarım ve sattıklarım)
+  const [myPurchases, setMyPurchases] = useState<ThirdPartyOrder[]>([]);
+  const [myTpSales, setMyTpSales] = useState<ThirdPartyOrder[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [orderDialogOpen, setOrderDialogOpen] = useState(false);
   const [orderDialogOffer, setOrderDialogOffer] = useState<Offer | null>(null);
+  // Satıcı (verdiğim teklifler) için sipariş işlemleri diyaloğu
+  const [sellerDialogOpen, setSellerDialogOpen] = useState(false);
+  const [sellerDialogOffer, setSellerDialogOffer] = useState<Offer | null>(null);
+  const [trackingNo, setTrackingNo] = useState('');
+  const [selectedCarrier, setSelectedCarrier] = useState<string>('');
+  // TP sipariş diyalogları
+  const [tpBuyerDialogOpen, setTpBuyerDialogOpen] = useState(false);
+  const [tpBuyerOrder, setTpBuyerOrder] = useState<ThirdPartyOrder | null>(null);
+  const [tpSellerDialogOpen, setTpSellerDialogOpen] = useState(false);
+  const [tpSellerOrder, setTpSellerOrder] = useState<ThirdPartyOrder | null>(null);
 
   const currentUser = DataManager.getCurrentUser();
   const userId = currentUser?.id;
@@ -62,7 +77,11 @@ export default function Dashboard() {
           offer && offer.sellerId !== userId && userListings.some(l => l.id === offer.listingId)
         );
         
-        // Get favorite listings
+    // Third-party orders
+    const tpPurchases = DataManager.getThirdPartyOrdersForBuyer(userId);
+    const tpSales = DataManager.getThirdPartyOrdersForSeller(userId);
+
+    // Get favorite listings
         const favoriteIds = DataManager.getFavorites(userId);
         const favorites = allListings.filter(listing => 
           listing && favoriteIds.includes(listing.id)
@@ -71,6 +90,8 @@ export default function Dashboard() {
   setMyListings(userListings);
   setMyOffers(userOffers);
   setIncomingOffers(offersOnMyListings);
+  setMyPurchases(tpPurchases);
+  setMyTpSales(tpSales);
         setFavoriteListings(favorites);
       } catch (error) {
         console.error('Error loading dashboard data:', error);
@@ -102,7 +123,8 @@ export default function Dashboard() {
 
     try {
       if (action === 'accept') {
-        DataManager.acceptOffer(offerId);
+        // Kabul işlemini ödeme sonrası yapacağız
+        navigate(`/checkout?offerId=${offerId}`);
       } else {
         DataManager.rejectOffer(offerId);
       }
@@ -115,6 +137,140 @@ export default function Dashboard() {
       setMyOffers(userOffers);
     } catch (error) {
       console.error('Error handling offer:', error);
+    }
+  };
+
+  // Satıcı tarafı: aşama geçişleri ve otomatik mesaj gönderimi
+  const refreshSellerOffer = (offerId: string) => {
+    const fresh = DataManager.getAllOffers().find(o => o.id === offerId);
+    if (fresh) setSellerDialogOffer(fresh);
+    // Ayrıca listeleri tazeleyelim
+    if (userId) {
+      const allOffers = DataManager.getAllOffers();
+      const userOffers = allOffers.filter(o => o && o.sellerId === userId);
+      setMyOffers(userOffers);
+    }
+  };
+
+  const sendAutoMessageToOwner = (offer: Offer, text: string) => {
+    const listing = DataManager.getListing(offer.listingId);
+    if (!listing || !currentUser) return;
+    try {
+      DataManager.addMessage({
+        listingId: offer.listingId,
+        fromUserId: currentUser.id,
+        fromUserName: currentUser.name,
+        toUserId: listing.buyerId,
+        message: text,
+      });
+    } catch (e) {
+      console.error('Otomatik mesaj gönderilemedi', e);
+    }
+  };
+
+  // Alıcıdan satıcıya otomatik mesaj (örn. Teslim aldım)
+  const sendAutoMessageToSeller = (offer: Offer, text: string) => {
+    if (!currentUser) return;
+    try {
+      DataManager.addMessage({
+        listingId: offer.listingId,
+        fromUserId: currentUser.id,
+        fromUserName: currentUser.name,
+        toUserId: offer.sellerId,
+        message: text,
+      });
+    } catch (e) {
+      console.error('Otomatik mesaj gönderilemedi (satıcıya)', e);
+    }
+  };
+
+  const carriers = [
+    { id: 'surat', name: 'Sürat Kargo', extraFee: 19.9 },
+    { id: 'aras', name: 'Aras Kargo', extraFee: 24.9 },
+    { id: 'ptt', name: 'PTT Kargo', extraFee: 0 },
+  ];
+
+  const handleSelectCarrier = (offer: Offer) => {
+    const c = carriers.find(c => c.id === selectedCarrier);
+    if (!c) return;
+    const ok = DataManager.setOfferCarrier(offer.id, c);
+    if (ok) {
+      const tn = DataManager.getAllOffers().find(o => o.id === offer.id)?.trackingNo;
+      setTrackingNo(tn || '');
+      refreshSellerOffer(offer.id);
+    }
+  };
+
+  const handleMarkShipped = (offer: Offer) => {
+    const tn = trackingNo.trim();
+    if (!tn) return;
+    const ok = DataManager.setOfferShipped(offer.id, tn);
+    if (ok) {
+      const msg = `Siparişiniz kargoya verildi. Takip No: ${tn}`;
+      sendAutoMessageToOwner(offer, msg);
+      setTrackingNo('');
+      refreshSellerOffer(offer.id);
+    }
+  };
+
+  const handleMarkCompleted = (offer: Offer) => {
+    const ok = DataManager.setOfferCompleted(offer.id);
+    if (ok) {
+      sendAutoMessageToOwner(offer, 'İşlem tamamlandı. Ödeme satıcıya aktarıldı. Teşekkürler.');
+      refreshSellerOffer(offer.id);
+    }
+  };
+
+  // TP seller handlers
+  const refreshTpSellerOrder = (orderId: string) => {
+    const fresh = DataManager.getAllThirdPartyOrders().find(o => o.id === orderId);
+    if (fresh) setTpSellerOrder(fresh);
+    if (userId) setMyTpSales(DataManager.getThirdPartyOrdersForSeller(userId));
+  };
+
+  const sendMessageSellerToTpBuyer = (order: ThirdPartyOrder, text: string) => {
+    const buyerId = order.buyerId;
+    if (!currentUser) return;
+    try {
+      DataManager.addMessage({
+        listingId: order.listingId,
+        fromUserId: currentUser.id,
+        fromUserName: currentUser.name,
+        toUserId: buyerId,
+        message: text,
+      });
+    } catch (e) {
+      // messaging failed; ignore
+    }
+  };
+
+  const handleSelectCarrierTP = (order: ThirdPartyOrder) => {
+    const c = carriers.find(c => c.id === selectedCarrier);
+    if (!c) return;
+    const ok = DataManager.setTPOrderCarrier(order.id, c);
+    if (ok) {
+      const tn = DataManager.getAllThirdPartyOrders().find(o => o.id === order.id)?.trackingNo;
+      setTrackingNo(tn || '');
+      refreshTpSellerOrder(order.id);
+    }
+  };
+
+  const handleMarkShippedTP = (order: ThirdPartyOrder) => {
+    const tn = trackingNo.trim();
+    if (!tn) return;
+    const ok = DataManager.setTPOrderShipped(order.id, tn);
+    if (ok) {
+      sendMessageSellerToTpBuyer(order, `Siparişiniz kargoya verildi. Takip No: ${tn}`);
+      setTrackingNo('');
+      refreshTpSellerOrder(order.id);
+    }
+  };
+
+  const handleMarkCompletedTP = (order: ThirdPartyOrder) => {
+    const ok = DataManager.setTPOrderCompleted(order.id);
+    if (ok) {
+      sendMessageSellerToTpBuyer(order, 'İşlem tamamlandı. Ödeme satıcıya aktarıldı. Teşekkürler.');
+      refreshTpSellerOrder(order.id);
     }
   };
 
@@ -171,15 +327,31 @@ export default function Dashboard() {
           {orderDialogOffer && (() => {
             const listing = DataManager.getListing(orderDialogOffer.listingId);
             const acceptedAt = orderDialogOffer.acceptedAt ? DataManager.formatDate(orderDialogOffer.acceptedAt) : '-';
-            // Dinamik aşamalar
+            // 5 aşamalı dinamik akış (alıcı görünümü)
             const steps = [
-              { id: 1, title: 'Teklif Kabul Edildi', description: `Tarih: ${acceptedAt}` },
-              { id: 2, title: 'Satıcıdan Onay/İşleme', description: 'Satıcı ürünü hazırlıyor.' },
-              { id: 3, title: 'Kargo / Teslimat', description: orderDialogOffer.deliveryType === 'shipping' ? (orderDialogOffer.trackingNo ? `Kargoya verildi • Takip No: ${orderDialogOffer.trackingNo}` : 'Kargoya verilecek.') : 'Elden teslim planlanacak.' },
-              { id: 4, title: 'Tamamlandı', description: 'İşlem başarıyla tamamlandı.' }
+              { id: 1, title: 'Sipariş Alındı', description: `Tarih: ${acceptedAt}` },
+              { id: 2, title: 'Kargo Firması Seçildi', description: orderDialogOffer.shippingCarrierName ? `${orderDialogOffer.shippingCarrierName}${orderDialogOffer.shippingExtraFee && orderDialogOffer.shippingExtraFee > 0 ? ` • Ek ücret: ${DataManager.formatPrice(orderDialogOffer.shippingExtraFee)}` : ''}` : 'Satıcı firma seçecek.' },
+              { id: 3, title: 'Kargolandı', description: orderDialogOffer.trackingNo ? `Takip No: ${orderDialogOffer.trackingNo}` : (orderDialogOffer.deliveryType === 'pickup' ? 'Elden teslim için planlanıyor.' : 'Kargoya verilecek.') },
+              { id: 4, title: 'Teslim Edildi', description: 'Paket teslim edildi.' },
+              { id: 5, title: 'Tamamlandı & Ödeme Aktarıldı', description: orderDialogOffer.completedAt ? `Tarih: ${DataManager.formatDate(orderDialogOffer.completedAt)}` : 'Ödeme aktarımı bekleniyor.' }
             ];
-            const stageMap: Record<NonNullable<Offer['orderStage']>, number> = { accepted: 1, processing: 2, shipped: 3, delivered: 4 } as const;
-            const current = orderDialogOffer.orderStage ? stageMap[orderDialogOffer.orderStage] : 1;
+            const stageMap: Record<string, number> = { accepted: 1, received: 1, carrierSelected: 2, shipped: 3, delivered: 4, completed: 5 } as const;
+            const current = orderDialogOffer.orderStage ? (stageMap[orderDialogOffer.orderStage] || 1) : 1;
+            const hasTracking = !!orderDialogOffer.trackingNo;
+            const isShipped = orderDialogOffer.orderStage === 'shipped';
+            const isDelivered = orderDialogOffer.orderStage === 'delivered';
+            const showConfirmSection = (current === 3 || current === 4) && (hasTracking || isShipped || isDelivered);
+            const canConfirmDelivery = isShipped;
+            const handleBuyerConfirmDelivered = () => {
+              if (!orderDialogOffer) return;
+              // Önce teslim edildi, ardından otomatik tamamla ve ödemeyi aktarılmış say
+              DataManager.setOfferDelivered(orderDialogOffer.id);
+              DataManager.setOfferCompleted(orderDialogOffer.id);
+              // Alıcı, satıcıya otomatik bilgi versin
+              sendAutoMessageToSeller(orderDialogOffer, 'Siparişi teslim aldım. Teşekkürler.');
+              const updated = DataManager.getAllOffers().find(o => o.id === orderDialogOffer.id);
+              if (updated) setOrderDialogOffer(updated);
+            };
             return (
               <div className="space-y-4">
                 <div className="space-y-1">
@@ -188,9 +360,212 @@ export default function Dashboard() {
                   <div className="text-sm text-muted-foreground">Teklif: {DataManager.formatPrice(orderDialogOffer.price)}{orderDialogOffer.shippingCost > 0 ? ` + ${DataManager.formatPrice(orderDialogOffer.shippingCost)} kargo` : ''}</div>
                 </div>
                 <Stepper current={current} steps={steps} />
+                {showConfirmSection && (
+                  <div className="rounded-md border p-3 space-y-2">
+                    <div className="font-semibold">Adım 4: Teslim Edildi</div>
+                    <div className="text-sm text-muted-foreground space-y-1">
+                      <div>Takip No: <span className="font-mono select-all">{orderDialogOffer.trackingNo || '—'}</span></div>
+                      {orderDialogOffer.shippingCarrierName && (
+                        <div>Kargo: {orderDialogOffer.shippingCarrierName}{orderDialogOffer.shippingExtraFee && orderDialogOffer.shippingExtraFee > 0 ? ` • Ek ücret: ${DataManager.formatPrice(orderDialogOffer.shippingExtraFee)}` : ''}</div>
+                      )}
+                    </div>
+                    <div className="space-y-1 pt-1">
+                      <Button className="w-full" disabled={!canConfirmDelivery} onClick={handleBuyerConfirmDelivered}>Teslim Aldım</Button>
+                      {!canConfirmDelivery && (
+                        <div className="text-xs text-muted-foreground">Kargo firması paketi teslim aldıktan sonra bu buton aktif olur.</div>
+                      )}
+                    </div>
+                  </div>
+                )}
                 <div className="text-xs text-muted-foreground">
                   Son güncelleme: {orderDialogOffer.orderUpdatedAt ? DataManager.formatDate(orderDialogOffer.orderUpdatedAt) : '-'}
                 </div>
+              </div>
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
+      {/* Satıcı tarafı: Verdiğim teklif için işlem diyaloğu */}
+  <Dialog open={sellerDialogOpen} onOpenChange={(v) => { if (!v) { setSellerDialogOpen(false); setSellerDialogOffer(null); setTrackingNo(''); } }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Satıcı İşlemleri</DialogTitle>
+          </DialogHeader>
+          {sellerDialogOffer && (() => {
+            const listing = DataManager.getListing(sellerDialogOffer.listingId);
+            const acceptedAt = sellerDialogOffer.acceptedAt ? DataManager.formatDate(sellerDialogOffer.acceptedAt) : '-';
+            const effDelivery: 'shipping' | 'pickup' = sellerDialogOffer.deliveryType
+              ? sellerDialogOffer.deliveryType
+              : ((sellerDialogOffer.shippingCost && sellerDialogOffer.shippingCost > 0) ? 'shipping' : (listing?.deliveryType === 'pickup' ? 'pickup' : 'shipping'));
+            const steps = [
+              { id: 1, title: 'Sipariş Alındı', description: `Tarih: ${acceptedAt}` },
+              { id: 2, title: effDelivery === 'shipping' ? 'Kargo Firması Seçimi' : 'Teslim Hazırlığı', description: effDelivery === 'shipping' ? (sellerDialogOffer.shippingCarrierName ? `${sellerDialogOffer.shippingCarrierName}${sellerDialogOffer.shippingExtraFee && sellerDialogOffer.shippingExtraFee > 0 ? ` • Ek ücret: ${DataManager.formatPrice(sellerDialogOffer.shippingExtraFee)}` : ''}` : 'Bir kargo firması seçin.') : 'Elden teslim için hazırlayın.' },
+              { id: 3, title: 'Kargolandı', description: 'Takip numarası otomatik oluşturulur.' },
+              { id: 4, title: 'Teslim Edildi', description: 'Paket alıcıya ulaştığında işaretleyin.' },
+              { id: 5, title: 'Tamamlandı & Ödeme', description: 'Ödeme aktarıldıktan sonra tamamlayın.' },
+            ];
+            const stageMap: Record<string, number> = { accepted: 1, received: 1, carrierSelected: 2, shipped: 3, delivered: 4, completed: 5 } as const;
+            const current = sellerDialogOffer.orderStage ? (stageMap[sellerDialogOffer.orderStage] || 1) : 1;
+            return (
+              <div className="space-y-4">
+                <div className="space-y-1">
+                  <div className="font-semibold">{listing?.title || 'İlan'}</div>
+                  <div className="text-sm text-muted-foreground">Alıcı: {listing?.buyerName}</div>
+                  <div className="text-sm text-muted-foreground">Teklif: {DataManager.formatPrice(sellerDialogOffer.price)}{sellerDialogOffer.shippingCost && sellerDialogOffer.shippingCost > 0 ? ` + ${DataManager.formatPrice(sellerDialogOffer.shippingCost)} kargo` : ''}</div>
+                </div>
+                <Stepper current={current} steps={steps} />
+
+                {/* Aşama eylemleri */}
+                <div className="space-y-3">
+                  {(sellerDialogOffer.orderStage === 'received' || sellerDialogOffer.orderStage === 'accepted') && effDelivery === 'shipping' && (
+                    <div className="space-y-2">
+                      <Select value={selectedCarrier} onValueChange={(v) => setSelectedCarrier(v)}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Kargo firması seçin" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {carriers.map(c => (
+                            <SelectItem key={c.id} value={c.id}>{c.name} {c.extraFee && c.extraFee > 0 ? `(+${DataManager.formatPrice(c.extraFee)})` : '(Ek ücret yok)'}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Button className="w-full" disabled={!selectedCarrier} onClick={() => handleSelectCarrier(sellerDialogOffer)}>Onayla</Button>
+                    </div>
+                  )}
+
+                  {(sellerDialogOffer.orderStage === 'carrierSelected' || sellerDialogOffer.orderStage === 'received' || sellerDialogOffer.orderStage === 'accepted') && effDelivery === 'shipping' && (
+                    <div className="space-y-2">
+                      <div className="text-sm">Takip No: <span className="font-mono select-all">{trackingNo || sellerDialogOffer.trackingNo || '—'}</span></div>
+                      <Button className="w-full" onClick={() => handleMarkShipped(sellerDialogOffer)}>Kargoya Ver</Button>
+                    </div>
+                  )}
+
+                  {sellerDialogOffer.orderStage === 'delivered' && (
+                    <div className="space-y-2">
+                      <Button className="w-full" onClick={() => handleMarkCompleted(sellerDialogOffer)}>Tamamlandı & Ödeme Aktarıldı</Button>
+                    </div>
+                  )}
+                </div>
+
+                <div className="text-xs text-muted-foreground">Son güncelleme: {sellerDialogOffer.orderUpdatedAt ? DataManager.formatDate(sellerDialogOffer.orderUpdatedAt) : '-'}</div>
+              </div>
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
+
+      {/* TP Buyer: Satın aldığım teklif sipariş durumu */}
+      <Dialog open={tpBuyerDialogOpen} onOpenChange={(v) => { if (!v) { setTpBuyerDialogOpen(false); setTpBuyerOrder(null); } }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Sipariş Durumu</DialogTitle>
+          </DialogHeader>
+          {tpBuyerOrder && (() => {
+            const listing = DataManager.getListing(tpBuyerOrder.listingId);
+            const steps = [
+              { id: 1, title: 'Sipariş Alındı', description: `Tarih: ${DataManager.formatDate(tpBuyerOrder.acceptedAt)}` },
+              { id: 2, title: 'Kargo Firması Seçildi', description: tpBuyerOrder.shippingCarrierName ? `${tpBuyerOrder.shippingCarrierName}${tpBuyerOrder.shippingExtraFee && tpBuyerOrder.shippingExtraFee > 0 ? ` • Ek ücret: ${DataManager.formatPrice(tpBuyerOrder.shippingExtraFee)}` : ''}` : 'Satıcı firma seçecek.' },
+              { id: 3, title: 'Kargolandı', description: tpBuyerOrder.trackingNo ? `Takip No: ${tpBuyerOrder.trackingNo}` : (tpBuyerOrder.deliveryType === 'pickup' ? 'Elden teslim için planlanıyor.' : 'Kargoya verilecek.') },
+              { id: 4, title: 'Teslim Edildi', description: 'Paket teslim edildi.' },
+              { id: 5, title: 'Tamamlandı & Ödeme Aktarıldı', description: tpBuyerOrder.completedAt ? `Tarih: ${DataManager.formatDate(tpBuyerOrder.completedAt)}` : 'Ödeme aktarımı bekleniyor.' }
+            ];
+            const stageMap: Record<string, number> = { received: 1, carrierSelected: 2, shipped: 3, delivered: 4, completed: 5 } as const;
+            const current = tpBuyerOrder.orderStage ? (stageMap[tpBuyerOrder.orderStage] || 1) : 1;
+            const canConfirmDelivery = tpBuyerOrder.orderStage === 'shipped';
+            const handleBuyerConfirmDelivered = () => {
+              if (!tpBuyerOrder) return;
+              DataManager.setTPOrderDelivered(tpBuyerOrder.id);
+              DataManager.setTPOrderCompleted(tpBuyerOrder.id);
+              const updated = DataManager.getAllThirdPartyOrders().find(o => o.id === tpBuyerOrder.id);
+              if (updated) setTpBuyerOrder(updated);
+              if (userId) setMyPurchases(DataManager.getThirdPartyOrdersForBuyer(userId));
+            };
+            return (
+              <div className="space-y-4">
+                <div className="space-y-1">
+                  <div className="font-semibold">{listing?.title || 'İlan'}</div>
+                  <div className="text-sm text-muted-foreground">Satıcı: {tpBuyerOrder.sellerName}</div>
+                  <div className="text-sm text-muted-foreground">Teklif: {DataManager.formatPrice(tpBuyerOrder.price)}{tpBuyerOrder.shippingCost > 0 ? ` + ${DataManager.formatPrice(tpBuyerOrder.shippingCost)} kargo` : ''}</div>
+                </div>
+                <Stepper current={current} steps={steps} />
+                {(current === 3 || current === 4) && (
+                  <div className="rounded-md border p-3 space-y-2">
+                    <div className="font-semibold">Adım 4: Teslim Edildi</div>
+                    <div className="text-sm text-muted-foreground space-y-1">
+                      <div>Takip No: <span className="font-mono select-all">{tpBuyerOrder.trackingNo || '—'}</span></div>
+                      {tpBuyerOrder.shippingCarrierName && (
+                        <div>Kargo: {tpBuyerOrder.shippingCarrierName}{tpBuyerOrder.shippingExtraFee && tpBuyerOrder.shippingExtraFee > 0 ? ` • Ek ücret: ${DataManager.formatPrice(tpBuyerOrder.shippingExtraFee)}` : ''}</div>
+                      )}
+                    </div>
+                    <div className="space-y-1 pt-1">
+                      <Button className="w-full" disabled={!canConfirmDelivery} onClick={handleBuyerConfirmDelivered}>Teslim Aldım</Button>
+                      {!canConfirmDelivery && (
+                        <div className="text-xs text-muted-foreground">Kargo firması paketi teslim aldıktan sonra bu buton aktif olur.</div>
+                      )}
+                    </div>
+                  </div>
+                )}
+                <div className="text-xs text-muted-foreground">Son güncelleme: {tpBuyerOrder.orderUpdatedAt ? DataManager.formatDate(tpBuyerOrder.orderUpdatedAt) : '-'}</div>
+              </div>
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
+
+      {/* TP Seller: Satın alınan teklifler için satıcı işlemleri */}
+      <Dialog open={tpSellerDialogOpen} onOpenChange={(v) => { if (!v) { setTpSellerDialogOpen(false); setTpSellerOrder(null); setTrackingNo(''); } }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Satıcı İşlemleri</DialogTitle>
+          </DialogHeader>
+          {tpSellerOrder && (() => {
+            const listing = DataManager.getListing(tpSellerOrder.listingId);
+            const steps = [
+              { id: 1, title: 'Sipariş Alındı', description: `Tarih: ${DataManager.formatDate(tpSellerOrder.acceptedAt)}` },
+              { id: 2, title: 'Kargo Firması Seçimi', description: tpSellerOrder.shippingCarrierName ? `${tpSellerOrder.shippingCarrierName}${tpSellerOrder.shippingExtraFee && tpSellerOrder.shippingExtraFee > 0 ? ` • Ek ücret: ${DataManager.formatPrice(tpSellerOrder.shippingExtraFee)}` : ''}` : 'Bir kargo firması seçin.' },
+              { id: 3, title: 'Kargolandı', description: 'Takip numarası otomatik oluşturulur.' },
+              { id: 4, title: 'Teslim Edildi', description: 'Paket alıcıya ulaştığında işaretleyin.' },
+              { id: 5, title: 'Tamamlandı & Ödeme', description: 'Ödeme aktarıldıktan sonra tamamlayın.' },
+            ];
+            const stageMap: Record<string, number> = { received: 1, carrierSelected: 2, shipped: 3, delivered: 4, completed: 5 } as const;
+            const current = tpSellerOrder.orderStage ? (stageMap[tpSellerOrder.orderStage] || 1) : 1;
+            return (
+              <div className="space-y-4">
+                <div className="space-y-1">
+                  <div className="font-semibold">{listing?.title || 'İlan'}</div>
+                  <div className="text-sm text-muted-foreground">Alıcı: {tpSellerOrder.buyerName}</div>
+                  <div className="text-sm text-muted-foreground">Teklif: {DataManager.formatPrice(tpSellerOrder.price)}{tpSellerOrder.shippingCost && tpSellerOrder.shippingCost > 0 ? ` + ${DataManager.formatPrice(tpSellerOrder.shippingCost)} kargo` : ''}</div>
+                </div>
+                <Stepper current={current} steps={steps} />
+                <div className="space-y-3">
+                  {tpSellerOrder.orderStage === 'received' && (
+                    <div className="space-y-2">
+                      <Select value={selectedCarrier} onValueChange={(v) => setSelectedCarrier(v)}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Kargo firması seçin" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {carriers.map(c => (
+                            <SelectItem key={c.id} value={c.id}>{c.name} {c.extraFee && c.extraFee > 0 ? `(+${DataManager.formatPrice(c.extraFee)})` : '(Ek ücret yok)'}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Button className="w-full" disabled={!selectedCarrier} onClick={() => handleSelectCarrierTP(tpSellerOrder)}>Onayla</Button>
+                    </div>
+                  )}
+                  {(tpSellerOrder.orderStage === 'carrierSelected' || tpSellerOrder.orderStage === 'received') && (
+                    <div className="space-y-2">
+                      <div className="text-sm">Takip No: <span className="font-mono select-all">{trackingNo || tpSellerOrder.trackingNo || '—'}</span></div>
+                      <Button className="w-full" onClick={() => handleMarkShippedTP(tpSellerOrder)}>Kargoya Ver</Button>
+                    </div>
+                  )}
+                  {tpSellerOrder.orderStage === 'delivered' && (
+                    <div className="space-y-2">
+                      <Button className="w-full" onClick={() => handleMarkCompletedTP(tpSellerOrder)}>Tamamlandı & Ödeme Aktarıldı</Button>
+                    </div>
+                  )}
+                </div>
+                <div className="text-xs text-muted-foreground">Son güncelleme: {tpSellerOrder.orderUpdatedAt ? DataManager.formatDate(tpSellerOrder.orderUpdatedAt) : '-'}</div>
               </div>
             );
           })()}
@@ -352,9 +727,11 @@ export default function Dashboard() {
               </CardHeader>
               <CardContent>
                 <Tabs defaultValue="outgoing" className="space-y-6">
-                  <TabsList className="grid w-full grid-cols-2">
+                  <TabsList className="grid w-full grid-cols-4">
                     <TabsTrigger value="outgoing">Verdiğim Teklifler ({myOffers.length})</TabsTrigger>
                     <TabsTrigger value="incoming">Aldığım Teklifler ({incomingOffers.length})</TabsTrigger>
+                    <TabsTrigger value="purchases">Satın Aldıklarım ({myPurchases.length})</TabsTrigger>
+                    <TabsTrigger value="store">Mağaza Siparişleri ({myTpSales.length})</TabsTrigger>
                   </TabsList>
                   {/* Outgoing Offers */}
                   <TabsContent value="outgoing" className="space-y-4">
@@ -389,6 +766,11 @@ export default function Dashboard() {
                                   </Badge>
                                   {offer.status === 'active' && (
                                     <Button size="sm" variant="outline" className="text-red-600 border-red-300 hover:bg-red-50" onClick={() => handleWithdrawOffer(offer.id)}>Geri Çek</Button>
+                                  )}
+                                  {offer.status === 'accepted' && (
+                                    <Button size="sm" variant="outline" onClick={() => { setSellerDialogOffer(offer); setSellerDialogOpen(true); setTrackingNo(offer.trackingNo || ''); setSelectedCarrier(offer.shippingCarrierId || ''); }}>
+                                      <Package className="h-4 w-4 mr-1" /> Sipariş İşlemleri
+                                    </Button>
                                   )}
                                 </div>
                               </div>
@@ -445,6 +827,86 @@ export default function Dashboard() {
                                     </Button>
                                   )}
                                 </div>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        );
+                      })
+                    )}
+                  </TabsContent>
+
+                  {/* Purchases (Third-party orders as buyer) */}
+                  <TabsContent value="purchases" className="space-y-4">
+                    {myPurchases.length === 0 ? (
+                      <div className="text-center py-10">
+                        <TrendingUp className="h-14 w-14 text-muted-foreground mx-auto mb-4" />
+                        <h3 className="text-lg font-semibold mb-2">Henüz satın alma yok</h3>
+                        <p className="text-muted-foreground text-sm max-w-md mx-auto">Tekliflerden satın aldığın ürünler burada listelenir.</p>
+                      </div>
+                    ) : (
+                      myPurchases.map(order => {
+                        const listing = DataManager.getListing(order.listingId);
+                        return (
+                          <Card key={order.id} className="border">
+                            <CardContent className="p-5 flex items-start justify-between gap-3">
+                              <div className="min-w-0">
+                                <h4 className="font-semibold mb-1 line-clamp-1">{listing?.title}</h4>
+                                <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground mb-2">
+                                  <span>Satıcı: {order.sellerName}</span>
+                                  <span>{DataManager.getTimeAgo(order.acceptedAt)}</span>
+                                </div>
+                                <div className="flex items-center gap-4">
+                                  <span className="font-semibold text-green-600">{DataManager.formatPrice(order.price)}</span>
+                                  {order.shippingCost > 0 && <span className="text-xs text-muted-foreground">+ {DataManager.formatPrice(order.shippingCost)} kargo</span>}
+                                </div>
+                              </div>
+                              <div className="flex flex-col items-end gap-2 min-w-[140px]">
+                                <Badge variant={order.orderStage === 'completed' ? 'default' : 'secondary'}>
+                                  {order.orderStage === 'received' ? 'Sipariş Alındı' : order.orderStage === 'carrierSelected' ? 'Kargo Seçildi' : order.orderStage === 'shipped' ? 'Kargolandı' : order.orderStage === 'delivered' ? 'Teslim Edildi' : 'Tamamlandı'}
+                                </Badge>
+                                <Button size="sm" variant="outline" onClick={() => { setTpBuyerOrder(order); setTpBuyerDialogOpen(true); }}>
+                                  <Package className="h-4 w-4 mr-1" /> Sipariş Durumu
+                                </Button>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        );
+                      })
+                    )}
+                  </TabsContent>
+
+                  {/* Store sales (Third-party orders as seller) */}
+                  <TabsContent value="store" className="space-y-4">
+                    {myTpSales.length === 0 ? (
+                      <div className="text-center py-10">
+                        <TrendingUp className="h-14 w-14 text-muted-foreground mx-auto mb-4" />
+                        <h3 className="text-lg font-semibold mb-2">Henüz mağaza siparişi yok</h3>
+                        <p className="text-muted-foreground text-sm max-w-md mx-auto">Tekliflerinden yapılan satın almalar burada listelenir.</p>
+                      </div>
+                    ) : (
+                      myTpSales.map(order => {
+                        const listing = DataManager.getListing(order.listingId);
+                        return (
+                          <Card key={order.id} className="border">
+                            <CardContent className="p-5 flex items-start justify-between gap-3">
+                              <div className="min-w-0">
+                                <h4 className="font-semibold mb-1 line-clamp-1">{listing?.title}</h4>
+                                <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground mb-2">
+                                  <span>Alıcı: {order.buyerName}</span>
+                                  <span>{DataManager.getTimeAgo(order.acceptedAt)}</span>
+                                </div>
+                                <div className="flex items-center gap-4">
+                                  <span className="font-semibold text-green-600">{DataManager.formatPrice(order.price)}</span>
+                                  {order.shippingCost > 0 && <span className="text-xs text-muted-foreground">+ {DataManager.formatPrice(order.shippingCost)} kargo</span>}
+                                </div>
+                              </div>
+                              <div className="flex flex-col items-end gap-2 min-w-[140px]">
+                                <Badge variant={order.orderStage === 'completed' ? 'default' : 'secondary'}>
+                                  {order.orderStage === 'received' ? 'Sipariş Alındı' : order.orderStage === 'carrierSelected' ? 'Kargo Seçildi' : order.orderStage === 'shipped' ? 'Kargolandı' : order.orderStage === 'delivered' ? 'Teslim Edildi' : 'Tamamlandı'}
+                                </Badge>
+                                <Button size="sm" variant="outline" onClick={() => { setTpSellerOrder(order); setTpSellerDialogOpen(true); setTrackingNo(order.trackingNo || ''); setSelectedCarrier(order.shippingCarrierId || ''); }}>
+                                  <Package className="h-4 w-4 mr-1" /> Sipariş İşlemleri
+                                </Button>
                               </div>
                             </CardContent>
                           </Card>

@@ -11,6 +11,7 @@ import NotFound from './pages/NotFound';
 import Inbox from './pages/Inbox';
 import LocalErrorBoundary from '@/components/ui/LocalErrorBoundary';
 import Profile from './pages/Profile';
+import Checkout from './pages/Checkout';
 
 const queryClient = new QueryClient();
 
@@ -34,6 +35,7 @@ const App = () => (
             <Route path="/profile" element={<Profile />} />
             <Route path="/edit-listing/:id" element={<EditListing />} />
             <Route path="/inbox" element={<Inbox />} />
+            <Route path="/checkout" element={<Checkout />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </Router>

@@ -242,7 +242,7 @@ export default function OfferCard({
       )}
 
       {/* Diğer kullanıcılar için satın alma aksiyonu (opsiyonel) */}
-      {onPurchase && offer.status === 'active' && purchasableLeft > 0 && (
+      {onPurchase && (offer.status === 'active' || offer.status === 'accepted') && purchasableLeft > 0 && (
         <CardFooter className="pt-0">
           <div className="flex w-full">
             <Button className="ml-auto" size="sm" onClick={() => onPurchase?.(offer.id)}>

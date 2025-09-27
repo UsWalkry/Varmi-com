@@ -15,14 +15,14 @@ interface StepperProps {
 }
 
 /**
- * Basit yatay adım göstergesi.
- * - Tamamlanan adımlar: mavi dolu daire
- * - Aktif adım: mavi çerçeve
- * - Gelecek adım: gri çerçeve
+ * Dikey adım göstergesi.
+ * - Tamamlanan adımlar: yeşil tikli daire
+ * - Aktif adım: mavi çerçeve + açıklama görünür
+ * - Gelecek adım: gri çerçeve (açıklama gizli)
  */
 export const Stepper: React.FC<StepperProps> = ({ steps, current, onStepClick, className }) => {
   return (
-    <ol className={cn('flex flex-col sm:flex-row gap-4 sm:gap-6', className)}>
+    <ol className={cn('flex flex-col gap-3', className)}>
       {steps.map((s, idx) => {
         const state: 'done' | 'active' | 'upcoming' = (idx + 1) < current
           ? 'done'
@@ -43,7 +43,7 @@ export const Stepper: React.FC<StepperProps> = ({ steps, current, onStepClick, c
               <div
                 className={cn(
                   'relative flex h-8 w-8 shrink-0 items-center justify-center rounded-full border text-sm font-medium transition',
-                  state === 'done' && 'bg-blue-600 text-white border-blue-600',
+                  state === 'done' && 'bg-green-600 text-white border-green-600',
                   state === 'active' && 'border-blue-600 text-blue-600 bg-blue-50',
                   state === 'upcoming' && 'border-gray-300 text-gray-400'
                 )}
@@ -53,14 +53,14 @@ export const Stepper: React.FC<StepperProps> = ({ steps, current, onStepClick, c
               </div>
               <div className="flex flex-col">
                 <span className={cn('text-sm font-medium', state === 'upcoming' && 'text-gray-500')}>{s.title}</span>
-                {s.description && (
-                  <span className="text-xs text-muted-foreground line-clamp-2">{s.description}</span>
+                {state === 'active' && s.description && (
+                  <span className="text-xs text-muted-foreground">{s.description}</span>
                 )}
               </div>
             </button>
-            {/* Connector çizgisi (sm ve üzeri) */}
+            {/* Dikey bağlayıcı çizgi */}
             {idx < steps.length - 1 && (
-              <div className="hidden sm:block ml-4 mt-1 h-px w-[calc(100%-1rem)] bg-gradient-to-r from-gray-300 via-gray-200 to-transparent" />
+              <div className="ml-4 mt-1 h-5 w-px bg-gradient-to-b from-gray-300 via-gray-200 to-transparent" />
             )}
           </li>
         );

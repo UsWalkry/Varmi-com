@@ -57,8 +57,14 @@ async function hmacSha1(keyBytes: Uint8Array, msg: Uint8Array): Promise<Uint8Arr
   if (!cryptoObj || !cryptoObj.subtle) {
     throw new Error('WebCrypto not available');
   }
-  const key = await cryptoObj.subtle.importKey('raw', keyBytes, { name: 'HMAC', hash: 'SHA-1' }, false, ['sign']);
-  const sig = await cryptoObj.subtle.sign('HMAC', key, msg);
+  const key = await cryptoObj.subtle.importKey(
+    'raw',
+    (keyBytes.buffer as ArrayBuffer),
+    { name: 'HMAC', hash: 'SHA-1' },
+    false,
+    ['sign']
+  );
+  const sig = await cryptoObj.subtle.sign('HMAC', key, (msg.buffer as ArrayBuffer));
   return new Uint8Array(sig);
 }
 
@@ -203,16 +209,49 @@ export interface Offer {
   status: 'active' | 'accepted' | 'rejected' | 'withdrawn';
   // Kabul edilen teklifler için zaman damgası
   acceptedAt?: string;
-  // Sipariş/teslimat basit durumları
-  orderStage?: 'accepted' | 'processing' | 'shipped' | 'delivered';
+  // Sipariş akışı durumları (5 adım)
+  // Geriye uyumluluk: 'accepted' (eski) -> 'received'
+  orderStage?: 'received' | 'carrierSelected' | 'shipped' | 'delivered' | 'completed' | 'accepted';
   trackingNo?: string;
   orderNotes?: string;
   orderUpdatedAt?: string;
+  // Kargo firması seçimi ve ek ücret
+  shippingCarrierId?: string; // 'aras'|'surat'|'ptt' ...
+  shippingCarrierName?: string;
+  shippingExtraFee?: number;
+  // Tamamlanma
+  completedAt?: string;
   validUntil?: string; // ISO, teklif geçerlilik tarihi
   message?: string; // backward compatibility
   // Bu tekliften diğer kullanıcılarca satılan adet (ilan sahibi hariç)
   soldToOthers?: number;
   createdAt: string;
+}
+
+// Üçüncü taraf satın alma siparişi: Bir kullanıcı, ilan sahibi olmayan biri, bir teklifi satın aldığında oluşur
+export interface ThirdPartyOrder {
+  id: string;
+  sourceOfferId: string;
+  listingId: string;
+  // Satıcı (teklifi veren)
+  sellerId: string;
+  sellerName: string;
+  // Alıcı (teklifi satın alan üçüncü kişi)
+  buyerId: string;
+  buyerName: string;
+  price: number; // birim fiyat
+  quantity?: number; // satın alınan adet
+  shippingCost: number;
+  deliveryType?: 'shipping' | 'pickup';
+  shippingDesi?: DesiBracket;
+  acceptedAt: string; // satın alma zamanı
+  orderStage: 'received' | 'carrierSelected' | 'shipped' | 'delivered' | 'completed';
+  trackingNo?: string;
+  orderUpdatedAt?: string;
+  shippingCarrierId?: string;
+  shippingCarrierName?: string;
+  shippingExtraFee?: number;
+  completedAt?: string;
 }
 
 export interface Message {
@@ -595,6 +634,12 @@ const mockMessages: Message[] = [];
 
 // DataManager class with all static methods
 export class DataManager {
+  // Basit takip kodu üretimi (demo)
+  static generateTrackingCode(prefix: string = 'TRK'): string {
+    const rand = Math.random().toString(36).slice(2, 8).toUpperCase();
+    const num = String(Date.now()).slice(-6);
+    return `${prefix}-${rand}-${num}`;
+  }
   // Mesaj yönetimi
   // Sadece aşağıdaki versiyonlar kalacak
   static getAllMessages(): Message[] {
@@ -681,6 +726,7 @@ export class DataManager {
     USERS: 'users',
     LISTINGS: 'listings',
     OFFERS: 'offers',
+  TP_ORDERS: 'tp_orders',
     MESSAGES: 'messages',
     FAVORITES: 'favorites',
     SESSIONS: 'sessions', // map: userId -> Session[]
@@ -1003,6 +1049,8 @@ export class DataManager {
   // Listings management
   static getListings(): Listing[] {
     this.initializeData();
+    // Süresi dolan ilanları otomatik temizle
+    this.purgeExpiredListings();
     const listingsStr = localStorage.getItem(this.STORAGE_KEYS.LISTINGS);
     return listingsStr ? JSON.parse(listingsStr) : [];
   }
@@ -1022,14 +1070,20 @@ export class DataManager {
     if (listing.buyerId !== requesterId) {
       throw new Error('Bu ilanı silme yetkiniz yok');
     }
+    // Eğer bu ilan için bir teklif kabul edildiyse, silmeye izin verme
+    const offers = this.getAllOffers();
+    const hasAccepted = offers.some(o => o.listingId === listingId && o.status === 'accepted');
+    if (hasAccepted) {
+      throw new Error('Bu ilan için bir teklif kabul edildiğinden ilan silinemez. İlan süresi dolduğunda otomatik kaldırılacaktır.');
+    }
 
     // Remove listing
     listings.splice(idx, 1);
     localStorage.setItem(this.STORAGE_KEYS.LISTINGS, JSON.stringify(listings));
 
     // Remove related offers
-    const offers = this.getOffers().filter((o) => o.listingId !== listingId);
-    localStorage.setItem(this.STORAGE_KEYS.OFFERS, JSON.stringify(offers));
+    const remainingOffers = this.getOffers().filter((o) => o.listingId !== listingId);
+    localStorage.setItem(this.STORAGE_KEYS.OFFERS, JSON.stringify(remainingOffers));
 
     // Remove related messages
     const messages = this.getAllMessages().filter((m) => m.listingId !== listingId);
@@ -1052,6 +1106,54 @@ export class DataManager {
     }
 
     return true;
+  }
+
+  // Süresi dolan ilanları otomatik olarak kaldır ve ilişkili verileri temizle
+  static purgeExpiredListings() {
+    const listingsStr = localStorage.getItem(this.STORAGE_KEYS.LISTINGS);
+    const listings: Listing[] = listingsStr ? JSON.parse(listingsStr) : [];
+    if (!Array.isArray(listings) || listings.length === 0) return;
+    const now = Date.now();
+    const keep: Listing[] = [];
+    const expiredIds: string[] = [];
+    for (const l of listings) {
+      if (l.expiresAt) {
+        const t = new Date(l.expiresAt).getTime();
+        if (!isNaN(t) && now >= t) {
+          expiredIds.push(l.id);
+          continue;
+        }
+      }
+      keep.push(l);
+    }
+    if (expiredIds.length === 0) return;
+    // Write remaining listings
+    localStorage.setItem(this.STORAGE_KEYS.LISTINGS, JSON.stringify(keep));
+    // Cascade remove related offers
+    const offersStr = localStorage.getItem(this.STORAGE_KEYS.OFFERS);
+    const offers: Offer[] = offersStr ? JSON.parse(offersStr) : [];
+    const offersKept = offers.filter(o => !expiredIds.includes(o.listingId));
+    localStorage.setItem(this.STORAGE_KEYS.OFFERS, JSON.stringify(offersKept));
+    // Cascade remove related messages
+    const messagesStr = localStorage.getItem(this.STORAGE_KEYS.MESSAGES);
+    const messages: Message[] = messagesStr ? JSON.parse(messagesStr) : [];
+    const messagesKept = messages.filter(m => !expiredIds.includes(m.listingId));
+    localStorage.setItem(this.STORAGE_KEYS.MESSAGES, JSON.stringify(messagesKept));
+    // Remove from favorites
+    const favoritesStr = localStorage.getItem(this.STORAGE_KEYS.FAVORITES);
+    const favMap: Record<string, string[]> = favoritesStr ? JSON.parse(favoritesStr) : {};
+    let changed = false;
+    Object.keys(favMap).forEach((uid) => {
+      const before = favMap[uid] || [];
+      const after = before.filter((lid) => !expiredIds.includes(lid));
+      if (after.length !== before.length) {
+        favMap[uid] = after;
+        changed = true;
+      }
+    });
+    if (changed) {
+      localStorage.setItem(this.STORAGE_KEYS.FAVORITES, JSON.stringify(favMap));
+    }
   }
 
   static searchListings(query: string = '', filters: SearchFilters = {}): Listing[] {
@@ -1250,16 +1352,10 @@ export class DataManager {
     // Kabul et
     offers[offerIndex].status = 'accepted';
     offers[offerIndex].acceptedAt = new Date().toISOString();
-    offers[offerIndex].orderStage = 'accepted';
+    // Yeni akış: ilk aşama 'received'
+    offers[offerIndex].orderStage = 'received';
     offers[offerIndex].orderUpdatedAt = new Date().toISOString();
-    // Aynı ilana ait diğer aktif teklifleri reddet
-    for (let i = 0; i < offers.length; i++) {
-      if (i === offerIndex) continue;
-      const o = offers[i];
-      if (o.listingId === target.listingId && o.status === 'active') {
-        o.status = 'rejected';
-      }
-    }
+    // Diğer teklifler reddedilmez; ilan kapansa da yeterli stoğu olan teklifler başka kullanıcılar tarafından değerlendirilebilsin
     localStorage.setItem(this.STORAGE_KEYS.OFFERS, JSON.stringify(offers));
     // İlanı kapat
     const listings = this.getListings();
@@ -1268,22 +1364,45 @@ export class DataManager {
       listings[lidx].status = 'closed';
       localStorage.setItem(this.STORAGE_KEYS.LISTINGS, JSON.stringify(listings));
     }
+    // Otomatik onay mesajı (satıcıdan ilan sahibine)
+    try {
+      const listing = this.getListing(target.listingId);
+      const seller = this.getUser(target.sellerId);
+      if (listing && seller) {
+        this.addMessage({
+          listingId: target.listingId,
+          fromUserId: seller.id,
+          fromUserName: seller.name,
+          toUserId: listing.buyerId,
+          message: 'Siparişiniz alındı. Hazırlığa başlıyoruz.'
+        });
+      }
+    } catch (e) {
+      // mesaj gönderimi başarısız olabilir; görmezden gel
+    }
     return true;
   }
 
-  // Basit sipariş durum güncelleme yardımcıları (demo amaçlı)
-  static setOfferProcessing(offerId: string, note?: string) {
+  // Kargo firması seçimi
+  static setOfferCarrier(offerId: string, carrier: { id: string; name: string; extraFee?: number }) {
     const offers = this.getOffers();
     const idx = offers.findIndex(o => o.id === offerId);
     if (idx === -1) return false;
     if (offers[idx].status !== 'accepted') return false;
-    offers[idx].orderStage = 'processing';
-    offers[idx].orderNotes = note || offers[idx].orderNotes;
+    offers[idx].shippingCarrierId = carrier.id;
+    offers[idx].shippingCarrierName = carrier.name;
+    offers[idx].shippingExtraFee = carrier.extraFee || 0;
+    if (!offers[idx].trackingNo) {
+      offers[idx].trackingNo = this.generateTrackingCode(carrier.id.toUpperCase());
+    }
+    offers[idx].orderStage = 'carrierSelected';
+  // not opsiyonel, mevcut notu koru
     offers[idx].orderUpdatedAt = new Date().toISOString();
     localStorage.setItem(this.STORAGE_KEYS.OFFERS, JSON.stringify(offers));
     return true;
   }
 
+  // Kargoya verildi
   static setOfferShipped(offerId: string, trackingNo: string) {
     const offers = this.getOffers();
     const idx = offers.findIndex(o => o.id === offerId);
@@ -1296,6 +1415,7 @@ export class DataManager {
     return true;
   }
 
+  // Teslim edildi
   static setOfferDelivered(offerId: string, note?: string) {
     const offers = this.getOffers();
     const idx = offers.findIndex(o => o.id === offerId);
@@ -1303,6 +1423,19 @@ export class DataManager {
     if (offers[idx].status !== 'accepted') return false;
     offers[idx].orderStage = 'delivered';
     offers[idx].orderNotes = note || offers[idx].orderNotes;
+    offers[idx].orderUpdatedAt = new Date().toISOString();
+    localStorage.setItem(this.STORAGE_KEYS.OFFERS, JSON.stringify(offers));
+    return true;
+  }
+
+  // Tamamlandı & Ödeme aktarıldı
+  static setOfferCompleted(offerId: string) {
+    const offers = this.getOffers();
+    const idx = offers.findIndex(o => o.id === offerId);
+    if (idx === -1) return false;
+    if (offers[idx].status !== 'accepted') return false;
+    offers[idx].orderStage = 'completed';
+    offers[idx].completedAt = new Date().toISOString();
     offers[idx].orderUpdatedAt = new Date().toISOString();
     localStorage.setItem(this.STORAGE_KEYS.OFFERS, JSON.stringify(offers));
     return true;
@@ -1366,12 +1499,15 @@ export class DataManager {
   // - Offer.status === 'active' olmalı ve geçerlilik süresi dolmamış olmalı
   // - Satılabilir adet = max(0, (offer.quantity||1) - 1 - (offer.soldToOthers||0))
   //   (1 adet daima ilan sahibinin hakkı olarak ayrılır)
-  static purchaseFromOffer(offerId: string, buyerUserId: string): { success: boolean; message?: string } {
+  static purchaseFromOffer(offerId: string, buyerUserId: string, quantity: number = 1): { success: boolean; message?: string; orderId?: string } {
     const offers = this.getOffers();
     const idx = offers.findIndex(o => o.id === offerId);
     if (idx === -1) return { success: false, message: 'Teklif bulunamadı' };
     const offer = offers[idx];
-    if (offer.status !== 'active') return { success: false, message: 'Teklif aktif değil' };
+    // Kabul edilmiş teklifler de (yeterli stok varsa) diğer kullanıcılar tarafından değerlendirilebilir
+    if (!(offer.status === 'active' || offer.status === 'accepted')) {
+      return { success: false, message: 'Teklif satın almaya uygun değil' };
+    }
 
     const listing = this.getListing(offer.listingId);
     if (!listing) return { success: false, message: 'İlan bulunamadı' };
@@ -1386,15 +1522,121 @@ export class DataManager {
       return { success: false, message: 'Teklifin süresi dolmuş' };
     }
 
-    const qty = offer.quantity ?? 1;
-    const sold = offer.soldToOthers ?? 0;
-    const purchasable = Math.max(0, qty - 1 - sold);
-    if (purchasable <= 0) return { success: false, message: 'Satın alınabilir adet kalmadı' };
+  const qty = offer.quantity ?? 1;
+  const sold = offer.soldToOthers ?? 0;
+  const purchasable = Math.max(0, qty - 1 - sold);
+  const want = Math.max(1, Math.floor(quantity));
+  if (purchasable <= 0) return { success: false, message: 'Satın alınabilir adet kalmadı' };
+  if (want > purchasable) return { success: false, message: `En fazla ${purchasable} adet satın alabilirsiniz` };
 
-    // Satışı kaydet: sadece sayaç arttırıyoruz. Ödeme/teslim akışı bu örnekte yok.
-    offers[idx] = { ...offer, soldToOthers: sold + 1 };
+    // Satışı kaydet: sayaç + üçüncü taraf siparişi oluştur
+  offers[idx] = { ...offer, soldToOthers: sold + want };
     localStorage.setItem(this.STORAGE_KEYS.OFFERS, JSON.stringify(offers));
-    return { success: true };
+
+  const buyer = this.getUser(buyerUserId);
+    const tpOrdersRaw = localStorage.getItem(this.STORAGE_KEYS.TP_ORDERS);
+    const tpOrders: ThirdPartyOrder[] = tpOrdersRaw ? JSON.parse(tpOrdersRaw) : [];
+    const newOrder: ThirdPartyOrder = {
+      id: `tp_${Date.now()}`,
+      sourceOfferId: offer.id,
+      listingId: offer.listingId,
+      sellerId: offer.sellerId,
+      sellerName: offer.sellerName,
+      buyerId: buyerUserId,
+      buyerName: buyer?.name || 'Alıcı',
+      price: offer.price,
+      quantity: want,
+      shippingCost: offer.shippingCost || 0,
+      deliveryType: offer.deliveryType,
+      shippingDesi: offer.shippingDesi,
+      acceptedAt: new Date().toISOString(),
+      orderStage: 'received',
+      orderUpdatedAt: new Date().toISOString()
+    };
+    tpOrders.push(newOrder);
+    localStorage.setItem(this.STORAGE_KEYS.TP_ORDERS, JSON.stringify(tpOrders));
+    // Satıcıya otomatik bilgi mesajı
+    try {
+      const seller = this.getUser(offer.sellerId);
+      if (seller) {
+        this.addMessage({
+          listingId: offer.listingId,
+          fromUserId: buyerUserId,
+          fromUserName: buyer?.name || 'Alıcı',
+          toUserId: seller.id,
+          message: 'Teklifinizden bir satın alma yapıldı. Siparişi hazırlayabilirsiniz.'
+        });
+      }
+    } catch (e) {
+      // ignore
+    }
+    return { success: true, orderId: newOrder.id };
+  }
+
+  // Third-party orders API
+  static getAllThirdPartyOrders(): ThirdPartyOrder[] {
+    const raw = localStorage.getItem(this.STORAGE_KEYS.TP_ORDERS);
+    return raw ? JSON.parse(raw) : [];
+  }
+
+  static getThirdPartyOrdersForBuyer(userId: string): ThirdPartyOrder[] {
+    return this.getAllThirdPartyOrders().filter(o => o.buyerId === userId);
+  }
+
+  static getThirdPartyOrdersForSeller(userId: string): ThirdPartyOrder[] {
+    return this.getAllThirdPartyOrders().filter(o => o.sellerId === userId);
+  }
+
+  static setTPOrderCarrier(orderId: string, carrier: { id: string; name: string; extraFee?: number }) {
+    const raw = localStorage.getItem(this.STORAGE_KEYS.TP_ORDERS);
+    const orders: ThirdPartyOrder[] = raw ? JSON.parse(raw) : [];
+    const idx = orders.findIndex(o => o.id === orderId);
+    if (idx === -1) return false;
+    orders[idx].shippingCarrierId = carrier.id;
+    orders[idx].shippingCarrierName = carrier.name;
+    orders[idx].shippingExtraFee = carrier.extraFee || 0;
+    if (!orders[idx].trackingNo) {
+      orders[idx].trackingNo = this.generateTrackingCode(carrier.id.toUpperCase());
+    }
+    orders[idx].orderStage = 'carrierSelected';
+    orders[idx].orderUpdatedAt = new Date().toISOString();
+    localStorage.setItem(this.STORAGE_KEYS.TP_ORDERS, JSON.stringify(orders));
+    return true;
+  }
+
+  static setTPOrderShipped(orderId: string, trackingNo: string) {
+    const raw = localStorage.getItem(this.STORAGE_KEYS.TP_ORDERS);
+    const orders: ThirdPartyOrder[] = raw ? JSON.parse(raw) : [];
+    const idx = orders.findIndex(o => o.id === orderId);
+    if (idx === -1) return false;
+    orders[idx].orderStage = 'shipped';
+    orders[idx].trackingNo = trackingNo;
+    orders[idx].orderUpdatedAt = new Date().toISOString();
+    localStorage.setItem(this.STORAGE_KEYS.TP_ORDERS, JSON.stringify(orders));
+    return true;
+  }
+
+  static setTPOrderDelivered(orderId: string) {
+    const raw = localStorage.getItem(this.STORAGE_KEYS.TP_ORDERS);
+    const orders: ThirdPartyOrder[] = raw ? JSON.parse(raw) : [];
+    const idx = orders.findIndex(o => o.id === orderId);
+    if (idx === -1) return false;
+    orders[idx].orderStage = 'delivered';
+    orders[idx].orderUpdatedAt = new Date().toISOString();
+    localStorage.setItem(this.STORAGE_KEYS.TP_ORDERS, JSON.stringify(orders));
+    return true;
+  }
+
+  static setTPOrderCompleted(orderId: string) {
+    const raw = localStorage.getItem(this.STORAGE_KEYS.TP_ORDERS);
+    const orders: ThirdPartyOrder[] = raw ? JSON.parse(raw) : [];
+    const idx = orders.findIndex(o => o.id === orderId);
+    if (idx === -1) return false;
+    orders[idx].orderStage = 'completed';
+    orders[idx].completedAt = new Date().toISOString();
+    orders[idx].orderUpdatedAt = new Date().toISOString();
+    localStorage.setItem(this.STORAGE_KEYS.TP_ORDERS, JSON.stringify(orders));
+    return true;
   }
 
   // Messages management

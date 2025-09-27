@@ -1,32 +1,45 @@
-# Copilot Instructions for AI Coding Agents
+## Copilot için Hızlı Kılavuz (shadcn-ui)
 
-## Proje Özeti ve Yığın
+- Yığın: Vite + React 19 + TypeScript + Tailwind + shadcn-ui (Radix). Alias `@` → `src`.
+- Giriş akışı: `src/main.tsx` → `App.tsx` (sarılı: `LocalErrorBoundary` + `QueryClientProvider` + `TooltipProvider` + `Toaster`).
+- Yönlendirme: Varsayılan `BrowserRouter`. Codespaces (`*.app.github.dev`) veya `VITE_ROUTER_MODE=hash` → `HashRouter` (bkz. `src/App.tsx`, v7 future bayrakları açık).
 
-- Stack: Vite + React + TypeScript + Tailwind CSS + shadcn-ui
-- UI bileşenleri: `src/components/ui/**` altında hazır. Alias: `@` → `src` (örn. `@/components/ui/button`).
-- Giriş: `src/main.tsx` `App.tsx`'i mount eder; global stiller `src/index.css`.
+### Veri Katmanı — DataManager (`src/lib/mockData.ts`)
 
-## Mimari ve Yönlendirme
+- Tüm veri localStorage’da; gerçek backend yok (Supabase bağımlılığı kullanılmıyor).
+- Kapsam: Users, Listings, Offers, Messages, Favorites, Reviews, Sessions/Login Logs, 2FA (TOTP), ThirdPartyOrder.
+- Mesaj olayı: `addMessage` sonunda `window.dispatchEvent(new Event('messages-updated'))` yayınlanır.
+- Listing kuralları: `addListing` en az 1 görsel ister; `deleteListing` sadece sahibi ve offer/message/favorite referanslarını da temizler; `updateListing` mevcut.
+- Offer kuralları: Bir satıcı → bir ilana 1 teklif; `images` ≤ 5; `quantity` ≥ 1; `validUntil` ≥ +1 gün ve (varsa) `listing.expiresAt`’ı aşamaz; `condition`/`deliveryType` ilanınkine uyar. Kargo: `shippingDesi` zorunlu, ücret desi min–max içinde; pickup: desi olamaz, ücret 0. Min fiyat = `budgetMin × (1 + kategori alt karı)`.
+- Sipariş akışı: `acceptOffer` → `status='accepted'`, `orderStage='received'`, ilan `closed`, alıcıya otomatik mesaj. Devamı: `setOfferCarrier` → `setOfferShipped` → `setOfferDelivered` → `completeOffer`.
+- Favoriler: localStorage `favorites` (map: userId → string[]). API: `getFavorites`/`addToFavorites`/`removeFromFavorites`/`isFavorite`/`getUserFavoriteListings`.
+- Auth/2FA: `startLogin` → (gerekirse) `verifyAuthenticatorCode`. Kurulum: `beginAuthenticatorSetup` → `verifyAndEnableAuthenticator` (TOTP, WebCrypto HMAC-SHA1).
 
-- Sayfalar: `src/pages/**` (örn. `Index.tsx`, `Dashboard.tsx`, `Profile.tsx`). Router tanımı `src/App.tsx` içinde.
-- Router modu: `BrowserRouter` varsayılan; Codespaces (`*.app.github.dev`) veya `VITE_ROUTER_MODE=hash` olduğunda otomatik `HashRouter` kullanılır.
-- Sağlayıcılar: `QueryClientProvider` (react-query), `TooltipProvider`, `Toaster` (`src/components/ui/sonner.tsx`). Veri uzaktan değil; sağlayıcılar UI için hazır.
+### UI ve Dosya Düzeni
 
-## Veri Katmanı ve Kurallar (src/lib/mockData.ts)
+- Sayfalar: `src/pages/**` (Index, ListingDetail, CreateListing, Dashboard, Profile, Inbox…). Router `src/App.tsx` içinde.
+- UI: shadcn bileşenleri `@/components/ui/**`. Toast: `@/components/ui/sonner` (Toaster) ve `import { toast } from 'sonner'`.
+- Hata yakalama: `@/components/ui/LocalErrorBoundary` (App’te kullanılır) ve `src/components/LocalErrorBoundary.tsx` varyantı.
+- Not: `pages/ProductDetail.tsx` DataManager’da olmayan `addProductToFavorites`/`removeProductFromFavorites`/`isProductFavorite` referanslarını içerir; geçerli favori API’si listelemeler içindir (bkz. “Favoriler” yukarıda).
 
-- Tüm veri localStorage ile yönetilir; merkezi servis: `DataManager` (senkron ağırlıklı; 2FA doğrulama gibi bazı metodlar async).
-- Kullanıcı: basit kayıt/giriş, oturum ve login logları tutulur. 2FA (TOTP) destekli akış: `startLogin` → (gerekirse) `verifyAuthenticatorCode`. Kurulum: `beginAuthenticatorSetup` → `verifyAndEnableAuthenticator`.
-- İlan: `addListing` en az 1 görsel zorunlu, `updateListing`, `deleteListing` (sahibi olmayan silemez; ilişkili teklif/mesaj/favoriler de temizlenir).
-- Teklif: her satıcı bir ilana en fazla 1 teklif; `validUntil` en az +1 gün ve varsa ilan bitişini aşamaz; ilan `condition` ve `deliveryType` ile uyum şart; kargo için desi ve ücret aralık kontrolleri; kategoriye göre minimum kar marjı uygulanır.
-- Mesaj/Favoriler: konuşma, okunma, favori listeleme ekleme/çıkarma yardımcıları mevcuttur.
+### Geliştirme Komutları (`package.json`)
 
-Örnek – UI bileşeni ve veri kullanımı:
+- Kurulum: pnpm i
+- Geliştirme: pnpm dev | pnpm dev:open | pnpm dev:host
+- Build/Preview: pnpm build | pnpm preview
+- Kalite: pnpm lint (ESLint) | pnpm typecheck (tsc); izleme: pnpm lint:watch | pnpm typecheck:watch
+- Ortam: `VITE_PORT`, `VITE_ROUTER_MODE=hash`
+
+### Vite/Tailwind
+
+- Alias: `@` → `./src` (`vite.config.ts`), eklenti: `@metagptx/vite-plugin-source-locator` (prefix `mgx`).
+- Tailwind: `tailwind.config.ts`, içerik globu `./src/**/*.{ts,tsx}`.
+
+### Kısa Örnekler
 
 ```tsx
-import { Button } from "@/components/ui/button";
 import { DataManager } from "@/lib/mockData";
-// En az 1 görsel ile ilan oluşturun
-const listing = DataManager.addListing({
+DataManager.addListing({
   title: "…",
   description: "…",
   images: ["data:"],
@@ -42,42 +55,10 @@ const listing = DataManager.addListing({
 });
 ```
 
-Örnek – Teklif kısıtları:
-
 ```ts
-DataManager.addOffer({
-  listingId: listing.id,
-  sellerId: me.id,
-  sellerName: me.name,
-  sellerRating: 0,
-  price: 1200,
-  condition: "new",
-  deliveryType: "shipping",
-  shippingDesi: "2-3",
-  shippingCost: 60,
-  status: "active",
-});
-// Not: kargo ücreti desi aralığına uymalı; aynı satıcı aynı ilana ikinci kez teklif veremez.
+// Favori aç/kapat (iyimser güncelleme için bkz. components/FavoriteButton.tsx)
+DataManager.addToFavorites(userId, listingId);
+DataManager.removeFromFavorites(userId, listingId);
 ```
 
-## Geliştirme Akışı ve Komutlar (package.json)
-
-- Kurulum: `pnpm i` | Geliştirme: `pnpm dev` (veya `pnpm dev:host`) | Build: `pnpm build` | Öni̇zleme: `pnpm preview`
-- Kalite: `pnpm lint` (ESLint), `pnpm typecheck` (tsc). İzleme varyantları: `lint:watch`, `typecheck:watch`.
-- Ortam: `VITE_PORT` ile port; `VITE_ROUTER_MODE=hash` ile hash router zorlanabilir.
-
-## Desenler ve Konvansiyonlar
-
-- İçe aktarımlar: `@/…` alias'ını kullanın; UI bileşenleri `@/components/ui/**` altından gelir.
-- Bildirim/toast: `import { toast } from 'sonner'` veya `@/lib/sonner` kısa yolu.
-- Hata yakalama: `src/components/ui/LocalErrorBoundary.tsx` ve `src/components/LocalErrorBoundary.tsx` mevcut.
-- Tailwind: `tailwind.config.ts` altında özelleştirmeler (renkler, radius, animasyonlar). İçerik globları `./src/**/*.{ts,tsx}` dahil.
-
-## Entegrasyonlar ve Notlar
-
-- Gerçek backend bağlantısı yok; tüm veri localStorage'da. `@supabase/supabase-js` bağımlılığı ekli ama kullanılmıyor.
-- Vite eklentisi: `@metagptx/vite-plugin-source-locator` (prefix: `mgx`) kaynak eşlemeyi zenginleştirir.
-
-Ana dosyalar: `src/App.tsx`, `src/pages/**`, `src/lib/mockData.ts`, `src/components/ui/**`, `vite.config.ts`, `tailwind.config.ts`, `tsconfig*.json`.
-
-Belirsiz kalan bir akış veya kural görürseniz bu dosyayı güncelleyin; proje kodundaki kalıpları (özellikle `DataManager`) temel alın.
+Bu dosya, kodda keşfettiğiniz yeni kurallar/akışlarla (özellikle DataManager kısıtları, mesaj olayı, 2FA) birlikte kısa ve öz biçimde güncellenmelidir.

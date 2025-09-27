@@ -154,9 +154,8 @@ export default function ListingDetail() {
     const ok = window.confirm('Bu teklifi kabul etmek istediğinize emin misiniz?');
     if (!ok) return;
     try {
-      DataManager.acceptOffer(offerId);
-      toast.success('Teklif kabul edildi');
-      loadListingAndOffers();
+      // Kabul işlemini ödeme sonrası yapacağız
+      navigate(`/checkout?offerId=${offerId}`);
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'İşlem başarısız';
       toast.error(msg);
@@ -230,13 +229,8 @@ export default function ListingDetail() {
       toast.error('İlan sahibi bu akışı kullanamaz');
       return;
     }
-    const res = DataManager.purchaseFromOffer(offerId, currentUser.id);
-    if (res.success) {
-      toast.success('Tekliften başarıyla satın alındı');
-      loadListingAndOffers();
-    } else {
-      toast.error(res.message || 'Satın alma başarısız');
-    }
+    // Satın alma akışını ödeme sayfasına taşıyoruz
+    navigate(`/checkout?offerId=${offerId}`);
   };
 
   if (!listing) {
@@ -580,17 +574,35 @@ export default function ListingDetail() {
                     Teklif Ver
                   </Button>
                 ) : isOwner ? (
-                  <div className="text-center py-4 space-y-2">
-                    <p className="text-sm text-muted-foreground">Bu sizin ilanınız</p>
-                    <div className="grid grid-cols-2 gap-2">
-                      <Button variant="outline" onClick={handleEditListing}>
-                        Düzenle
-                      </Button>
-                      <Button variant="destructive" onClick={handleDeleteListing}>
-                        <Trash2 className="h-4 w-4 mr-1" /> Sil
-                      </Button>
-                    </div>
-                  </div>
+                  (() => {
+                    const hasAccepted = offers.some(o => o.status === 'accepted');
+                    return (
+                      <div className="text-center py-4 space-y-3">
+                        {hasAccepted ? (
+                          <>
+                            <p className="text-sm text-green-700 font-medium">Aradığın ürünü buldun: Tekliflerden birini kabul ettin.</p>
+                            <p className="text-xs text-muted-foreground">İlan, son gününde otomatik silinecek. Bu süreçte yeterli adedi olan teklifler diğer kullanıcılar tarafından değerlendirilebilir.</p>
+                            <div className="grid grid-cols-2 gap-2">
+                              <Button variant="outline" onClick={handleEditListing}>Düzenle</Button>
+                              <Button variant="destructive" disabled title="Kabul edilen teklif olduğu için silinemez"> 
+                                <Trash2 className="h-4 w-4 mr-1" /> Sil
+                              </Button>
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <p className="text-sm text-muted-foreground">Bu sizin ilanınız</p>
+                            <div className="grid grid-cols-2 gap-2">
+                              <Button variant="outline" onClick={handleEditListing}>Düzenle</Button>
+                              <Button variant="destructive" onClick={handleDeleteListing}>
+                                <Trash2 className="h-4 w-4 mr-1" /> Sil
+                              </Button>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    );
+                  })()
                 ) : alreadyOffered ? (
                   <div className="text-center py-4">
                     <p className="text-sm text-muted-foreground mb-2">Bu ilana zaten bir teklif verdiniz</p>
