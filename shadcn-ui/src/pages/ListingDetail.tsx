@@ -60,6 +60,31 @@ export default function ListingDetail() {
   const [currentUser, setCurrentUser] = useState(DataManager.getCurrentUser());
   const [activeImage, setActiveImage] = useState(0);
   const [descExpanded, setDescExpanded] = useState(false);
+  const [descMax, setDescMax] = useState<number>(() => {
+    if (typeof window === 'undefined') return 240;
+    const w = window.innerWidth;
+    if (w < 380) return 160;   // çok küçük ekranlar
+    if (w < 640) return 200;   // sm<
+    if (w < 768) return 240;   // sm-md
+    if (w < 1024) return 280;  // md-lg
+    if (w < 1280) return 320;  // lg-xl
+    return 380;                // daha geniş ekranlar
+  });
+
+  useEffect(() => {
+    const handler = () => {
+      const w = window.innerWidth;
+      let next = 380;
+      if (w < 380) next = 160;
+      else if (w < 640) next = 200;
+      else if (w < 768) next = 240;
+      else if (w < 1024) next = 280;
+      else if (w < 1280) next = 320;
+      setDescMax(next);
+    };
+    window.addEventListener('resize', handler);
+    return () => window.removeEventListener('resize', handler);
+  }, []);
 
   const loadListingAndOffers = useCallback(() => {
     const allListings = DataManager.getListings();
@@ -318,7 +343,7 @@ export default function ListingDetail() {
 
                   {(() => {
                     const fullDesc = listing.description || '';
-                    const MAX_DESC = 240;
+                    const MAX_DESC = descMax;
                     const isLong = fullDesc.length > MAX_DESC;
                     const shown = !isLong || descExpanded ? fullDesc : truncateAtWord(fullDesc, MAX_DESC);
                     return (
