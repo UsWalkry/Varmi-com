@@ -1,0 +1,35 @@
+name: Manual Deploy (Frontend + Backend)
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: 'What to deploy? (frontend|backend|both)'
+        required: true
+        default: 'both'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Decide target
+        id: decide
+        run: |
+          echo "target=${{ github.event.inputs.target }}" >> $GITHUB_OUTPUT
+
+      - name: Call Frontend Deploy
+        if: steps.decide.outputs.target == 'frontend' || steps.decide.outputs.target == 'both'
+        uses: benc-uk/workflow-dispatch@v1
+        with:
+          workflow: Build & Deploy Frontend to cPanel (FTP)
+          repo: ${{ github.repository }}
+
+      - name: Call Backend Deploy
+        if: steps.decide.outputs.target == 'backend' || steps.decide.outputs.target == 'both'
+        uses: benc-uk/workflow-dispatch@v1
+        with:
+          workflow: Build & Deploy Backend to cPanel (SSH/rsync)
+          repo: ${{ github.repository }}

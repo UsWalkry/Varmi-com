@@ -166,7 +166,6 @@ export interface Listing {
   // İlan görselleri (data URL veya uzak URL). En az 1 önerilir.
   images?: string[];
   category: string;
-  budgetMin: number;
   budgetMax: number;
   condition: 'new' | 'used' | 'any';
   city: string;
@@ -679,6 +678,24 @@ export class DataManager {
     } catch (e) {
       // ignore in non-browser contexts
     }
+    // Mesaj geldiğinde mail gönder
+    try {
+      const recipient = this.getUser(messageData.toUserId);
+      const sender = this.getUser(messageData.fromUserId);
+      const listing = this.getListing(messageData.listingId);
+      if (recipient && sender && listing) {
+        import('@/lib/mail').then(({ Mailer }) => {
+          Mailer.sendNewMessage(
+            { name: recipient.name, email: recipient.email },
+            { name: sender.name },
+            { id: listing.id, title: listing.title },
+            messageData.message
+          );
+        });
+      }
+    } catch (e) {
+      // ignore
+    }
     return newMessage;
   }
 
@@ -979,6 +996,10 @@ export class DataManager {
     localStorage.setItem(this.STORAGE_KEYS.USERS, JSON.stringify(users));
     localStorage.setItem(this.STORAGE_KEYS.CURRENT_USER, JSON.stringify(newUser));
     
+    // Kayıt sonrası hoş geldin maili gönder
+    import('@/lib/mail').then(({ Mailer }) => {
+      Mailer.sendWelcome({ name: newUser.name, email: newUser.email });
+    });
     return newUser;
   }
 
@@ -1181,7 +1202,7 @@ export class DataManager {
       listings = listings.filter(listing => listing.city === filters.city);
     }
     if (filters.budgetMax) {
-      listings = listings.filter(listing => listing.budgetMin <= filters.budgetMax);
+      listings = listings.filter(listing => listing.budgetMax <= filters.budgetMax);
     }
     if (filters.condition && filters.condition !== 'all') {
       listings = listings.filter(listing => listing.condition === filters.condition);
@@ -1210,6 +1231,9 @@ export class DataManager {
     const finalTitle = ensureTitleSuffix((listing as Listing).title);
     const newListing: Listing = {
       ...listing,
+      // Varsayılanlar: tüm ilanlarda teklifler herkese açık ve satın alınabilir olsun
+      offersPublic: (listing as Listing).offersPublic ?? true,
+      offersPurchasable: (listing as Listing).offersPurchasable ?? true,
       title: finalTitle,
       id: `listing_${Date.now()}`,
       createdAt: new Date().toISOString(),
@@ -1217,6 +1241,16 @@ export class DataManager {
     };
     listings.push(newListing);
     localStorage.setItem(this.STORAGE_KEYS.LISTINGS, JSON.stringify(listings));
+    // İlan oluşturulunca ilan sahibine mail gönder
+    import('@/lib/mail').then(({ Mailer }) => {
+      const user = this.getUser(newListing.buyerId);
+      if (user) {
+        Mailer.sendListingCreated(
+          { name: user.name, email: user.email },
+          { id: newListing.id, title: newListing.title, category: newListing.category, city: newListing.city, budgetMax: newListing.budgetMax }
+        );
+      }
+    });
     return newListing;
   }
 
@@ -1334,11 +1368,12 @@ export class DataManager {
       }
     }
 
-    // Minimum teklif tutarı: ilan bütçe min + kategori bazlı alt kar
-    const marginPercent = getMarginPercentFor(listing.category, listing.budgetMin);
-    const minAllowed = Math.ceil(listing.budgetMin * (1 + marginPercent));
-    if (mutableOffer.price < minAllowed) {
-      throw new Error(`Teklif en az ${this.formatPrice(minAllowed)} olmalı (kategori alt kar oranı dahil)`);
+    // Minimum bütçe kaldırıldı: sadece üst sınır kontrolü yap
+    if (mutableOffer.price <= 0) {
+      throw new Error('Teklif fiyatı pozitif olmalıdır');
+    }
+    if (mutableOffer.price > listing.budgetMax) {
+      throw new Error(`Teklif ${this.formatPrice(listing.budgetMax)} üst sınırını aşamaz`);
     }
 
     const newOffer: Offer = {
@@ -1358,6 +1393,18 @@ export class DataManager {
       localStorage.setItem(this.STORAGE_KEYS.LISTINGS, JSON.stringify(listings));
     }
 
+    // Teklif verildiğinde ilan sahibine mail gönder
+    import('@/lib/mail').then(({ Mailer }) => {
+      const listing = this.getListing(newOffer.listingId);
+      const owner = listing ? this.getUser(listing.buyerId) : null;
+      if (listing && owner) {
+        Mailer.sendOfferReceived(
+          { name: owner.name, email: owner.email },
+          { id: listing.id, title: listing.title },
+          { sellerName: newOffer.sellerName, price: newOffer.price, deliveryType: newOffer.deliveryType }
+        );
+      }
+    });
     return newOffer;
   }
 
@@ -1579,7 +1626,7 @@ export class DataManager {
     };
     tpOrders.push(newOrder);
     localStorage.setItem(this.STORAGE_KEYS.TP_ORDERS, JSON.stringify(tpOrders));
-    // Satıcıya otomatik bilgi mesajı
+    // Satıcıya otomatik bilgi mesajı ve mail
     try {
       const seller = this.getUser(offer.sellerId);
       if (seller) {
@@ -1590,6 +1637,17 @@ export class DataManager {
           toUserId: seller.id,
           message: 'Teklifinizden bir satın alma yapıldı. Siparişi hazırlayabilirsiniz.'
         });
+        // Mail gönder
+        const listing = this.getListing(offer.listingId);
+        if (listing) {
+          import('@/lib/mail').then(({ Mailer }) => {
+            Mailer.sendOfferPurchased(
+              { name: seller.name, email: seller.email },
+              { id: listing.id, title: listing.title },
+              { price: offer.price, quantity: want, buyerName: buyer?.name }
+            );
+          });
+        }
       }
     } catch (e) {
       // ignore
@@ -1815,10 +1873,7 @@ export class DataManager {
   }
 
   // Teklif alt sınırı (kategori kar oranlarıyla): ilan bütçe min x (1 + oran)
-  static getMinAllowedOfferPriceForListing(listing: Listing): number {
-    const marginPercent = getMarginPercentFor(listing.category, listing.budgetMin);
-    return Math.ceil(listing.budgetMin * (1 + marginPercent));
-  }
+  // Min bütçe kaldırıldığı için alt fiyat hesaplayıcı da kaldırıldı
 
   // UI yardımcıları: desi seçenekleri ve aralıkları
   static getAllDesiOptions(): Array<{ value: DesiBracket; label: string; group: string; min: number; max?: number }> {

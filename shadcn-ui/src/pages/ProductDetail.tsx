@@ -57,7 +57,7 @@ export default function ProductDetail() {
   }
 
   const images = product.images && product.images.length > 0 ? product.images : [
-    'https://via.placeholder.com/800x600?text=Urun+Gorseli'
+  '/image-placeholder.png'
   ];
 
   // Sekme badge sayıları

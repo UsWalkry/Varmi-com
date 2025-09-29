@@ -10,6 +10,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useNavigate } from 'react-router-dom';
 import { DataManager, User, UserSession, LoginLog, cities } from '@/lib/mockData';
+import { Mailer } from '@/lib/mail';
+import { toast } from '@/lib/sonner';
 import AuthenticatorSetupDialog from '@/components/AuthenticatorSetupDialog';
 
 export default function Profile() {
@@ -123,6 +125,17 @@ export default function Profile() {
     setUser(updated);
   };
 
+  const resendWelcomeEmail = async () => {
+    if (!user) return;
+    try {
+      await Mailer.sendWelcome({ name: user.name, email: user.email });
+      toast.success('Hoş geldin e-postası gönderildi');
+    } catch (e) {
+      toast.error('E-posta gönderilemedi');
+      console.warn('Resend welcome email failed:', e);
+    }
+  };
+
   const handleAvatarUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -146,7 +159,7 @@ export default function Profile() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-center gap-4">
-              <img src={genel.avatarUrl || 'https://via.placeholder.com/80'} alt="Avatar" className="w-20 h-20 rounded-full object-cover border" />
+              <img src={genel.avatarUrl || '/avatar-placeholder.png'} alt="Avatar" className="w-20 h-20 rounded-full object-cover border" />
               <div>
                 <Label htmlFor="avatar">Profil fotoğrafı</Label>
                 <Input id="avatar" type="file" accept="image/*" onChange={handleAvatarUpload} />
@@ -336,6 +349,7 @@ export default function Profile() {
               </div>
             </div>
             <div className="flex gap-2 justify-end">
+              <Button variant="outline" onClick={resendWelcomeEmail}>Hoş geldin e-postasını yeniden gönder</Button>
               <Button onClick={saveNotifications}>Tercihleri Kaydet</Button>
             </div>
           </CardContent>

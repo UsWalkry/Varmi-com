@@ -106,9 +106,9 @@ export default function ListingCard({ listing }: ListingCardProps) {
 
         <div className="flex items-center justify-between">
           <div className="text-sm">
-            <span className="text-muted-foreground">Bütçe: </span>
+            <span className="text-muted-foreground">Maksimum Bütçe: </span>
             <span className="font-semibold text-green-600">
-              {DataManager.formatPrice(listing.budgetMin)} - {DataManager.formatPrice(listing.budgetMax)}
+              {DataManager.formatPrice(listing.budgetMax)}
             </span>
           </div>
           <div className="flex items-center gap-1 text-sm text-muted-foreground">

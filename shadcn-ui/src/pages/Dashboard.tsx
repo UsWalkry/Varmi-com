@@ -731,7 +731,7 @@ export default function Dashboard() {
                             <div className="flex items-center justify-between">
                               <span className="text-sm text-muted-foreground">Bütçe</span>
                               <span className="font-semibold text-green-600">
-                                {DataManager.formatPrice(listing.budgetMin)} - {DataManager.formatPrice(listing.budgetMax)}
+                                {DataManager.formatPrice(listing.budgetMax)}
                               </span>
                             </div>
                             
@@ -1017,7 +1017,7 @@ export default function Dashboard() {
                             <div className="flex items-center justify-between">
                               <span className="text-sm text-muted-foreground">Bütçe</span>
                               <span className="font-semibold text-green-600">
-                                {DataManager.formatPrice(listing.budgetMin)} - {DataManager.formatPrice(listing.budgetMax)}
+                                {DataManager.formatPrice(listing.budgetMax)}
                               </span>
                             </div>
                             

@@ -21,15 +21,13 @@ export default function EditListing() {
   const [form, setForm] = useState({
     title: '',
     description: '',
-    budgetMin: '',
     budgetMax: '',
     city: '',
     category: '',
     condition: 'new',
     deliveryType: 'shipping',
     expiresAt: '',
-    maskOwnerName: false,
-    offersPublic: false
+    maskOwnerName: false
   });
   // Adım durumu
   const [step, setStep] = useState(1); // 1: Temel, 2: Detay & Bütçe, 3: Önizleme
@@ -50,15 +48,13 @@ export default function EditListing() {
         setForm({
           title: found.title,
           description: found.description,
-          budgetMin: found.budgetMin.toString(),
           budgetMax: found.budgetMax.toString(),
           city: found.city,
           category: found.category,
           condition: found.condition,
           deliveryType: found.deliveryType,
           expiresAt: (found.expiresAt ? new Date(found.expiresAt) : (()=>{ const d=new Date(found.createdAt); d.setDate(d.getDate()+30); return d; })()).toISOString().split('T')[0],
-          maskOwnerName: found.maskOwnerName ?? false,
-          offersPublic: found.offersPublic ?? false
+          maskOwnerName: found.maskOwnerName ?? false
         });
       }
     }
@@ -76,12 +72,8 @@ export default function EditListing() {
       }
     }
     if (s === 2) {
-      if (!form.budgetMin || !form.budgetMax) {
-        toast.error('Bütçe alanlarını doldurun');
-        return false;
-      }
-      if (parseInt(form.budgetMin) >= parseInt(form.budgetMax)) {
-        toast.error('Maksimum bütçe minimumdan büyük olmalı');
+      if (!form.budgetMax) {
+        toast.error('Maksimum bütçeyi girin');
         return false;
       }
       if (images.length === 0) {
@@ -106,7 +98,6 @@ export default function EditListing() {
     DataManager.updateListing(listing.id, {
       title: form.title,
       description: form.description,
-      budgetMin: parseInt(form.budgetMin),
       budgetMax: parseInt(form.budgetMax),
       city: form.city,
       category: form.category,
@@ -114,7 +105,6 @@ export default function EditListing() {
       deliveryType: form.deliveryType as 'shipping' | 'pickup' | 'both',
       expiresAt: form.expiresAt ? new Date(form.expiresAt).toISOString() : listing.expiresAt,
       maskOwnerName: form.maskOwnerName,
-      offersPublic: form.offersPublic,
       images
     });
     toast.success('İlan başarıyla güncellendi!');
@@ -284,17 +274,8 @@ export default function EditListing() {
                   <p className="text-xs text-muted-foreground">Önerilen tek dosya boyutu ≤ 2MB.</p>
                 </div>
                 <div className="space-y-2">
-                  <label className="block text-sm font-medium">Bütçe Aralığı (TL) *</label>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs font-medium mb-1">Minimum</label>
-                      <Input name="budgetMin" value={form.budgetMin} onChange={handleChange} type="number" />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium mb-1">Maksimum</label>
-                      <Input name="budgetMax" value={form.budgetMax} onChange={handleChange} type="number" />
-                    </div>
-                  </div>
+                  <label className="block text-sm font-medium">Maksimum Bütçe (TL) *</label>
+                  <Input name="budgetMax" value={form.budgetMax} onChange={handleChange} type="number" />
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
@@ -330,16 +311,7 @@ export default function EditListing() {
                       </div>
                     </div>
                   </div>
-                  <div className="space-y-2">
-                    <Label>Teklif Detayları</Label>
-                    <div className="flex items-start space-x-2">
-                      <Checkbox id="offersPublic" checked={form.offersPublic} onCheckedChange={(checked) => setForm(p => ({ ...p, offersPublic: checked === true }))} />
-                      <div className="grid gap-1.5 leading-none">
-                        <label htmlFor="offersPublic" className="text-sm font-medium">Herkes teklifleri görebilsin</label>
-                        <p className="text-xs text-muted-foreground">Kapalıysa sadece siz görürsünüz.</p>
-                      </div>
-                    </div>
-                  </div>
+                  {/* Teklif görünürlüğü kaldırıldı: tüm ilanlarda teklifler herkese açıktır */}
                 </div>
               </div>
             )}
@@ -361,10 +333,9 @@ export default function EditListing() {
                     <div><span className="font-medium">Şehir:</span> {form.city}</div>
                     <div><span className="font-medium">Durum:</span> {form.condition === 'new' ? 'Sıfır' : form.condition === 'used' ? '2. El' : 'Farketmez'}</div>
                     <div><span className="font-medium">Teslimat:</span> {form.deliveryType === 'shipping' ? 'Kargo' : form.deliveryType === 'pickup' ? 'Elden Teslim' : 'Her İkisi de'}</div>
-                    <div><span className="font-medium">Bütçe:</span> {form.budgetMin} - {form.budgetMax} TL</div>
+                    <div><span className="font-medium">Bütçe (Üst Sınır):</span> {form.budgetMax} TL</div>
                     <div><span className="font-medium">Bitiş:</span> {form.expiresAt}</div>
                     <div><span className="font-medium">Ad Gizleme:</span> {form.maskOwnerName ? 'Evet' : 'Hayır'}</div>
-                    <div><span className="font-medium">Teklifler Açık:</span> {form.offersPublic ? 'Evet' : 'Hayır'}</div>
                   </div>
                   <div>
                     <h4 className="font-medium mb-2">Görseller</h4>

@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { ArrowLeft, MapPin, Clock, Package, Plus, Star, MessageCircle, Heart, Trash2, Eye, EyeOff } from 'lucide-react';
+import { ArrowLeft, MapPin, Clock, Package, Plus, Star, MessageCircle, Heart, Trash2 } from 'lucide-react';
 import { Listing, Offer, DataManager } from '@/lib/mockData';
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
@@ -55,8 +55,7 @@ export default function ListingDetail() {
   const [filterDelivery, setFilterDelivery] = useState<'all' | 'shipping' | 'pickup'>('all');
   const [filterCondition, setFilterCondition] = useState<'all' | 'new' | 'used'>('all');
   const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'accepted' | 'rejected' | 'withdrawn'>('all');
-  const [minPrice, setMinPrice] = useState('');
-  const [maxPrice, setMaxPrice] = useState('');
+  // Min/Max fiyat filtreleri kaldırıldı
   const [currentUser, setCurrentUser] = useState(DataManager.getCurrentUser());
   const [activeImage, setActiveImage] = useState(0);
   const [descExpanded, setDescExpanded] = useState(false);
@@ -114,9 +113,7 @@ export default function ListingDetail() {
     if (filterDelivery !== 'all') list = list.filter(o => o.deliveryType === filterDelivery);
     if (filterCondition !== 'all') list = list.filter(o => o.condition === filterCondition);
     if (filterStatus !== 'all') list = list.filter(o => o.status === filterStatus);
-    const min = parseFloat(minPrice); const max = parseFloat(maxPrice);
-    if (!isNaN(min)) list = list.filter(o => o.price >= min);
-    if (!isNaN(max)) list = list.filter(o => o.price <= max);
+  // Min/Max fiyat filtreleri kaldırıldı
     // Sıralama
     list.sort((a,b) => {
       let cmp = 0;
@@ -248,7 +245,8 @@ export default function ListingDetail() {
   const alreadyOffered = currentUser ? DataManager.getOffersForListing(listing.id).some(o => o.sellerId === currentUser.id) : false;
   const myOfferId = currentUser ? offers.find(o => o.sellerId === currentUser.id)?.id : undefined;
   const canMakeOffer = currentUser && !isOwner && listing.status === 'active' && !alreadyOffered;
-  const canShowOffers = (listing.offersPublic === true) || isOwner || listing.offersPurchasable === true;
+  // Tüm ilanlarda teklifler herkese açık olacak şekilde görünür
+  const canShowOffers = true;
 
   const getConditionText = (condition: string) => {
     switch (condition) {
@@ -376,9 +374,9 @@ export default function ListingDetail() {
 
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
-                      <p className="text-sm text-muted-foreground">Bütçe Aralığı</p>
+                      <p className="text-sm text-muted-foreground">Maksimum Bütçe</p>
                       <p className="font-semibold text-lg text-green-600">
-                        {DataManager.formatPrice(listing.budgetMin)} - {DataManager.formatPrice(listing.budgetMax)}
+                        {DataManager.formatPrice(listing.budgetMax)}
                       </p>
                     </div>
                     <div>
@@ -407,28 +405,13 @@ export default function ListingDetail() {
                         })()}
                       </div>
                     </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Teklif Görünürlüğü</p>
-                      <div className="flex items-center gap-2">
-                        {listing.offersPublic ? (
-                          <>
-                            <Eye className="h-4 w-4 text-green-600" />
-                            <span className="font-semibold">Açık</span>
-                          </>
-                        ) : (
-                          <>
-                            <EyeOff className="h-4 w-4 text-gray-600" />
-                            <span className="font-semibold">Gizli</span>
-                          </>
-                        )}
-                      </div>
-                    </div>
+                    {/* Teklif görünürlüğü her zaman açık olduğundan ayrı gösterim kaldırıldı */}
                   </div>
                 </div>
               </CardContent>
             </Card>
 
-            {/* Gelen Teklifler - sadece ilan sahibi veya offersPublic=true ise gösterilir */}
+            {/* Gelen Teklifler - tüm kullanıcılara görünür */}
             {canShowOffers && (
               <Card>
                 <CardHeader>
@@ -501,16 +484,9 @@ export default function ListingDetail() {
                               </SelectContent>
                             </Select>
                           </div>
-                          <div className="w-32">
-                            <label className="block text-xs font-medium mb-1">Min Fiyat</label>
-                            <Input value={minPrice} onChange={e=>setMinPrice(e.target.value)} type="number" className="h-8 text-xs" placeholder="₺" />
-                          </div>
-                          <div className="w-32">
-                            <label className="block text-xs font-medium mb-1">Max Fiyat</label>
-                            <Input value={maxPrice} onChange={e=>setMaxPrice(e.target.value)} type="number" className="h-8 text-xs" placeholder="₺" />
-                          </div>
+                          {/* Min/Max Fiyat filtreleri kaldırıldı */}
                           <div className="flex items-end">
-                            <Button variant="outline" className="h-8 text-xs" onClick={() => { setFilterDelivery('all'); setFilterCondition('all'); setFilterStatus('all'); setMinPrice(''); setMaxPrice(''); setSortBy('price'); setSortDir('asc'); }}>Sıfırla</Button>
+                            <Button variant="outline" className="h-8 text-xs" onClick={() => { setFilterDelivery('all'); setFilterCondition('all'); setFilterStatus('all'); setSortBy('price'); setSortDir('asc'); }}>Sıfırla</Button>
                           </div>
                         </div>
                         <div className="flex justify-end text-[11px] text-muted-foreground">{displayedOffers.length} / {offers.length} teklif gösteriliyor</div>
@@ -539,27 +515,7 @@ export default function ListingDetail() {
               </Card>
             )}
 
-            {/* Teklifler gizliyken (offersPublic=false ve kullanıcı sahip değilken) yalnızca kullanıcının kendi teklifini göster */}
-            {!canShowOffers && currentUser && myOfferId && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Teklifim</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {(() => {
-                    const myOffer = offers.find(o => o.id === myOfferId);
-                    if (!myOffer) return null;
-                    return (
-                      <OfferCard
-                        offer={myOffer}
-                        showActions={false}
-                        onWithdraw={handleWithdrawOffer}
-                      />
-                    );
-                  })()}
-                </CardContent>
-              </Card>
-            )}
+            {/* Teklifler tüm kullanıcılara açık: sadece gizli olduğunda kendi teklifim bölümü kaldırıldı */}
           </div>
 
           {/* Sidebar */}

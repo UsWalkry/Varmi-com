@@ -1,0 +1,79 @@
+name: Build & Deploy Backend to cPanel (SSH/rsync)
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'server/**'
+      - '.github/workflows/deploy-backend.yml'
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Install deps (backend)
+        working-directory: ./server
+        run: pnpm install --frozen-lockfile
+
+      - name: Build (backend)
+        working-directory: ./server
+        run: pnpm build
+
+      - name: Package dist
+        working-directory: ./server
+        run: |
+          tar -czf ../server-dist.tar.gz dist package.json pnpm-lock.yaml node_modules .env.example || true
+
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Add known_hosts
+        run: ssh-keyscan -p "${{ secrets.SSH_PORT }}" "${{ secrets.SSH_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Upload via rsync
+        run: |
+          rsync -avz -e "ssh -p ${{ secrets.SSH_PORT }}" server/dist/ ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:${{ secrets.BACKEND_REMOTE_DIR }}/dist/
+          rsync -avz -e "ssh -p ${{ secrets.SSH_PORT }}" server/package.json server/pnpm-lock.yaml server/ecosystem.config.js ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:${{ secrets.BACKEND_REMOTE_DIR }}/
+
+      - name: Install deps & restart on server
+        run: |
+          ssh -p ${{ secrets.SSH_PORT }} ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "\
+            set -euo pipefail; \
+            cd ${{ secrets.BACKEND_REMOTE_DIR }}; \
+            if command -v pnpm >/dev/null 2>&1; then \
+              pnpm install --prod --frozen-lockfile; \
+            elif command -v npm >/dev/null 2>&1; then \
+              npm ci --omit=dev || npm install --only=prod; \
+            else \
+              echo 'Neither pnpm nor npm found on remote server' >&2; exit 1; \
+            fi; \
+            if command -v pm2 >/dev/null 2>&1; then \
+              pm2 startOrReload ecosystem.config.js --update-env; \
+            else \
+              echo 'pm2 not found, using plain node background run'; \
+              pkill -f 'node dist/index.js' || true; \
+              nohup node dist/index.js > server.log 2>&1 & disown; \
+            fi \
+          "
+        
+        # Not:
+        # - pm2 kullanıyorsanız BACKEND_REMOTE_DIR altına bir ecosystem.config.js ekleyin.
+        # - pm2 yoksa basit bir systemd service ya da nohup ile arka plan yeterli olabilir.

@@ -30,13 +30,10 @@ export default function CreateListing() {
     city: '',
     condition: 'any',
     deliveryType: 'both',
-    budgetMin: '',
     budgetMax: '',
     expiresAt: '',
     exactProductOnly: false,
     maskOwnerName: false,
-    offersPublic: false,
-    offersPurchasable: false
   });
 
   // Wizard adımı (1: Temel Bilgiler, 2: Detay & Bütçe, 3: Önizleme & Yayınla)
@@ -45,12 +42,6 @@ export default function CreateListing() {
   // Görseller (data URL'ler)
   const [images, setImages] = useState<string[]>([]);
 
-  // offersPurchasable seçilirse offersPublic otomatik işaretlensin
-  useEffect(() => {
-    if (formData.offersPurchasable && !formData.offersPublic) {
-      setFormData(prev => ({ ...prev, offersPublic: true }));
-    }
-  }, [formData.offersPurchasable, formData.offersPublic]);
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -65,12 +56,8 @@ export default function CreateListing() {
       }
     }
     if (currentStep === 2) {
-      if (!formData.budgetMin || !formData.budgetMax) {
-        toast.error('Lütfen bütçe aralığını girin');
-        return false;
-      }
-      if (parseInt(formData.budgetMin) >= parseInt(formData.budgetMax)) {
-        toast.error('Maksimum bütçe minimumdan büyük olmalıdır');
+      if (!formData.budgetMax) {
+        toast.error('Lütfen maksimum bütçeyi girin');
         return false;
       }
       if (images.length === 0) {
@@ -125,15 +112,14 @@ export default function CreateListing() {
         title: withSuffix,
         description: formData.description,
         category: formData.category,
-        budgetMin: parseInt(formData.budgetMin),
         budgetMax: parseInt(formData.budgetMax),
         condition: formData.condition as 'new' | 'used' | 'any',
         city: formData.city,
         deliveryType: formData.deliveryType as 'shipping' | 'pickup' | 'both',
         exactProductOnly: formData.exactProductOnly,
         maskOwnerName: formData.maskOwnerName,
-        offersPublic: formData.offersPublic,
-        offersPurchasable: formData.offersPurchasable,
+        offersPublic: true,
+        offersPurchasable: true,
         status: 'active',
         expiresAt,
         images
@@ -415,17 +401,8 @@ export default function CreateListing() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Bütçe Aralığı (TL) *</Label>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="budgetMin" className="text-sm">Minimum Bütçe</Label>
-                      <Input id="budgetMin" type="number" placeholder="1000" value={formData.budgetMin} onChange={(e) => handleInputChange('budgetMin', e.target.value)} />
-                    </div>
-                    <div>
-                      <Label htmlFor="budgetMax" className="text-sm">Maksimum Bütçe</Label>
-                      <Input id="budgetMax" type="number" placeholder="5000" value={formData.budgetMax} onChange={(e) => handleInputChange('budgetMax', e.target.value)} />
-                    </div>
-                  </div>
+                  <Label>Maksimum Bütçe (TL) *</Label>
+                  <Input id="budgetMax" type="number" placeholder="5000" value={formData.budgetMax} onChange={(e) => handleInputChange('budgetMax', e.target.value)} />
                 </div>
 
                 <div className="space-y-3">
@@ -463,23 +440,7 @@ export default function CreateListing() {
                       </div>
                     </div>
                   </div>
-                  <div className="space-y-2">
-                    <Label>Teklif Görünürlüğü</Label>
-                    <div className="flex items-start space-x-2">
-                      <Checkbox id="offersPublic" checked={formData.offersPublic} onCheckedChange={(checked) => setFormData(p => ({ ...p, offersPublic: checked === true }))} />
-                      <div className="grid gap-1.5 leading-none">
-                        <label htmlFor="offersPublic" className="text-sm font-medium">Herkes teklifleri görebilsin</label>
-                        <p className="text-xs text-muted-foreground">Kapalıysa sadece siz görürsünüz.</p>
-                      </div>
-                    </div>
-                    <div className="flex items-start space-x-2 mt-3">
-                      <Checkbox id="offersPurchasable" checked={formData.offersPurchasable} onCheckedChange={(checked) => setFormData(p => ({ ...p, offersPurchasable: checked === true }))} />
-                      <div className="grid gap-1.5 leading-none">
-                        <label htmlFor="offersPurchasable" className="text-sm font-medium">Diğer kullanıcılar tekliften satın alabilsin</label>
-                        <p className="text-xs text-muted-foreground">Teklif sahibi 1’den fazla adet girdiyse, 1 adet daima sizin hakkınız olarak ayrılır.</p>
-                      </div>
-                    </div>
-                  </div>
+                  {/* 'Diğer kullanıcılar tekliften satın alabilsin' ayarı kaldırıldı; tüm ilanlar için otomatik aktiftir */}
                 </div>
               </div>
             )}
@@ -504,11 +465,10 @@ export default function CreateListing() {
                     <div><span className="font-medium">Şehir:</span> {formData.city}</div>
                     <div><span className="font-medium">Durum:</span> {conditionLabels[formData.condition] || formData.condition}</div>
                     <div><span className="font-medium">Teslimat:</span> {deliveryTypeLabels[formData.deliveryType] || formData.deliveryType}</div>
-                    <div><span className="font-medium">Bütçe:</span> {formData.budgetMin} - {formData.budgetMax} TL</div>
+                    <div><span className="font-medium">Bütçe (Üst Sınır):</span> {formData.budgetMax} TL</div>
                     <div><span className="font-medium">Bitiş:</span> {formData.expiresAt || defaultExpiryString}</div>
                     <div><span className="font-medium">Ürün Eşleşme:</span> {formData.exactProductOnly ? 'Aynı Ürün' : 'Benzer Olur'}</div>
                     <div><span className="font-medium">Ad Gizleme:</span> {formData.maskOwnerName ? 'Evet' : 'Hayır'}</div>
-                    <div><span className="font-medium">Teklifler Herkese Açık:</span> {formData.offersPublic ? 'Evet' : 'Hayır'}</div>
                   </div>
                   <div>
                     <h4 className="font-medium mb-2">Görseller</h4>

@@ -86,10 +86,9 @@ export default function CreateOfferModal({
         toast.error('Adet en az 1 olmalıdır');
         return false;
       }
-      const minAllowed = DataManager.getMinAllowedOfferPriceForListing(listing);
       const price = parseFloat(formData.price);
-      if (price < minAllowed || price > listing.budgetMax) {
-        toast.error(`Fiyat ${DataManager.formatPrice(minAllowed)} - ${DataManager.formatPrice(listing.budgetMax)} aralığında olmalıdır`);
+      if (price <= 0 || price > listing.budgetMax) {
+        toast.error(`Fiyat 0'dan büyük ve en fazla ${DataManager.formatPrice(listing.budgetMax)} olmalıdır`);
         return false;
       }
     }
@@ -286,7 +285,7 @@ export default function CreateOfferModal({
   }, [isOpen, listing.condition, listing.deliveryType]);
 
   const totalPrice = (parseFloat(formData.price) || 0) + (parseFloat(formData.shippingCost) || 0);
-  const uiMinAllowed = DataManager.getMinAllowedOfferPriceForListing(listing);
+  // Min bütçe kaldırıldı; sadece üst sınırı göster
   // Eski desi options kaldırıldı
   const selectedRange = formData.shippingDesi ? DataManager.getShippingCostRangeForDesi(formData.shippingDesi) : undefined;
   const isShipping = formData.deliveryType === 'shipping';
@@ -327,7 +326,7 @@ export default function CreateOfferModal({
           <DialogTitle>Teklif Ver</DialogTitle>
           <div className="text-sm text-muted-foreground">
             <p className="font-medium">{listing.title}</p>
-            <p>Bütçe: {DataManager.formatPrice(listing.budgetMin)} - {DataManager.formatPrice(listing.budgetMax)}</p>
+            <p>Maksimum Bütçe: {DataManager.formatPrice(listing.budgetMax)}</p>
           </div>
         </DialogHeader>
 
@@ -348,7 +347,7 @@ export default function CreateOfferModal({
                 <div>
                   <Label htmlFor="price">Fiyat (TL) *</Label>
                   <Input id="price" type="number" min="1" step="0.01" value={formData.price} onChange={(e) => setFormData({ ...formData, price: e.target.value })} />
-                  <p className="text-xs text-muted-foreground mt-1">Min: {DataManager.formatPrice(uiMinAllowed)} / Max: {DataManager.formatPrice(listing.budgetMax)}</p>
+                  <p className="text-xs text-muted-foreground mt-1">Üst sınır: {DataManager.formatPrice(listing.budgetMax)}</p>
                 </div>
                 <div>
                   <Label htmlFor="quantity">Adet *</Label>

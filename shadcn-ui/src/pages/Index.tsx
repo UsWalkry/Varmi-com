@@ -226,9 +226,9 @@ export default function Index() {
                     
                     <div className="space-y-3">
                       <div className="flex items-center justify-between">
-                        <span className="text-sm text-muted-foreground">Bütçe</span>
+                        <span className="text-sm text-muted-foreground">Maksimum Bütçe</span>
                         <span className="font-semibold text-green-600">
-                          {DataManager.formatPrice(listing.budgetMin || 0)} - {DataManager.formatPrice(listing.budgetMax || 0)}
+                          {DataManager.formatPrice(listing.budgetMax || 0)}
                         </span>
                       </div>
                       

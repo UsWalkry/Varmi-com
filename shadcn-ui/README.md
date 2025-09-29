@@ -34,6 +34,23 @@ All shadcn/ui components have been downloaded under `@/components/ui`.
 
 ## Development
 
+# Sunucu üzerinden Nodemailer kullanımı
+
+VITE_MAIL_API_BASE=http://localhost:8787
+VITE_MAIL_API_KEY=change-this-key
+
+Server klasöründe `.env` oluşturup SMTP bilgilerinizi girin ve sunucuyu başlatın:
+
+```
+cd ../server
+cp .env.example .env
+# .env içinde SMTP_HOST, SMTP_PORT=465, SMTP_USER=noreply@varmi.com, SMTP_PASS=*** ayarlayın
+pnpm i
+pnpm dev
+```
+
+Ardından frontend `.env.local` içinde VITE_MAIL_API_BASE ve VITE_MAIL_API_KEY tanımlıysa e-postalar backend üzerinden gönderilir.
+
 - Import components from `@/components/ui` in your React components
 - Customize the UI by modifying the Tailwind configuration
 
@@ -52,14 +69,14 @@ pnpm i
 
 **Add Dependencies**
 
-```shell
+````shell
 pnpm add some_new_dependency
 
 **Start Preview**
 
 ```shell
 pnpm run dev
-```
+````
 
 **To build**
 

@@ -1,0 +1,48 @@
+name: Build & Deploy Frontend to cPanel (FTP)
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'shadcn-ui/**'
+      - '.github/workflows/deploy-frontend.yml'
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Install deps (frontend)
+        working-directory: ./shadcn-ui
+        run: pnpm install --frozen-lockfile
+
+      - name: Build (frontend)
+        working-directory: ./shadcn-ui
+        run: pnpm build
+
+      - name: Deploy via FTP
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          local-dir: shadcn-ui/dist/
+          server-dir: ${{ secrets.FTP_FRONTEND_DIR }}
+          # Örn: FTP_FRONTEND_DIR="/public_html/" veya "/public_html/app/"
+          danger-clean-slate: true
+          # İstersen eski dosyaları temizlemeden incremental dağıtım için: false
