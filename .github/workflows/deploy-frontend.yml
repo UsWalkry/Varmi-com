@@ -41,6 +41,8 @@ jobs:
           server: ${{ secrets.FTP_SERVER }}
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
+          port: 21
+          protocol: ftps
           local-dir: shadcn-ui/dist/
           server-dir: ${{ secrets.FTP_FRONTEND_DIR }}
           # Örn: FTP_FRONTEND_DIR="/public_html/" veya "/public_html/app/"
