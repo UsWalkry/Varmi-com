@@ -4,9 +4,9 @@ on:
   workflow_dispatch:
     inputs:
       target:
-        description: 'What to deploy? (frontend|backend|both)'
+        description: "What to deploy? (frontend|backend|both)"
         required: true
-        default: 'both'
+        default: "both"
 
 jobs:
   deploy:

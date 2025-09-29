@@ -2,10 +2,10 @@ name: Build & Deploy Backend to cPanel (SSH/rsync)
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
     paths:
-      - 'server/**'
-      - '.github/workflows/deploy-backend.yml'
+      - "server/**"
+      - ".github/workflows/deploy-backend.yml"
 
 jobs:
   build-and-deploy:
@@ -20,7 +20,7 @@ jobs:
       - name: Use Node.js 20
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: "20"
 
       - name: Install pnpm
         uses: pnpm/action-setup@v4
@@ -45,8 +45,22 @@ jobs:
         with:
           ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
-      - name: Add known_hosts
-        run: ssh-keyscan -p "${{ secrets.SSH_PORT }}" "${{ secrets.SSH_HOST }}" >> ~/.ssh/known_hosts
+      - name: Add known_hosts (with fingerprint verify)
+        run: |
+          mkdir -p ~/.ssh
+          HOST="${{ secrets.SSH_HOST }}"
+          PORT="${{ secrets.SSH_PORT }}"
+          FPR="${{ secrets.SSH_HOST_ECDSA_SHA256 }}"
+          echo "Beklenen ECDSA SHA256 fingerprint: $FPR"
+          # Anahtarı çek
+          ssh-keyscan -p "$PORT" -t ecdsa "$HOST" > /tmp/known_hosts_raw 2>/dev/null
+          # Fingerprint hesapla
+          FP_ACTUAL=$(ssh-keygen -l -f /tmp/known_hosts_raw -E sha256 | awk '{print $2}' | sed 's/^SHA256://')
+          if [ "$FP_ACTUAL" != "$FPR" ]; then
+            echo "HATA: Host key fingerprint eşleşmiyor. Beklenen=$FPR, Gelen=$FP_ACTUAL" >&2
+            exit 1
+          fi
+          cat /tmp/known_hosts_raw >> ~/.ssh/known_hosts
 
       - name: Upload via rsync
         run: |
@@ -73,7 +87,7 @@ jobs:
               nohup node dist/index.js > server.log 2>&1 & disown; \
             fi \
           "
-        
+
         # Not:
         # - pm2 kullanıyorsanız BACKEND_REMOTE_DIR altına bir ecosystem.config.js ekleyin.
         # - pm2 yoksa basit bir systemd service ya da nohup ile arka plan yeterli olabilir.
