@@ -1,0 +1,11 @@
+deployment:
+  tasks:
+    - export DEPLOYPATH="/home/httpdcyo/varmii"
+    - /bin/mkdir -p "$DEPLOYPATH"
+    - /bin/rsync -a --delete --exclude ".git" --exclude ".cpanel" --exclude ".env" --exclude "node_modules" ./ "$DEPLOYPATH"/
+    - if [ -f "$DEPLOYPATH/package.json" ]; then
+        cd "$DEPLOYPATH" &&
+        (npm ci --omit=dev || npm install --production || true) &&
+        (npm run build || true) &&
+        mkdir -p tmp && touch tmp/restart.txt;
+      fi
