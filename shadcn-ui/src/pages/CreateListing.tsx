@@ -14,6 +14,7 @@ import { applyWatermarkToDataUrl } from '@/lib/watermark';
 import AuthModal from '@/components/AuthModal';
 import Stepper from '@/components/ui/stepper';
 import { toast } from 'sonner';
+import { createListing as sbCreateListing, supabaseEnabled, ensureCurrentUserId } from '@/lib/api';
 
 export default function CreateListing() {
   const navigate = useNavigate();
@@ -106,7 +107,52 @@ export default function CreateListing() {
         const cleaned = base.replace(/[\s?]+$/g, '');
         return cleaned + ' Var mıı?';
       })();
-      const newListing = DataManager.addListing({
+      let newListing: { id: string };
+      if (supabaseEnabled()) {
+        try {
+          // Supabase yazma işlemleri için oturum gerekir; yoksa DataManager'a düş.
+          const selfId = await ensureCurrentUserId();
+          if (!selfId) throw new Error('no-supabase-session');
+          const inserted = await sbCreateListing({
+            buyer_id: selfId,
+            title: withSuffix,
+            description: formData.description,
+            category: formData.category,
+            budget_max: parseInt(formData.budgetMax),
+            condition: formData.condition as 'new' | 'used' | 'any',
+            city: formData.city,
+            delivery_type: formData.deliveryType as 'shipping' | 'pickup' | 'both',
+            offers_public: true,
+            offers_purchasable: true,
+            status: 'active',
+            expires_at: expiresAt,
+            images
+          });
+          newListing = { id: inserted.id };
+        } catch (e) {
+          // 401/RLS gibi durumlarda local fallback
+          console.warn('[CreateListing] Supabase kayıt başarısız, DataManager fallback:', e);
+          newListing = DataManager.addListing({
+            buyerId: currentUser.id,
+            buyerName: currentUser.name,
+            title: withSuffix,
+            description: formData.description,
+            category: formData.category,
+            budgetMax: parseInt(formData.budgetMax),
+            condition: formData.condition as 'new' | 'used' | 'any',
+            city: formData.city,
+            deliveryType: formData.deliveryType as 'shipping' | 'pickup' | 'both',
+            exactProductOnly: formData.exactProductOnly,
+            maskOwnerName: formData.maskOwnerName,
+            offersPublic: true,
+            offersPurchasable: true,
+            status: 'active',
+            expiresAt,
+            images
+          });
+        }
+      } else {
+        newListing = DataManager.addListing({
         buyerId: currentUser.id,
         buyerName: currentUser.name,
         title: withSuffix,
@@ -123,7 +169,8 @@ export default function CreateListing() {
         status: 'active',
         expiresAt,
         images
-      });
+        });
+      }
       toast.success('İlanınız başarıyla oluşturuldu!');
       navigate(`/listing/${newListing.id}`);
     } catch (error) {

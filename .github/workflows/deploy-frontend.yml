@@ -15,6 +15,11 @@ jobs:
     env:
       FTP_PROTOCOL_INPUT: ${{ secrets.FTP_PROTOCOL }}
       FTP_PORT_INPUT: ${{ secrets.FTP_PORT }}
+      # Vite build-time envs for production bundle
+      VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+      VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+      VITE_MAIL_API_BASE: ${{ secrets.VITE_MAIL_API_BASE }}
+      VITE_MAIL_API_KEY: ${{ secrets.VITE_MAIL_API_KEY }}
 
     steps:
       - name: Checkout

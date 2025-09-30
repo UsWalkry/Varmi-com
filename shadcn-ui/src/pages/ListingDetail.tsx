@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { ArrowLeft, MapPin, Clock, Package, Plus, Star, MessageCircle, Heart, Trash2 } from 'lucide-react';
 import { Listing, Offer, DataManager } from '@/lib/mockData';
+import { fetchListingById, fetchOffersUi, supabaseEnabled, deleteOffer } from '@/lib/api';
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { maskDisplayName } from '@/lib/utils';
@@ -85,19 +86,56 @@ export default function ListingDetail() {
     return () => window.removeEventListener('resize', handler);
   }, []);
 
-  const loadListingAndOffers = useCallback(() => {
-    const allListings = DataManager.getListings();
-    const foundListing = allListings.find(l => l.id === id);
-    
-    if (!foundListing) {
-      toast.error('İlan bulunamadı');
-      navigate('/');
-      return;
+  const loadListingAndOffers = useCallback(async () => {
+    if (!id) return;
+    const isUuid = (v: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v);
+    try {
+      if (supabaseEnabled() && isUuid(id)) {
+        const l = await fetchListingById(id);
+        if (!l) {
+          toast.error('İlan bulunamadı');
+          navigate('/');
+          return;
+        }
+        // map to Listing type expected by UI using existing adapter in Index.tsx structure
+        const mapped: Listing = {
+          id: l.id,
+          title: l.title,
+          description: l.description ?? '',
+          images: (l.images as unknown as string[]) ?? [],
+          category: l.category,
+          budgetMax: Number(l.budget_max),
+          condition: l.condition,
+          city: l.city,
+          deliveryType: l.delivery_type,
+          buyerId: l.buyer_id,
+          buyerName: 'Kullanıcı',
+          status: l.status,
+          createdAt: l.created_at,
+          offerCount: l.offer_count ?? 0,
+          offersPublic: l.offers_public ?? true,
+          offersPurchasable: l.offers_purchasable ?? true,
+          expiresAt: l.expires_at ?? undefined,
+        };
+        setListing(mapped);
+        const offs = await fetchOffersUi(id);
+        setOffers(offs as unknown as Offer[]);
+      } else {
+        const allListings = DataManager.getListings();
+        const foundListing = allListings.find(l => l.id === id);
+        if (!foundListing) {
+          toast.error('İlan bulunamadı');
+          navigate('/');
+          return;
+        }
+        setListing(foundListing);
+        const listingOffers = DataManager.getOffersForListing(id);
+        setOffers(listingOffers);
+      }
+    } catch (e) {
+      console.error(e);
+      toast.error('Veriler yüklenemedi');
     }
-
-    setListing(foundListing);
-    const listingOffers = DataManager.getOffersForListing(id!);
-    setOffers(listingOffers);
   }, [id, navigate]);
 
   useEffect(() => {
@@ -113,9 +151,9 @@ export default function ListingDetail() {
     if (filterDelivery !== 'all') list = list.filter(o => o.deliveryType === filterDelivery);
     if (filterCondition !== 'all') list = list.filter(o => o.condition === filterCondition);
     if (filterStatus !== 'all') list = list.filter(o => o.status === filterStatus);
-  // Min/Max fiyat filtreleri kaldırıldı
+    // Min/Max fiyat filtreleri kaldırıldı
     // Sıralama
-    list.sort((a,b) => {
+    list.sort((a, b) => {
       let cmp = 0;
       if (sortBy === 'price') cmp = a.price - b.price; else if (sortBy === 'date') cmp = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
       return sortDir === 'asc' ? cmp : -cmp;
@@ -125,15 +163,19 @@ export default function ListingDetail() {
 
   // Sıralama ve kabul/ret aksiyonları kaldırıldı (liste gizli)
 
-  const handleWithdrawOffer = (offerId: string) => {
+  const handleWithdrawOffer = async (offerId: string) => {
     if (!currentUser) {
       setIsAuthModalOpen(true);
       return;
     }
     try {
-      DataManager.deleteOffer(offerId, currentUser.id);
+      if (supabaseEnabled()) {
+        await deleteOffer(offerId);
+      } else {
+        DataManager.deleteOffer(offerId, currentUser.id);
+      }
       toast.success('Teklifiniz silindi');
-      loadListingAndOffers();
+      await loadListingAndOffers();
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'Teklif silinemedi';
       toast.error(msg);
@@ -242,7 +284,7 @@ export default function ListingDetail() {
   }
 
   const isOwner = currentUser?.id === listing.buyerId;
-  const alreadyOffered = currentUser ? DataManager.getOffersForListing(listing.id).some(o => o.sellerId === currentUser.id) : false;
+  const alreadyOffered = currentUser ? offers.some(o => o.sellerId === currentUser.id) : false;
   const myOfferId = currentUser ? offers.find(o => o.sellerId === currentUser.id)?.id : undefined;
   const canMakeOffer = currentUser && !isOwner && listing.status === 'active' && !alreadyOffered;
   // Tüm ilanlarda teklifler herkese açık olacak şekilde görünür
@@ -268,7 +310,7 @@ export default function ListingDetail() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-  <Header />
+      <Header />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -281,7 +323,7 @@ export default function ListingDetail() {
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
                       <CardTitle className="text-2xl">{listing.title}</CardTitle>
-                      <FavoriteButton 
+                      <FavoriteButton
                         listingId={listing.id}
                         userId={currentUser?.id}
                         size="sm"
@@ -357,7 +399,7 @@ export default function ListingDetail() {
                       </div>
                     );
                   })()}
-                  
+
                   <div className="flex flex-wrap gap-2">
                     <Badge variant="secondary">{listing.category}</Badge>
                     <Badge variant="outline">{getConditionText(listing.condition)}</Badge>
@@ -502,8 +544,8 @@ export default function ListingDetail() {
                           onWithdraw={offer.sellerId === currentUser?.id ? handleWithdrawOffer : undefined}
                           onPurchase={
                             !isOwner &&
-                            listing.offersPurchasable &&
-                            offer.sellerId !== currentUser?.id
+                              listing.offersPurchasable &&
+                              offer.sellerId !== currentUser?.id
                               ? handlePurchaseOffer
                               : undefined
                           }
@@ -527,8 +569,8 @@ export default function ListingDetail() {
               </CardHeader>
               <CardContent className="space-y-3">
                 {canMakeOffer ? (
-                  <Button 
-                    className="w-full" 
+                  <Button
+                    className="w-full"
                     size="lg"
                     onClick={handleCreateOffer}
                   >
@@ -546,7 +588,7 @@ export default function ListingDetail() {
                             <p className="text-xs text-muted-foreground">İlan, son gününde otomatik silinecek. Bu süreçte yeterli adedi olan teklifler diğer kullanıcılar tarafından değerlendirilebilir.</p>
                             <div className="grid grid-cols-2 gap-2">
                               <Button variant="outline" onClick={handleEditListing}>Düzenle</Button>
-                              <Button variant="destructive" disabled title="Kabul edilen teklif olduğu için silinemez"> 
+                              <Button variant="destructive" disabled title="Kabul edilen teklif olduğu için silinemez">
                                 <Trash2 className="h-4 w-4 mr-1" /> Sil
                               </Button>
                             </div>
@@ -592,7 +634,7 @@ export default function ListingDetail() {
                 )}
 
                 {currentUser && (
-                  <FavoriteButton 
+                  <FavoriteButton
                     listingId={listing.id}
                     userId={currentUser.id}
                     variant="outline"
@@ -637,7 +679,7 @@ export default function ListingDetail() {
                 <div className="flex justify-between">
                   <span className="text-sm text-muted-foreground">En Düşük Teklif</span>
                   <span className="font-semibold text-green-600">
-                    {displayedOffers.length > 0 
+                    {displayedOffers.length > 0
                       ? DataManager.formatPrice(Math.min(...displayedOffers.map(o => o.price)))
                       : '-'
                     }
@@ -646,7 +688,7 @@ export default function ListingDetail() {
                 <div className="flex justify-between">
                   <span className="text-sm text-muted-foreground">Ortalama Teklif</span>
                   <span className="font-semibold">
-                    {displayedOffers.length > 0 
+                    {displayedOffers.length > 0
                       ? DataManager.formatPrice(displayedOffers.reduce((sum, o) => sum + o.price, 0) / displayedOffers.length)
                       : '-'
                     }

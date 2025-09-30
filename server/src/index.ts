@@ -2,8 +2,21 @@ import express from 'express';
 import cors from 'cors';
 import nodemailer from 'nodemailer';
 import dotenv from 'dotenv';
+import { fileURLToPath } from 'node:url';
+import { dirname, resolve } from 'node:path';
 
-dotenv.config();
+// .env yolunu her zaman server klasörüne sabitle (dist veya src’den çalışsa da)
+try {
+  const __filename = fileURLToPath(import.meta.url);
+  const __dirname = dirname(__filename);
+  const envPath = resolve(__dirname, '../.env');
+  dotenv.config({ path: envPath });
+  // eslint-disable-next-line no-console
+  console.log(`[mail:env] loaded .env from ${envPath}`);
+} catch (e) {
+  // eslint-disable-next-line no-console
+  console.warn('[mail:env] .env load error:', e);
+}
 
 const app = express();
 const corsOptions = {
@@ -25,7 +38,7 @@ const SMTP_SECURE = process.env.SMTP_SECURE
   : MAIL_SECURE_RAW
     ? MAIL_SECURE_RAW.toLowerCase() === 'ssl'
     : SMTP_PORT === 465; // 465 için true (SMTPS/implicit TLS), 587 için genelde false (STARTTLS)
-const SMTP_USER = process.env.SMTP_USER || process.env.MAIL_USER || 'noreply@varmi.com';
+const SMTP_USER = process.env.SMTP_USER || process.env.MAIL_USER || 'noreply@varmii.com';
 const SMTP_PASS = process.env.SMTP_PASS || process.env.MAIL_PASS || '';
 const FROM_NAME = process.env.MAIL_FROM_NAME || process.env.MAIL_FROM || 'Varmı';
 const FROM_EMAIL = process.env.MAIL_FROM_EMAIL || process.env.MAIL_FROM || SMTP_USER;
@@ -98,6 +111,7 @@ app.post('/api/send', async (req, res) => {
 });
 
 const PORT = Number(process.env.PORT || 8787);
-app.listen(PORT, () => {
-  console.log(`Mail server listening on http://localhost:${PORT}`);
+const HOST = process.env.HOST || '0.0.0.0';
+app.listen(PORT, HOST, () => {
+  console.log(`Mail server listening on http://${HOST}:${PORT}`);
 });

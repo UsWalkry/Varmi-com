@@ -9,6 +9,8 @@ import { Send, MessageCircle } from 'lucide-react';
 import { DataManager, Message } from '@/lib/mockData';
 import { toast } from 'sonner';
 import React from 'react';
+import { supabaseEnabled, ensureCurrentUserId, fetchMessages as sbFetchMessages, sendMessage as sbSendMessage } from '@/lib/api';
+import { supabase } from '@/lib/supabase';
 // import { ErrorBoundary } from './ErrorBoundary';
 
 
@@ -24,7 +26,7 @@ interface MessageModalProps {
 }
 
 // Renamed the local ErrorBoundary to avoid import conflict
-class LocalErrorBoundary extends React.Component<React.PropsWithChildren<Record<string, never>>, { hasError: boolean }> {
+class LocalErrorBoundary extends React.Component<React.PropsWithChildren<Record<string, unknown>>, { hasError: boolean }> {
   constructor(props: React.PropsWithChildren<Record<string, never>>) {
     super(props);
     this.state = { hasError: false };
@@ -54,58 +56,98 @@ export default function MessageModal(props: MessageModalProps) {
   );
 }
 
-function MessageModalContent({ 
-  isOpen, 
-  onClose, 
-  recipientId, 
+function MessageModalContent({
+  isOpen,
+  onClose,
+  recipientId,
   recipientName,
   listingTitle,
   listingId,
   otherUserId,
   otherUserName
 }: MessageModalProps) {
-  // Mock conversation - in real app, this would load from database
+  // Mock/Supabase dual mode
   const currentUser = DataManager.getCurrentUser();
-  const currentUserId = currentUser?.id;
+  const [currentUserId, setCurrentUserId] = useState<string | undefined>(currentUser?.id);
   const [newMessage, setNewMessage] = useState('');
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
   // Memoize the conversation fetching logic to prevent unnecessary re-renders
-  const fetchConversation = useCallback(() => {
-    if (currentUserId && recipientId && listingId) {
-      return DataManager.getConversation(currentUserId, recipientId, listingId);
+  const fetchConversation = useCallback(async (): Promise<Message[]> => {
+    if (!isOpen) return [] as Message[];
+    if (!recipientId || !listingId) return [] as Message[];
+    if (supabaseEnabled()) {
+      try {
+        const selfId = (await ensureCurrentUserId()) as string | null;
+        if (!selfId) return [] as Message[];
+        setCurrentUserId(selfId);
+        const rows = await sbFetchMessages({ listing_id: listingId as string, other_user_id: recipientId as string, self_id: selfId as string });
+        const mapped: Message[] = rows.map((r: { id: string; listing_id: string; from_user_id: string; to_user_id: string; content: string; read: boolean; created_at: string; }) => ({
+          id: r.id,
+          listingId: r.listing_id,
+          fromUserId: r.from_user_id,
+          fromUserName: r.from_user_id === selfId ? (currentUser?.name || 'Ben') : (recipientName || 'Kullanıcı'),
+          toUserId: r.to_user_id,
+          content: r.content,
+          read: !!r.read,
+          createdAt: r.created_at,
+        }));
+        return mapped;
+      } catch (e) {
+        console.error('Supabase fetch messages failed', e);
+        return [] as Message[];
+      }
     }
-    return [];
-  }, [currentUserId, recipientId, listingId]);
+    const uid = currentUser?.id;
+    if (uid) return DataManager.getConversation(uid, recipientId, listingId);
+    return [] as Message[];
+  }, [isOpen, recipientId, listingId, currentUser, recipientName]);
 
   // Mesajları modal açıldığında ilgili conversation'ı yükle
   useEffect(() => {
-    if (isOpen) {
-      setMessages(fetchConversation());
+    if (!isOpen) return;
+    (async () => {
+      const conv = await fetchConversation();
+      setMessages(conv);
       // Açıldığında okunmamışları işaretle
-      if (currentUserId && recipientId && listingId) {
-        DataManager.markMessagesAsRead(listingId, currentUserId, recipientId);
-        // Okundu sonrası konuşmayı tekrar çek (state tazeleme)
-        setMessages(DataManager.getConversation(currentUserId, recipientId, listingId));
+      try {
+        if (supabaseEnabled()) {
+          const selfId = await ensureCurrentUserId();
+          if (selfId && recipientId) {
+            await supabase.rpc('mark_messages_read', { p_listing_id: listingId ?? null, p_other_user_id: recipientId });
+          }
+        } else if (currentUser?.id && recipientId && listingId) {
+          DataManager.markMessagesAsRead(listingId, currentUser.id, recipientId);
+          setMessages(DataManager.getConversation(currentUser.id, recipientId, listingId));
+        }
+      } catch (e) {
+        console.warn('mark as read failed', e);
       }
-    }
-  }, [isOpen, fetchConversation]);
+    })();
+  }, [isOpen, fetchConversation, listingId, recipientId, currentUser]);
 
   const handleSendMessage = async () => {
     if (!newMessage.trim() || !currentUser) return;
     setIsLoading(true);
     try {
-      DataManager.addMessage({
-        // Her zaman gerçek listingId kullanılmalı
-        listingId: listingId || '',
-        fromUserId: currentUser.id,
-        fromUserName: currentUser.name,
-        toUserId: recipientId,
-        message: newMessage.trim()
-      });
-      if (listingId) {
-        setMessages(DataManager.getConversation(currentUser.id, recipientId, listingId));
+      if (supabaseEnabled()) {
+        const selfId = await ensureCurrentUserId();
+        if (!selfId) throw new Error('Giriş gerekli');
+        await sbSendMessage({ listing_id: listingId as string, from_user_id: selfId as string, to_user_id: recipientId as string, content: newMessage.trim() });
+        const conv = await fetchConversation();
+        setMessages(conv);
+      } else {
+        DataManager.addMessage({
+          listingId: listingId || '',
+          fromUserId: currentUser.id,
+          fromUserName: currentUser.name,
+          toUserId: recipientId,
+          message: newMessage.trim()
+        });
+        if (listingId) {
+          setMessages(DataManager.getConversation(currentUser.id, recipientId, listingId));
+        }
       }
       setNewMessage('');
       toast.success('Mesaj gönderildi!');
@@ -166,11 +208,10 @@ function MessageModalContent({
                           </span>
                         </div>
                         <div
-                          className={`p-3 rounded-lg ${
-                            isFromCurrentUser
+                          className={`p-3 rounded-lg ${isFromCurrentUser
                               ? 'bg-blue-600 text-white'
                               : 'bg-gray-100 text-gray-900'
-                          }`}
+                            }`}
                         >
                           <p className="text-sm whitespace-pre-wrap">{message.content}</p>
                         </div>

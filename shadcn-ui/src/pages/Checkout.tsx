@@ -7,6 +7,8 @@ import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import { DataManager, Offer, Listing } from '@/lib/mockData';
 import { toast } from 'sonner';
+import { supabaseEnabled, ensureCurrentUserId, createOrder as sbCreateOrder } from '@/lib/api';
+import { supabase } from '@/lib/supabase';
 
 // Demo ödeme sayfası: Offer veya ThirdPartyOrder ödemesi için kullanılabilir.
 // Beklenen query: ?offerId=offer_xxx
@@ -75,7 +77,7 @@ export default function Checkout() {
     return Math.max(0, offerQty - 1 - sold);
   }, [offer, currentUser, listing]);
 
-  
+
 
   // İlan sahibi için başlangıçta ownerQtyInput'i tek seferlik üst sınıra çek
   useEffect(() => {
@@ -119,19 +121,37 @@ export default function Checkout() {
           setIsPaying(false);
           return;
         }
-        const res = DataManager.purchaseFromOffer(offer.id, currentUser.id, qty);
-        if (!res.success) {
-          toast.error(res.message || 'Satın alma oluşturulamadı');
-          setIsPaying(false);
-          return;
+        if (supabaseEnabled()) {
+          const selfId = await ensureCurrentUserId();
+          if (!selfId) throw new Error('Giriş gerekli');
+          await sbCreateOrder({
+            source_offer_id: offer.id as string,
+            listing_id: offer.listingId as string,
+            price: Number(offer.price),
+            quantity: Number(qty),
+            shipping_cost: Number((offer.shippingCost ?? 0) + (offer.shippingExtraFee ?? 0)),
+            delivery_type: (offer.deliveryType === 'shipping' ? 'shipping' : 'pickup'),
+            shipping_desi: offer.shippingDesi as string | undefined,
+          });
+        } else {
+          const res = DataManager.purchaseFromOffer(offer.id, currentUser.id, qty);
+          if (!res.success) {
+            toast.error(res.message || 'Satın alma oluşturulamadı');
+            setIsPaying(false);
+            return;
+          }
         }
       } else if (currentUser && listing && currentUser.id === listing.buyerId) {
         // İlan sahibi: ödeme sonrası teklifi kabul et
-  const entered = Math.floor(Number(ownerQtyInput));
-  const fallback = Math.floor(Number(offer.ownerPurchasedQuantity || offer.quantity || 1));
-  const toUse = Number.isFinite(entered) && entered > 0 ? entered : fallback;
-  const chosen = Math.max(1, Math.min(maxOwnerQty, toUse));
-        DataManager.acceptOffer(offer.id, chosen);
+        const entered = Math.floor(Number(ownerQtyInput));
+        const fallback = Math.floor(Number(offer.ownerPurchasedQuantity || offer.quantity || 1));
+        const toUse = Number.isFinite(entered) && entered > 0 ? entered : fallback;
+        const chosen = Math.max(1, Math.min(maxOwnerQty, toUse));
+        if (supabaseEnabled()) {
+          await supabase.rpc('accept_offer_owner', { p_offer_id: offer.id as string, p_owner_qty: chosen });
+        } else {
+          DataManager.acceptOffer(offer.id, chosen);
+        }
       }
       toast.success('Ödeme başarılı!');
       // Alıcı tarafında sipariş durumu görüntülemek üzere dashboard’a yönlendirelim

@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent } from '@/components/ui/card';
 import { Listing, DataManager, type DesiBracket } from '@/lib/mockData';
+import { placeOffer, supabaseEnabled } from '@/lib/api';
 import Stepper from '@/components/ui/stepper';
 import { toast } from 'sonner';
 import DesiInfo from '@/components/DesiInfo';
@@ -19,11 +20,11 @@ interface CreateOfferModalProps {
   onOfferCreated: () => void;
 }
 
-export default function CreateOfferModal({ 
-  isOpen, 
-  onClose, 
-  listing, 
-  onOfferCreated 
+export default function CreateOfferModal({
+  isOpen,
+  onClose,
+  listing,
+  onOfferCreated
 }: CreateOfferModalProps) {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [formData, setFormData] = useState({
@@ -44,16 +45,16 @@ export default function CreateOfferModal({
     validUntil: ''
   });
 
-  const PACKAGE_LABELS: Record<'small'|'medium'|'large', string> = {
+  const PACKAGE_LABELS: Record<'small' | 'medium' | 'large', string> = {
     small: 'Küçük Paket',
     medium: 'Orta Paket',
     large: 'Büyük Paket'
   };
-  const PACKAGE_FIXED_COST: Record<'small'|'medium', number> = {
+  const PACKAGE_FIXED_COST: Record<'small' | 'medium', number> = {
     small: 44.99,
     medium: 99.99
   };
-  const PACKAGE_DESI_MAP: Record<'small'|'medium'|'large', DesiBracket> = {
+  const PACKAGE_DESI_MAP: Record<'small' | 'medium' | 'large', DesiBracket> = {
     small: '0-1',
     medium: '6-10',
     large: '31-40' // Varsayılan; büyük hesaplama sonrası güncellenebilir
@@ -68,7 +69,7 @@ export default function CreateOfferModal({
   const currentUser = DataManager.getCurrentUser();
 
   // Tarih sınırları
-  const minValidStr = (() => { const d=new Date(); d.setDate(d.getDate()+1); return d.toISOString().split('T')[0]; })();
+  const minValidStr = (() => { const d = new Date(); d.setDate(d.getDate() + 1); return d.toISOString().split('T')[0]; })();
   const maxValidStr = (() => {
     if (!listing.expiresAt) return undefined as string | undefined;
     const d = new Date(listing.expiresAt);
@@ -132,10 +133,13 @@ export default function CreateOfferModal({
   const handleFinalSubmit = async () => {
     if (!currentUser) { toast.error('Teklif vermek için giriş yapmalısınız'); return; }
     if (!validateStep(1) || !validateStep(2)) return;
-    const existing = DataManager.getOffersForListing(listing.id).some(o => o.sellerId === currentUser.id);
-    if (existing) { toast.error('Bu ilana zaten bir teklif verdiniz'); return; }
-  const price = parseFloat(formData.price);
-  const quantity = Math.max(1, parseInt(formData.quantity));
+    // Aynı satıcı bir ilana 1 kez — Supabase tarafında unique index var; client tarafında hızlı kontrol
+    if (!supabaseEnabled()) {
+      const existing = DataManager.getOffersForListing(listing.id).some(o => o.sellerId === currentUser.id);
+      if (existing) { toast.error('Bu ilana zaten bir teklif verdiniz'); return; }
+    }
+    const price = parseFloat(formData.price);
+    const quantity = Math.max(1, parseInt(formData.quantity));
     const shippingCost = parseFloat(formData.shippingCost);
     const etaDays = parseInt(formData.etaDays);
     // validUntil ISO hesapla
@@ -149,32 +153,58 @@ export default function CreateOfferModal({
     }
     setIsSubmitting(true);
     try {
-  DataManager.addOffer({
-        listingId: listing.id,
-        sellerId: currentUser.id,
-        sellerName: currentUser.name,
-        sellerRating: currentUser.rating,
-    price,
-    quantity,
-        condition: formData.condition as 'new' | 'used',
-        productName: formData.productName || undefined,
-        description: formData.description,
-        deliveryType: formData.deliveryType as 'shipping' | 'pickup',
-        shippingDesi: formData.deliveryType === 'shipping' ? (formData.shippingDesi as DesiBracket) : undefined,
-        shippingCost,
-        etaDays,
-        status: 'active',
-        validUntil: validUntilISO,
-        images: images.length ? images : undefined
-      });
+      if (supabaseEnabled()) {
+        // Supabase akışı
+        await placeOffer({
+          listing_id: listing.id as unknown as string,
+          seller_id: currentUser.id as unknown as string,
+          price,
+          quantity,
+          condition: formData.condition as 'new' | 'used',
+          product_name: formData.productName || undefined,
+          description: formData.description,
+          delivery_type: formData.deliveryType as 'shipping' | 'pickup',
+          shipping_desi: formData.deliveryType === 'shipping' ? (formData.shippingDesi as DesiBracket) : undefined,
+          shipping_cost: formData.deliveryType === 'shipping' ? shippingCost : 0,
+          eta_days: etaDays,
+          status: 'active',
+          valid_until: validUntilISO,
+          images: images.length ? images : undefined,
+        });
+      } else {
+        // Local DataManager akışı
+        DataManager.addOffer({
+          listingId: listing.id,
+          sellerId: currentUser.id,
+          sellerName: currentUser.name,
+          sellerRating: currentUser.rating,
+          price,
+          quantity,
+          condition: formData.condition as 'new' | 'used',
+          productName: formData.productName || undefined,
+          description: formData.description,
+          deliveryType: formData.deliveryType as 'shipping' | 'pickup',
+          shippingDesi: formData.deliveryType === 'shipping' ? (formData.shippingDesi as DesiBracket) : undefined,
+          shippingCost,
+          etaDays,
+          status: 'active',
+          validUntil: validUntilISO,
+          images: images.length ? images : undefined
+        });
+      }
       toast.success('Teklifiniz başarıyla gönderildi!');
       onOfferCreated();
       onClose();
-  setFormData({ price: '', quantity: '1', condition: 'new', productName: '', description: '', deliveryType: 'shipping', shippingDesi: '', shippingPackage: '', largeWidth: '', largeHeight: '', largeLength: '', computedDesi: '', shippingCost: '0', etaDays: '3', validUntil: '' });
+      setFormData({ price: '', quantity: '1', condition: 'new', productName: '', description: '', deliveryType: 'shipping', shippingDesi: '', shippingPackage: '', largeWidth: '', largeHeight: '', largeLength: '', computedDesi: '', shippingCost: '0', etaDays: '3', validUntil: '' });
       setImages([]);
       setStep(1);
     } catch (e) {
-      toast.error('Teklif gönderilirken bir hata oluştu');
+      const msg = e instanceof Error ? e.message : 'Teklif gönderilirken bir hata oluştu';
+      if (msg.includes('duplicate key value') || msg.toLowerCase().includes('unique')) {
+        toast.error('Bu ilana zaten bir teklif verdiniz');
+      } else {
+        toast.error('Teklif gönderilemedi');
+      }
       console.error(e);
     } finally { setIsSubmitting(false); }
   };
@@ -291,7 +321,7 @@ export default function CreateOfferModal({
   const isShipping = formData.deliveryType === 'shipping';
   const shippingCostDisabled = true; // Artık kullanıcı girmiyor, otomatik
 
-  const handleSelectPackage = (pkg: 'small'|'medium'|'large') => {
+  const handleSelectPackage = (pkg: 'small' | 'medium' | 'large') => {
     if (pkg === 'small' || pkg === 'medium') {
       const cost = PACKAGE_FIXED_COST[pkg];
       const desi = PACKAGE_DESI_MAP[pkg];
@@ -393,7 +423,7 @@ export default function CreateOfferModal({
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
                       {images.map((src, idx) => (
                         <div key={idx} className="relative group border rounded-md overflow-hidden bg-muted/20">
-                          <img src={src} alt={`Teklif görseli ${idx+1}`} className="h-28 w-full object-cover" onContextMenu={(e) => e.preventDefault()} draggable={false} />
+                          <img src={src} alt={`Teklif görseli ${idx + 1}`} className="h-28 w-full object-cover" onContextMenu={(e) => e.preventDefault()} draggable={false} />
                           <button type="button" onClick={() => removeImage(idx)} className="absolute top-1 right-1 inline-flex items-center justify-center rounded-full bg-black/60 text-white text-xs px-2 py-1 opacity-0 group-hover:opacity-100 transition">Kaldır</button>
                         </div>
                       ))}
@@ -436,7 +466,7 @@ export default function CreateOfferModal({
                       </Button>
                       {formData.shippingPackage && (
                         <span className="text-xs text-muted-foreground">
-                          {PACKAGE_LABELS[formData.shippingPackage]} {formData.computedDesi && formData.shippingPackage==='large' ? `(≈ ${formData.computedDesi} desi)` : ''} — Kargo: {parseFloat(formData.shippingCost).toFixed(2)} TL
+                          {PACKAGE_LABELS[formData.shippingPackage]} {formData.computedDesi && formData.shippingPackage === 'large' ? `(≈ ${formData.computedDesi} desi)` : ''} — Kargo: {parseFloat(formData.shippingCost).toFixed(2)} TL
                         </span>
                       )}
                     </div>
@@ -525,14 +555,14 @@ export default function CreateOfferModal({
           </SubDialogHeader>
           <div className="grid gap-4">
             <div className="grid sm:grid-cols-2 gap-4">
-              <Card className={`cursor-pointer border-2 ${formData.shippingPackage==='small' ? 'border-blue-500' : 'border-transparent hover:border-blue-300'} transition`} onClick={() => handleSelectPackage('small')}>
+              <Card className={`cursor-pointer border-2 ${formData.shippingPackage === 'small' ? 'border-blue-500' : 'border-transparent hover:border-blue-300'} transition`} onClick={() => handleSelectPackage('small')}>
                 <CardContent className="p-4 space-y-1 text-sm">
                   <p className="font-semibold">Küçük Paket</p>
                   <p className="text-blue-600 font-medium">44.99 TL</p>
                   <p className="text-muted-foreground text-xs leading-snug">Tişört, kolye, telefon, saat...</p>
                 </CardContent>
               </Card>
-              <Card className={`cursor-pointer border-2 ${formData.shippingPackage==='medium' ? 'border-blue-500' : 'border-transparent hover:border-blue-300'} transition`} onClick={() => handleSelectPackage('medium')}>
+              <Card className={`cursor-pointer border-2 ${formData.shippingPackage === 'medium' ? 'border-blue-500' : 'border-transparent hover:border-blue-300'} transition`} onClick={() => handleSelectPackage('medium')}>
                 <CardContent className="p-4 space-y-1 text-sm">
                   <p className="font-semibold">Orta Paket</p>
                   <p className="text-blue-600 font-medium">99.99 TL</p>
@@ -540,7 +570,7 @@ export default function CreateOfferModal({
                 </CardContent>
               </Card>
             </div>
-            <div className={`border rounded-md p-4 space-y-3 ${formData.shippingPackage==='large' ? 'ring-2 ring-blue-500' : ''}`}>
+            <div className={`border rounded-md p-4 space-y-3 ${formData.shippingPackage === 'large' ? 'ring-2 ring-blue-500' : ''}`}>
               <div className="flex items-center justify-between">
                 <div>
                   <p className="font-semibold">Büyük Paket</p>
@@ -553,15 +583,15 @@ export default function CreateOfferModal({
                   <div className="grid grid-cols-3 gap-2">
                     <div>
                       <Label className="text-xs">En (cm)</Label>
-                      <Input value={formData.largeWidth} onChange={(e)=> setFormData(p=>({...p, largeWidth: e.target.value}))} type="number" min="1" />
+                      <Input value={formData.largeWidth} onChange={(e) => setFormData(p => ({ ...p, largeWidth: e.target.value }))} type="number" min="1" />
                     </div>
                     <div>
                       <Label className="text-xs">Boy (cm)</Label>
-                      <Input value={formData.largeHeight} onChange={(e)=> setFormData(p=>({...p, largeHeight: e.target.value}))} type="number" min="1" />
+                      <Input value={formData.largeHeight} onChange={(e) => setFormData(p => ({ ...p, largeHeight: e.target.value }))} type="number" min="1" />
                     </div>
                     <div>
                       <Label className="text-xs">Yükseklik (cm)</Label>
-                      <Input value={formData.largeLength} onChange={(e)=> setFormData(p=>({...p, largeLength: e.target.value}))} type="number" min="1" />
+                      <Input value={formData.largeLength} onChange={(e) => setFormData(p => ({ ...p, largeLength: e.target.value }))} type="number" min="1" />
                     </div>
                   </div>
                   <div className="flex gap-2 items-center">

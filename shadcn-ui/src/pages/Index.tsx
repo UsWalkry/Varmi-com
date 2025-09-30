@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Search, MapPin, Clock, TrendingUp, Package, Star } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Listing, DataManager, categories, cities } from '@/lib/mockData';
+import { fetchListingsUi, supabaseEnabled } from '@/lib/api';
 import { maskDisplayName } from '@/lib/utils';
 import Header from '@/components/Header';
 import FavoriteButton from '@/components/FavoriteButton';
@@ -20,33 +21,61 @@ export default function Index() {
   const [budgetMax, setBudgetMax] = useState('');
   const [selectedCondition, setSelectedCondition] = useState('all');
   const [isLoading, setIsLoading] = useState(true);
-  
+
   const currentUser = DataManager.getCurrentUser();
 
   // Load listings when filters change
   useEffect(() => {
-    const loadListings = () => {
+    let ignore = false;
+    const load = async () => {
+      setIsLoading(true);
       try {
-        const filters = {
-          category: selectedCategory !== 'all' ? selectedCategory : undefined,
-          city: selectedCity !== 'all' ? selectedCity : undefined,
-          budgetMax: budgetMax ? parseInt(budgetMax) : undefined,
-          condition: selectedCondition !== 'all' ? selectedCondition : undefined,
-        };
-
-        const filteredListings = DataManager.searchListings(searchQuery, filters);
-        setListings(filteredListings || []);
-      } catch (error) {
-        console.error('Error loading listings:', error);
-        setListings([]);
+        // Eğer geçerli bir Supabase konfigürasyonu varsa oradan yüklemeyi dene, hata/401 olursa DataManager'a düş
+        if (supabaseEnabled()) {
+          try {
+            const rows = await fetchListingsUi();
+            if (!ignore) {
+              const filtered = rows.filter(r => {
+                const q = searchQuery.toLowerCase();
+                const matchesQ = !q || r.title.toLowerCase().includes(q) || (r.description ?? '').toLowerCase().includes(q);
+                const matchesC = selectedCategory === 'all' || r.category === selectedCategory;
+                const matchesCity = selectedCity === 'all' || r.city === selectedCity;
+                const matchesB = !budgetMax || r.budgetMax <= parseInt(budgetMax);
+                const matchesCond = selectedCondition === 'all' || r.condition === selectedCondition;
+                return matchesQ && matchesC && matchesCity && matchesB && matchesCond;
+              }) as unknown as Listing[];
+              setListings(filtered);
+            }
+          } catch (e) {
+            console.warn('[Index] Supabase fetchListingsUi failed, falling back:', e);
+            const filters = {
+              category: selectedCategory !== 'all' ? selectedCategory : undefined,
+              city: selectedCity !== 'all' ? selectedCity : undefined,
+              budgetMax: budgetMax ? parseInt(budgetMax) : undefined,
+              condition: selectedCondition !== 'all' ? selectedCondition : undefined,
+            };
+            const ls = DataManager.searchListings(searchQuery, filters);
+            if (!ignore) setListings(ls || []);
+          }
+        } else {
+          const filters = {
+            category: selectedCategory !== 'all' ? selectedCategory : undefined,
+            city: selectedCity !== 'all' ? selectedCity : undefined,
+            budgetMax: budgetMax ? parseInt(budgetMax) : undefined,
+            condition: selectedCondition !== 'all' ? selectedCondition : undefined,
+          };
+          const ls = DataManager.searchListings(searchQuery, filters);
+          if (!ignore) setListings(ls || []);
+        }
+      } catch (e) {
+        console.error('Error loading listings:', e);
+        if (!ignore) setListings([]);
       } finally {
-        setIsLoading(false);
+        if (!ignore) setIsLoading(false);
       }
     };
-
-    // Add small delay to prevent rapid re-renders
-    const timeoutId = setTimeout(loadListings, 100);
-    return () => clearTimeout(timeoutId);
+    const t = setTimeout(load, 50);
+    return () => { ignore = true; clearTimeout(t); };
   }, [searchQuery, selectedCategory, selectedCity, budgetMax, selectedCondition]);
 
   const handleListingClick = (listingId: string) => {
@@ -98,8 +127,8 @@ export default function Index() {
           <p className="text-xl md:text-2xl mb-8 opacity-90">
             İstediğin ürünü ilan ver, satıcılar sana teklif versin!
           </p>
-          <Button 
-            size="lg" 
+          <Button
+            size="lg"
             className="bg-white text-blue-600 hover:bg-gray-100 text-lg px-8 py-3"
             onClick={() => navigate('/create-listing')}
           >
@@ -192,10 +221,10 @@ export default function Index() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {listings.map(listing => {
               if (!listing || !listing.id) return null;
-              
+
               return (
-                <Card 
-                  key={listing.id} 
+                <Card
+                  key={listing.id}
                   className="cursor-pointer hover:shadow-lg transition-shadow"
                   onClick={() => handleListingClick(listing.id)}
                 >
@@ -206,7 +235,7 @@ export default function Index() {
                       </CardTitle>
                       <div className="flex items-center gap-2">
                         {currentUser && (
-                          <FavoriteButton 
+                          <FavoriteButton
                             listingId={listing.id}
                             userId={currentUser.id}
                             size="sm"
@@ -223,7 +252,7 @@ export default function Index() {
                     <p className="text-muted-foreground text-sm mb-4 line-clamp-3">
                       {listing.description || 'Açıklama yok'}
                     </p>
-                    
+
                     <div className="space-y-3">
                       <div className="flex items-center justify-between">
                         <span className="text-sm text-muted-foreground">Maksimum Bütçe</span>
@@ -231,7 +260,7 @@ export default function Index() {
                           {DataManager.formatPrice(listing.budgetMax || 0)}
                         </span>
                       </div>
-                      
+
                       <div className="flex flex-wrap gap-2">
                         <Badge variant="secondary">{listing.category || 'Kategori Yok'}</Badge>
                         <Badge variant="outline">{getConditionText(listing.condition || 'any')}</Badge>
@@ -240,7 +269,7 @@ export default function Index() {
                           {getDeliveryText(listing.deliveryType || 'both')}
                         </Badge>
                       </div>
-                      
+
                       <div className="flex items-center justify-between text-sm text-muted-foreground">
                         <div className="flex items-center gap-1">
                           <MapPin className="h-3 w-3" />
@@ -251,7 +280,7 @@ export default function Index() {
                           <span>{DataManager.getTimeAgo(listing.createdAt || new Date().toISOString())}</span>
                         </div>
                       </div>
-                      
+
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <span className="text-sm text-muted-foreground">İlan sahibi:</span>
@@ -273,7 +302,7 @@ export default function Index() {
                         </div>
                         <div className="flex items-center gap-1 text-blue-600">
                           <TrendingUp className="h-4 w-4" />
-                          <span className="font-semibold">{DataManager.getOffersForListing(listing.id).length} teklif</span>
+                          <span className="font-semibold">{supabaseEnabled() ? (listing.offerCount ?? 0) : DataManager.getOffersForListing(listing.id).length} teklif</span>
                         </div>
                       </div>
                     </div>

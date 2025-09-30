@@ -34,6 +34,36 @@ All shadcn/ui components have been downloaded under `@/components/ui`.
 
 ## Development
 
+## Supabase bağlantısı
+
+1. `shadcn-ui/.env.local` içine Supabase bilgilerini ekleyin:
+
+```
+VITE_SUPABASE_URL=YOUR_URL
+VITE_SUPABASE_ANON_KEY=YOUR_ANON
+```
+
+2. Migration ve seed:
+
+- `supabase/migrations/20250930_init.sql` ve `supabase/seed/20250930_seed.sql` dosyalarını Supabase SQL Editor ile çalıştırın.
+
+3. İstemci tarafı kullanım:
+
+- Supabase client: `src/lib/supabase.ts`
+- API helpers: `src/lib/sbApi.ts` (ör. `fetchListings()`, `createListing()`)
+
+Veritabanı diyagramı (özet):
+
+```
+users (id PK, auth_user_id -> auth.users.id)
+  └─< listings (buyer_id -> users.id)
+	  └─< offers (listing_id -> listings.id, seller_id -> users.id)
+		  └─< orders (source_offer_id -> offers.id, buyer_id/seller_id -> users.id)
+messages (from_user_id/to_user_id -> users.id)
+notifications (user_id -> users.id)
+payments (order_id -> orders.id, user_id -> users.id)
+```
+
 # Sunucu üzerinden Nodemailer kullanımı
 
 VITE_MAIL_API_BASE=http://localhost:8787

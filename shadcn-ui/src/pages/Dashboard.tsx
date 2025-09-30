@@ -3,12 +3,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { 
-  BarChart3, 
-  MessageCircle, 
-  Heart, 
-  Package, 
-  TrendingUp, 
+import {
+  BarChart3,
+  MessageCircle,
+  Heart,
+  Package,
+  TrendingUp,
   Clock,
   MapPin,
   Star,
@@ -24,6 +24,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 // removed Input and Textarea imports as manual inputs are no longer used
 import Stepper from '@/components/ui/stepper';
+import { supabaseEnabled, ensureCurrentUserId, setOfferCarrier as sbSetOfferCarrier, setOfferShipped as sbSetOfferShipped, setOfferDelivered as sbSetOfferDelivered, setOfferCompleted as sbSetOfferCompleted } from '@/lib/api';
+import { supabase } from '@/lib/supabase';
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -62,36 +64,36 @@ export default function Dashboard() {
       try {
         // Get user's listings
         const allListings = DataManager.getListings();
-        const userListings = allListings.filter(listing => 
+        const userListings = allListings.filter(listing =>
           listing && listing.buyerId === userId
         );
-        
+
         // Get all offers
         const allOffers = DataManager.getAllOffers();
         // Outgoing: user gave these offers as satıcı
-        const userOffers = allOffers.filter(offer => 
+        const userOffers = allOffers.filter(offer =>
           offer && offer.sellerId === userId
         );
         // Incoming: offers given by others on user's listings
-        const offersOnMyListings = allOffers.filter(offer => 
+        const offersOnMyListings = allOffers.filter(offer =>
           offer && offer.sellerId !== userId && userListings.some(l => l.id === offer.listingId)
         );
-        
-    // Third-party orders
-    const tpPurchases = DataManager.getThirdPartyOrdersForBuyer(userId);
-    const tpSales = DataManager.getThirdPartyOrdersForSeller(userId);
 
-    // Get favorite listings
+        // Third-party orders
+        const tpPurchases = DataManager.getThirdPartyOrdersForBuyer(userId);
+        const tpSales = DataManager.getThirdPartyOrdersForSeller(userId);
+
+        // Get favorite listings
         const favoriteIds = DataManager.getFavorites(userId);
-        const favorites = allListings.filter(listing => 
+        const favorites = allListings.filter(listing =>
           listing && favoriteIds.includes(listing.id)
         );
 
-  setMyListings(userListings);
-  setMyOffers(userOffers);
-  setIncomingOffers(offersOnMyListings);
-  setMyPurchases(tpPurchases);
-  setMyTpSales(tpSales);
+        setMyListings(userListings);
+        setMyOffers(userOffers);
+        setIncomingOffers(offersOnMyListings);
+        setMyPurchases(tpPurchases);
+        setMyTpSales(tpSales);
         setFavoriteListings(favorites);
       } catch (error) {
         console.error('Error loading dashboard data:', error);
@@ -109,7 +111,7 @@ export default function Dashboard() {
   // Memoize statistics to prevent recalculation
   const stats = useMemo(() => {
     if (!userId) return { totalListings: 0, totalOffers: 0, totalFavorites: 0, unreadMessages: 0 };
-    
+
     return {
       totalListings: myListings.length,
       totalOffers: myOffers.length,
@@ -128,10 +130,10 @@ export default function Dashboard() {
       } else {
         DataManager.rejectOffer(offerId);
       }
-      
+
       // Refresh offers
       const allOffers = DataManager.getAllOffers();
-      const userOffers = allOffers.filter(offer => 
+      const userOffers = allOffers.filter(offer =>
         offer && offer.sellerId === userId
       );
       setMyOffers(userOffers);
@@ -152,33 +154,45 @@ export default function Dashboard() {
     }
   };
 
-  const sendAutoMessageToOwner = (offer: Offer, text: string) => {
+  const sendAutoMessageToOwner = async (offer: Offer, text: string) => {
     const listing = DataManager.getListing(offer.listingId);
     if (!listing || !currentUser) return;
     try {
-      DataManager.addMessage({
-        listingId: offer.listingId,
-        fromUserId: currentUser.id,
-        fromUserName: currentUser.name,
-        toUserId: listing.buyerId,
-        message: text,
-      });
+      if (supabaseEnabled()) {
+        const selfId = await ensureCurrentUserId();
+        if (!selfId) return;
+        await supabase.from('messages').insert({ listing_id: offer.listingId, from_user_id: selfId, to_user_id: listing.buyerId, content: text });
+      } else {
+        DataManager.addMessage({
+          listingId: offer.listingId,
+          fromUserId: currentUser.id,
+          fromUserName: currentUser.name,
+          toUserId: listing.buyerId,
+          message: text,
+        });
+      }
     } catch (e) {
       console.error('Otomatik mesaj gönderilemedi', e);
     }
   };
 
   // Alıcıdan satıcıya otomatik mesaj (örn. Teslim aldım)
-  const sendAutoMessageToSeller = (offer: Offer, text: string) => {
+  const sendAutoMessageToSeller = async (offer: Offer, text: string) => {
     if (!currentUser) return;
     try {
-      DataManager.addMessage({
-        listingId: offer.listingId,
-        fromUserId: currentUser.id,
-        fromUserName: currentUser.name,
-        toUserId: offer.sellerId,
-        message: text,
-      });
+      if (supabaseEnabled()) {
+        const selfId = await ensureCurrentUserId();
+        if (!selfId) return;
+        await supabase.from('messages').insert({ listing_id: offer.listingId, from_user_id: selfId, to_user_id: offer.sellerId, content: text });
+      } else {
+        DataManager.addMessage({
+          listingId: offer.listingId,
+          fromUserId: currentUser.id,
+          fromUserName: currentUser.name,
+          toUserId: offer.sellerId,
+          message: text,
+        });
+      }
     } catch (e) {
       console.error('Otomatik mesaj gönderilemedi (satıcıya)', e);
     }
@@ -190,34 +204,53 @@ export default function Dashboard() {
     { id: 'ptt', name: 'PTT Kargo', extraFee: 0 },
   ];
 
-  const handleSelectCarrier = (offer: Offer) => {
+  const handleSelectCarrier = async (offer: Offer) => {
     const c = carriers.find(c => c.id === selectedCarrier);
     if (!c) return;
-    const ok = DataManager.setOfferCarrier(offer.id, c);
-    if (ok) {
-      const tn = DataManager.getAllOffers().find(o => o.id === offer.id)?.trackingNo;
-      setTrackingNo(tn || '');
+    if (supabaseEnabled()) {
+      await sbSetOfferCarrier(offer.id as string, c);
       refreshSellerOffer(offer.id);
+    } else {
+      const ok = DataManager.setOfferCarrier(offer.id, c);
+      if (ok) {
+        const tn = DataManager.getAllOffers().find(o => o.id === offer.id)?.trackingNo;
+        setTrackingNo(tn || '');
+        refreshSellerOffer(offer.id);
+      }
     }
   };
 
-  const handleMarkShipped = (offer: Offer) => {
+  const handleMarkShipped = async (offer: Offer) => {
     const tn = trackingNo.trim();
     if (!tn) return;
-    const ok = DataManager.setOfferShipped(offer.id, tn);
-    if (ok) {
+    if (supabaseEnabled()) {
+      await sbSetOfferShipped(offer.id as string, tn);
       const msg = `Siparişiniz kargoya verildi. Takip No: ${tn}`;
-      sendAutoMessageToOwner(offer, msg);
+      await sendAutoMessageToOwner(offer, msg);
       setTrackingNo('');
       refreshSellerOffer(offer.id);
+    } else {
+      const ok = DataManager.setOfferShipped(offer.id, tn);
+      if (ok) {
+        const msg = `Siparişiniz kargoya verildi. Takip No: ${tn}`;
+        sendAutoMessageToOwner(offer, msg);
+        setTrackingNo('');
+        refreshSellerOffer(offer.id);
+      }
     }
   };
 
-  const handleMarkCompleted = (offer: Offer) => {
-    const ok = DataManager.setOfferCompleted(offer.id);
-    if (ok) {
-      sendAutoMessageToOwner(offer, 'İşlem tamamlandı. Ödeme satıcıya aktarıldı. Teşekkürler.');
+  const handleMarkCompleted = async (offer: Offer) => {
+    if (supabaseEnabled()) {
+      await sbSetOfferCompleted(offer.id as string);
+      await sendAutoMessageToOwner(offer, 'İşlem tamamlandı. Ödeme satıcıya aktarıldı. Teşekkürler.');
       refreshSellerOffer(offer.id);
+    } else {
+      const ok = DataManager.setOfferCompleted(offer.id);
+      if (ok) {
+        sendAutoMessageToOwner(offer, 'İşlem tamamlandı. Ödeme satıcıya aktarıldı. Teşekkürler.');
+        refreshSellerOffer(offer.id);
+      }
     }
   };
 
@@ -399,7 +432,7 @@ export default function Dashboard() {
         </DialogContent>
       </Dialog>
       {/* Satıcı tarafı: Verdiğim teklif için işlem diyaloğu */}
-  <Dialog open={sellerDialogOpen} onOpenChange={(v) => { if (!v) { setSellerDialogOpen(false); setSellerDialogOffer(null); setTrackingNo(''); } }}>
+      <Dialog open={sellerDialogOpen} onOpenChange={(v) => { if (!v) { setSellerDialogOpen(false); setSellerDialogOffer(null); setTrackingNo(''); } }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Satıcı İşlemleri</DialogTitle>
@@ -619,7 +652,7 @@ export default function Dashboard() {
           })()}
         </DialogContent>
       </Dialog>
-      
+
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-8">
@@ -707,8 +740,8 @@ export default function Dashboard() {
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {myListings.map(listing => (
-                      <Card 
-                        key={listing.id} 
+                      <Card
+                        key={listing.id}
                         className="cursor-pointer hover:shadow-lg transition-shadow"
                         onClick={() => navigate(`/listing/${listing.id}`)}
                       >
@@ -726,7 +759,7 @@ export default function Dashboard() {
                           <p className="text-muted-foreground text-sm mb-4 line-clamp-3">
                             {listing.description}
                           </p>
-                          
+
                           <div className="space-y-3">
                             <div className="flex items-center justify-between">
                               <span className="text-sm text-muted-foreground">Bütçe</span>
@@ -734,12 +767,12 @@ export default function Dashboard() {
                                 {DataManager.formatPrice(listing.budgetMax)}
                               </span>
                             </div>
-                            
+
                             <div className="flex flex-wrap gap-2">
                               <Badge variant="secondary">{listing.category}</Badge>
                               <Badge variant="outline">{getConditionText(listing.condition)}</Badge>
                             </div>
-                            
+
                             <div className="flex items-center justify-between text-sm text-muted-foreground">
                               <div className="flex items-center gap-1">
                                 <MapPin className="h-3 w-3" />
@@ -750,7 +783,7 @@ export default function Dashboard() {
                                 <span>{DataManager.getTimeAgo(listing.createdAt)}</span>
                               </div>
                             </div>
-                            
+
                             <div className="flex items-center justify-between">
                               <div className="flex items-center gap-1 text-blue-600">
                                 <TrendingUp className="h-4 w-4" />
@@ -985,8 +1018,8 @@ export default function Dashboard() {
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {favoriteListings.map(listing => (
-                      <Card 
-                        key={listing.id} 
+                      <Card
+                        key={listing.id}
                         className="cursor-pointer hover:shadow-lg transition-shadow"
                         onClick={() => navigate(`/listing/${listing.id}`)}
                       >
@@ -996,7 +1029,7 @@ export default function Dashboard() {
                               {listing.title}
                             </CardTitle>
                             <div className="flex items-center gap-2">
-                              <FavoriteButton 
+                              <FavoriteButton
                                 listingId={listing.id}
                                 userId={userId}
                                 size="sm"
@@ -1012,7 +1045,7 @@ export default function Dashboard() {
                           <p className="text-muted-foreground text-sm mb-4 line-clamp-3">
                             {listing.description}
                           </p>
-                          
+
                           <div className="space-y-3">
                             <div className="flex items-center justify-between">
                               <span className="text-sm text-muted-foreground">Bütçe</span>
@@ -1020,12 +1053,12 @@ export default function Dashboard() {
                                 {DataManager.formatPrice(listing.budgetMax)}
                               </span>
                             </div>
-                            
+
                             <div className="flex flex-wrap gap-2">
                               <Badge variant="secondary">{listing.category}</Badge>
                               <Badge variant="outline">{getConditionText(listing.condition)}</Badge>
                             </div>
-                            
+
                             <div className="flex items-center justify-between text-sm text-muted-foreground">
                               <div className="flex items-center gap-1">
                                 <MapPin className="h-3 w-3" />
@@ -1036,7 +1069,7 @@ export default function Dashboard() {
                                 <span>{DataManager.getTimeAgo(listing.createdAt)}</span>
                               </div>
                             </div>
-                            
+
                             <div className="flex items-center justify-between">
                               <div className="flex items-center gap-2">
                                 <span className="text-sm text-muted-foreground">İlan sahibi:</span>

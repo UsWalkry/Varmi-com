@@ -15,6 +15,9 @@ export async function sendMailViaServer(params: {
   html?: string;
 }) {
   const base = import.meta.env.VITE_MAIL_API_BASE || '';
+  if (!base) {
+    throw new Error('Mail API base URL missing (VITE_MAIL_API_BASE). Sunucuya istek gönderilmedi.');
+  }
   const apiKey = import.meta.env.VITE_MAIL_API_KEY as string | undefined;
   const res = await fetch(`${base}/api/send`, {
     method: 'POST',

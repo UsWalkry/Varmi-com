@@ -71,7 +71,20 @@ jobs:
         run: |
           ssh -p ${{ secrets.SSH_PORT }} ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "\
             set -euo pipefail; \
+            mkdir -p ${{ secrets.BACKEND_REMOTE_DIR }}/logs; \
             cd ${{ secrets.BACKEND_REMOTE_DIR }}; \
+            if [ ! -f .env ]; then \
+              echo 'MAIL_API_KEY=${{ secrets.VITE_MAIL_API_KEY }}' >> .env; \
+              echo 'SMTP_HOST=${{ secrets.SMTP_HOST }}' >> .env; \
+              echo 'SMTP_PORT=${{ secrets.SMTP_PORT }}' >> .env; \
+              echo 'SMTP_SECURE=${{ secrets.SMTP_SECURE }}' >> .env; \
+              echo 'SMTP_USER=${{ secrets.SMTP_USER }}' >> .env; \
+              echo 'SMTP_PASS=${{ secrets.SMTP_PASS }}' >> .env; \
+              echo 'MAIL_FROM_NAME=${{ secrets.MAIL_FROM_NAME }}' >> .env; \
+              echo 'MAIL_FROM_EMAIL=${{ secrets.MAIL_FROM_EMAIL }}' >> .env; \
+              echo 'PORT=${{ secrets.MAIL_SERVER_PORT || 8787 }}' >> .env; \
+              echo 'HOST=0.0.0.0' >> .env; \
+            fi; \
             if command -v pnpm >/dev/null 2>&1; then \
               pnpm install --prod --frozen-lockfile; \
             elif command -v npm >/dev/null 2>&1; then \

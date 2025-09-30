@@ -3,29 +3,52 @@ import { Card, CardContent } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { MessageCircle, User, Clock } from 'lucide-react';
 import { DataManager, Message } from '@/lib/mockData';
+import { supabaseEnabled, ensureCurrentUserId, fetchMessages as sbFetchMessages } from '@/lib/api';
+import { supabase } from '@/lib/supabase';
 
 export default function Inbox() {
   const currentUser = DataManager.getCurrentUser();
   const [messages, setMessages] = useState<Message[]>([]);
 
   useEffect(() => {
-    if (currentUser?.id) {
-      const allMessages = DataManager.getAllMessages();
-      const incoming = allMessages.filter(msg => msg.toUserId === currentUser.id);
-
-      // Mark messages as read
-      incoming.forEach(msg => {
-        if (!msg.read) {
-          DataManager.markMessagesAsRead(
-            msg.listingId,
-            currentUser.id,
-            msg.fromUserId
-          );
-        }
-      });
-
-      setMessages(incoming);
-    }
+    (async () => {
+      if (!currentUser?.id) return;
+      if (supabaseEnabled()) {
+        const selfId = await ensureCurrentUserId();
+        if (!selfId) return;
+        // Tüm mesajları çek; client tarafında sadece gelenleri filtrele
+        const rows = await sbFetchMessages({ self_id: selfId });
+        const incoming = (rows as Array<{ id: string; listing_id: string; from_user_id: string; to_user_id: string; content: string; read: boolean; created_at: string }>)
+          .filter((r) => r.to_user_id === selfId)
+          .map((r) => ({
+            id: r.id,
+            listingId: r.listing_id,
+            fromUserId: r.from_user_id,
+            fromUserName: 'Kullanıcı',
+            toUserId: r.to_user_id,
+            content: r.content,
+            read: !!r.read,
+            createdAt: r.created_at,
+          } as Message));
+        setMessages(incoming);
+        // Tüm göndericiler için okundu işaretle
+        const uniqueSenders = Array.from(new Set(incoming.map(m => m.fromUserId)));
+        await Promise.all(uniqueSenders.map(uid => supabase.rpc('mark_messages_read', { p_listing_id: null, p_other_user_id: uid })));
+      } else {
+        const allMessages = DataManager.getAllMessages();
+        const incoming = allMessages.filter(msg => msg.toUserId === currentUser.id);
+        incoming.forEach(msg => {
+          if (!msg.read) {
+            DataManager.markMessagesAsRead(
+              msg.listingId,
+              currentUser.id,
+              msg.fromUserId
+            );
+          }
+        });
+        setMessages(incoming);
+      }
+    })();
   }, [currentUser]);
 
   return (
