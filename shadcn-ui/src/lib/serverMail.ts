@@ -14,12 +14,11 @@ export async function sendMailViaServer(params: {
   text?: string;
   html?: string;
 }) {
-  const base = import.meta.env.VITE_MAIL_API_BASE || '';
-  if (!base) {
-    throw new Error('Mail API base URL missing (VITE_MAIL_API_BASE). Sunucuya istek gönderilmedi.');
-  }
+  const base = (import.meta.env.VITE_MAIL_API_BASE || '').trim();
+  // base boşsa dev ortamında Vite proxy ile relatif /api/send kullan
+  const endpoint = `${base ? base.replace(/\/+$/, '') : ''}/api/send`;
   const apiKey = import.meta.env.VITE_MAIL_API_KEY as string | undefined;
-  const res = await fetch(`${base}/api/send`, {
+  const res = await fetch(endpoint, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

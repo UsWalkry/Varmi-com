@@ -8,6 +8,7 @@ import { Search, MapPin, Clock, TrendingUp, Package, Star } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Listing, DataManager, categories, cities } from '@/lib/mockData';
 import { fetchListingsUi, supabaseEnabled } from '@/lib/api';
+import { syncLocalListingsToSupabase } from '@/lib/sync';
 import { maskDisplayName } from '@/lib/utils';
 import Header from '@/components/Header';
 import FavoriteButton from '@/components/FavoriteButton';
@@ -24,12 +25,14 @@ export default function Index() {
 
   const currentUser = DataManager.getCurrentUser();
 
-  // Load listings when filters change
+  // Local → Supabase senkronu (oturum varsa) ve liste yükleme
   useEffect(() => {
     let ignore = false;
     const load = async () => {
       setIsLoading(true);
       try {
+        // Oturum varsa localdeki ilanları Supabase'e taşımaya çalış (idempotent)
+  try { await syncLocalListingsToSupabase(); } catch { /* ignore */ }
         // Eğer geçerli bir Supabase konfigürasyonu varsa oradan yüklemeyi dene, hata/401 olursa DataManager'a düş
         if (supabaseEnabled()) {
           try {
@@ -44,7 +47,19 @@ export default function Index() {
                 const matchesCond = selectedCondition === 'all' || r.condition === selectedCondition;
                 return matchesQ && matchesC && matchesCity && matchesB && matchesCond;
               }) as unknown as Listing[];
-              setListings(filtered);
+              // Aynı anda localStorage (DataManager) sonuçlarını da alıp birleştir (duplike id'leri ayıkla)
+              const filters = {
+                category: selectedCategory !== 'all' ? selectedCategory : undefined,
+                city: selectedCity !== 'all' ? selectedCity : undefined,
+                budgetMax: budgetMax ? parseInt(budgetMax) : undefined,
+                condition: selectedCondition !== 'all' ? selectedCondition : undefined,
+              };
+              const localLs = DataManager.searchListings(searchQuery, filters) || [];
+              const merged = [...filtered, ...localLs];
+              const dedup = Array.from(new Map(merged.map(l => [l.id, l])).values());
+              // (opsiyonel) tarihi yeni olan üstte
+              dedup.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+              setListings(dedup);
             }
           } catch (e) {
             console.warn('[Index] Supabase fetchListingsUi failed, falling back:', e);

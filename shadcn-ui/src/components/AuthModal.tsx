@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { DataManager, cities } from '@/lib/mockData';
+import { supabaseAuthAvailable, signInWithSupabase, signUpWithSupabase } from '@/lib/auth';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 
@@ -38,7 +39,20 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }: AuthModalP
     setIsLoading(true);
 
     try {
-      // 2FA destekli giriş akışı
+      // Supabase Auth varsa onu dene, yoksa DataManager akışı
+      if (supabaseAuthAvailable()) {
+        try {
+          await signInWithSupabase({ identifier: loginData.identifier, password: loginData.password || '123456' });
+          toast.success('Hoş geldiniz!');
+          onAuthSuccess();
+          onClose();
+          setLoginData({ identifier: '', password: '' });
+          setTwoFA({ required: false, userId: null, code: '' });
+          return;
+        } catch (e) {
+          // Supabase başarısızsa DataManager’a düşelim
+        }
+      }
       const res = DataManager.startLogin(loginData.identifier, loginData.password || '123456');
       if (!res) {
         toast.error('E-posta/telefon veya şifre hatalı');
@@ -85,7 +99,7 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }: AuthModalP
     setIsLoading(true);
 
     try {
-      // Validation
+  // Validation
       if (registerData.password !== registerData.confirmPassword) {
         toast.error('Şifreler eşleşmiyor');
         setIsLoading(false);
@@ -102,13 +116,25 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }: AuthModalP
       const digits = (registerData.phone || '').replace(/\D/g, '').replace(/^90/, '').slice(0, 10);
       const normalizedPhone = digits ? `+90${digits}` : '';
 
-      const user = DataManager.registerUser({
-        name: registerData.name,
-        email: registerData.email,
-        password: registerData.password,
-        city: registerData.city,
-        phone: normalizedPhone
-      });
+  let user: ReturnType<typeof DataManager.getCurrentUser> | null = null;
+      if (supabaseAuthAvailable()) {
+        try {
+          await signUpWithSupabase({ name: registerData.name, email: registerData.email, password: registerData.password, city: registerData.city, phone: normalizedPhone });
+          // Local CURRENT_USER, signUp helper içinde garanti altına alınıyor
+          user = DataManager.getCurrentUser();
+        } catch (e) {
+          // Supabase başarısızsa local kayda düşelim
+        }
+      }
+      if (!user) {
+        user = DataManager.registerUser({
+          name: registerData.name,
+          email: registerData.email,
+          password: registerData.password,
+          city: registerData.city,
+          phone: normalizedPhone
+        });
+      }
 
       if (user) {
         toast.success('Hesabınız başarıyla oluşturuldu!');

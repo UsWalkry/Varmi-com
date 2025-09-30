@@ -50,7 +50,6 @@ export const Mailer = {
   async sendWelcome(user: { name: string; email: string }) {
     const subject = `Varmı’ya hoş geldiniz, ${user.name}!`;
     const message = [
-      `Merhaba ${user.name},`,
       '',
       'Varmı hesabınız başarıyla oluşturuldu. Artık aradığınız ürün/hizmet için ilan açabilir ve gelen teklifleri kolayca yönetebilirsiniz.',
       '',

@@ -109,29 +109,53 @@ export default function CreateListing() {
       })();
       let newListing: { id: string };
       if (supabaseEnabled()) {
+        // Supabase yazma için aktif oturum gerekli; yoksa sessizce local'e düş.
+        let selfId: string | null = null;
         try {
-          // Supabase yazma işlemleri için oturum gerekir; yoksa DataManager'a düş.
-          const selfId = await ensureCurrentUserId();
-          if (!selfId) throw new Error('no-supabase-session');
-          const inserted = await sbCreateListing({
-            buyer_id: selfId,
-            title: withSuffix,
-            description: formData.description,
-            category: formData.category,
-            budget_max: parseInt(formData.budgetMax),
-            condition: formData.condition as 'new' | 'used' | 'any',
-            city: formData.city,
-            delivery_type: formData.deliveryType as 'shipping' | 'pickup' | 'both',
-            offers_public: true,
-            offers_purchasable: true,
-            status: 'active',
-            expires_at: expiresAt,
-            images
-          });
-          newListing = { id: inserted.id };
-        } catch (e) {
-          // 401/RLS gibi durumlarda local fallback
-          console.warn('[CreateListing] Supabase kayıt başarısız, DataManager fallback:', e);
+          selfId = await ensureCurrentUserId();
+        } catch {
+          selfId = null;
+        }
+        if (selfId) {
+          try {
+            const inserted = await sbCreateListing({
+              buyer_id: selfId,
+              title: withSuffix,
+              description: formData.description,
+              category: formData.category,
+              budget_max: parseInt(formData.budgetMax),
+              condition: formData.condition as 'new' | 'used' | 'any',
+              city: formData.city,
+              delivery_type: formData.deliveryType as 'shipping' | 'pickup' | 'both',
+              offers_public: true,
+              offers_purchasable: true,
+              status: 'active',
+              expires_at: expiresAt,
+              images
+            });
+            newListing = { id: inserted.id };
+          } catch (e) {
+            if (import.meta.env.DEV) console.debug('[CreateListing] Supabase kayıt hatası, local fallback.', e);
+            newListing = DataManager.addListing({
+              buyerId: currentUser.id,
+              buyerName: currentUser.name,
+              title: withSuffix,
+              description: formData.description,
+              category: formData.category,
+              budgetMax: parseInt(formData.budgetMax),
+              condition: formData.condition as 'new' | 'used' | 'any',
+              city: formData.city,
+              deliveryType: formData.deliveryType as 'shipping' | 'pickup' | 'both',
+              exactProductOnly: formData.exactProductOnly,
+              maskOwnerName: formData.maskOwnerName,
+              offersPublic: true,
+              offersPurchasable: true,
+              status: 'active',
+              expiresAt,
+              images
+            });
+          }
+        } else {
           newListing = DataManager.addListing({
             buyerId: currentUser.id,
             buyerName: currentUser.name,
