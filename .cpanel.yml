@@ -1,6 +1,6 @@
 deployment:
   tasks:
-    - export DEPLOYPATH="/home/httpdcyo/varmii"
+    - export DEPLOYPATH="/varmii"
     - /bin/mkdir -p "$DEPLOYPATH"
     - /bin/rsync -a --delete --exclude ".git" --exclude ".cpanel" --exclude ".env" --exclude "node_modules" ./ "$DEPLOYPATH"/
     - if [ -f "$DEPLOYPATH/package.json" ]; then
