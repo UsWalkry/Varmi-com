@@ -45,7 +45,10 @@ export async function signInWithSupabase(params: { identifier: string; password:
   const { identifier, password } = params;
   if (!identifier.includes('@')) throw new Error('email-required');
   const { data, error } = await supabase.auth.signInWithPassword({ email: identifier, password });
-  if (error) throw error;
+  if (error) {
+    // Hatalı şifre/eposta ya da kullanıcı doğrulanmamış olabilir
+    throw new Error(error.message || 'Giriş başarısız');
+  }
   try { await ensureCurrentUserId(); } catch { /* ignore */ }
   const meta = data.user?.user_metadata as { name?: string; city?: string; phone?: string } | undefined;
   ensureLocalUser(identifier, meta?.name, meta?.city, meta?.phone);

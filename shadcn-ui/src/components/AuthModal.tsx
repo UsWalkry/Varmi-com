@@ -41,6 +41,11 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }: AuthModalP
     try {
       // Supabase Auth varsa onu dene, yoksa DataManager akışı
       if (supabaseAuthAvailable()) {
+        // Supabase e-posta/şifre girişini destekliyor; telefon ile giriş (OTP) bu projede uygulanmadı
+        if (!loginData.identifier.includes('@')) {
+          toast.error('Supabase girişi için e-posta kullanın');
+          return;
+        }
         try {
           await signInWithSupabase({ identifier: loginData.identifier, password: loginData.password || '123456' });
           toast.success('Hoş geldiniz!');
@@ -49,8 +54,11 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }: AuthModalP
           setLoginData({ identifier: '', password: '' });
           setTwoFA({ required: false, userId: null, code: '' });
           return;
-        } catch (e) {
-          // Supabase başarısızsa DataManager’a düşelim
+        } catch (e: unknown) {
+          const msg = e instanceof Error ? e.message : String(e);
+          // Yaygın durumlar: yanlış şifre, e-posta doğrulanmamış vs.
+          toast.error(msg || 'Supabase giriş başarısız');
+          return; // Supabase aktifken DataManager’a düşmeyelim; yanlış yönlendirici olur
         }
       }
       const res = DataManager.startLogin(loginData.identifier, loginData.password || '123456');

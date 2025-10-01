@@ -286,9 +286,11 @@ export async function fetchOffersUi(listingId: UUID): Promise<UiOffer[]> {
 export function supabaseEnabled(): boolean {
   const url = import.meta.env.VITE_SUPABASE_URL as string | undefined;
   const key = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
+  const flag = (import.meta.env.VITE_SUPABASE_ENABLED as string | undefined)?.toLowerCase?.() ?? 'false';
+  const enabledByFlag = flag === 'true' || flag === '1' || flag === 'yes';
   const looksUrl = !!url && /^https?:\/\//.test(url);
   const looksJwt = !!key && key.split('.').length >= 3 && key.length > 20; // anon key is a JWT
-  return looksUrl && looksJwt;
+  return enabledByFlag && looksUrl && looksJwt;
 }
 
 // Helper to ensure current user id exists in public.users (requires being logged in)
