@@ -36,21 +36,38 @@ All shadcn/ui components have been downloaded under `@/components/ui`.
 
 ## Supabase bağlantısı
 
-1. `shadcn-ui/.env.local` içine Supabase bilgilerini ekleyin:
+**Not:** Supabase varsayılan olarak dev'de kapalıdır. Etkinleştirmek için aşağıdaki adımları izleyin.
+
+1. `shadcn-ui/.env.local` dosyası oluşturun (`.env.example`'dan kopyalayabilirsiniz):
+
+```bash
+cp .env.example .env.local
+```
+
+2. `.env.local` içinde Supabase bilgilerini ekleyin:
 
 ```
-VITE_SUPABASE_URL=YOUR_URL
-VITE_SUPABASE_ANON_KEY=YOUR_ANON
+VITE_SUPABASE_ENABLED=true
+VITE_SUPABASE_URL=YOUR_PROJECT_URL
+VITE_SUPABASE_ANON_KEY=YOUR_ANON_KEY
 ```
 
-2. Migration ve seed:
+- `VITE_SUPABASE_ENABLED`: `true` yapın (varsayılan `false`)
+- `VITE_SUPABASE_URL`: Supabase Dashboard → Settings → API → Project URL
+- `VITE_SUPABASE_ANON_KEY`: Supabase Dashboard → Settings → API → Project API keys → anon public
+
+3. Migration ve seed:
 
 - `supabase/migrations/20250930_init.sql` ve `supabase/seed/20250930_seed.sql` dosyalarını Supabase SQL Editor ile çalıştırın.
 
-3. İstemci tarafı kullanım:
+4. İstemci tarafı kullanım:
 
 - Supabase client: `src/lib/supabase.ts`
 - API helpers: `src/lib/sbApi.ts` (ör. `fetchListings()`, `createListing()`)
+
+**Supabase kapalıyken:** Uygulama localStorage (DataManager) ile çalışır. Konsol uyarısı görürsünüz: `[supabase] Disabled by VITE_SUPABASE_ENABLED flag`
+
+**Placeholder credentials uyarısı:** `.env.local` içinde placeholder değerler (`your-project-id`, `your-anon-key`) kullanırsanız Supabase istekleri yapılmaz ve konsol uyarısı görürsünüz.
 
 Veritabanı diyagramı (özet):
 
