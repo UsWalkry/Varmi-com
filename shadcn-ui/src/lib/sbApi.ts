@@ -284,8 +284,17 @@ export async function fetchOffersUi(listingId: UUID): Promise<UiOffer[]> {
 }
 
 export function supabaseEnabled(): boolean {
+  const enabled = import.meta.env.VITE_SUPABASE_ENABLED === 'true';
+  if (!enabled) return false;
+  
   const url = import.meta.env.VITE_SUPABASE_URL as string | undefined;
   const key = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
+  
+  // Check for placeholder values
+  if (url?.includes('your-project-id') || key?.includes('your-anon-key')) {
+    return false;
+  }
+  
   const looksUrl = !!url && /^https?:\/\//.test(url);
   const looksJwt = !!key && key.split('.').length >= 3 && key.length > 20; // anon key is a JWT
   return looksUrl && looksJwt;

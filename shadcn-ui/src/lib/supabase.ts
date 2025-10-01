@@ -1,13 +1,22 @@
 import { createClient } from '@supabase/supabase-js';
 
+const SUPABASE_ENABLED = import.meta.env.VITE_SUPABASE_ENABLED === 'true';
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
 
-if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+if (!SUPABASE_ENABLED) {
+  console.warn('[supabase] Disabled by VITE_SUPABASE_ENABLED flag (set to true to enable).');
+} else if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
   console.warn('[supabase] Missing VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY');
+} else if (SUPABASE_URL.includes('your-project-id') || SUPABASE_ANON_KEY.includes('your-anon-key')) {
+  console.warn('[supabase] Using placeholder credentials. Replace with your actual Supabase project credentials.');
 }
 
-export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+// Create client with fallback values if not enabled (prevents errors but won't work)
+const url = SUPABASE_URL || 'https://placeholder.supabase.co';
+const key = SUPABASE_ANON_KEY || 'placeholder-key';
+
+export const supabase = createClient(url, key, {
   auth: {
     persistSession: true,
     autoRefreshToken: true,
