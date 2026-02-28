@@ -11,7 +11,7 @@ class SupportService {
     required String subject,
     required String message,
   }) async {
-    await _api.post('/api/support/contact', {
+    await _api.post('/api/support/contact', data: {
       'name': name,
       'email': email,
       if (phone != null && phone.isNotEmpty) 'phone': phone,

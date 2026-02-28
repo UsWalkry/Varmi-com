@@ -36,13 +36,13 @@ class NotificationService {
 
   Future<void> markAsRead(String id) async {
     try {
-      await _api.put('/api/notifications/$id/read', {});
+      await _api.put('/api/notifications/$id/read', data: {});
     } catch (_) {}
   }
 
   Future<void> markAllAsRead() async {
     try {
-      await _api.put('/api/notifications/mark-all-read', {});
+      await _api.put('/api/notifications/mark-all-read', data: {});
     } catch (_) {}
   }
 }

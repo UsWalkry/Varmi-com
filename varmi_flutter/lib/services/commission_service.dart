@@ -60,7 +60,7 @@ class CommissionService {
     required String iban,
     required String accountHolderName,
   }) async {
-    await _api.post('/api/commission/withdraw', {
+    await _api.post('/api/commission/withdraw', data: {
       'amount': amount,
       'bank_name': bankName,
       'iban': iban,
