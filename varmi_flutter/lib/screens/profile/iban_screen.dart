@@ -84,7 +84,7 @@ class _IbanScreenState extends State<IbanScreen> {
       await _service.addIban(
         title: _titleController.text.trim(),
         bankName: _bankController.text.trim(),
-        iban: _ibanController.text.replaceAll(' ', '').toUpperCase(),
+        iban: 'TR${_ibanController.text.replaceAll(' ', '')}',
         accountHolderName: _holderController.text.trim(),
         isDefault: _isDefault,
       );
@@ -721,11 +721,11 @@ class _AddIbanSheetState extends State<_AddIbanSheet> {
       ),
       decoration: InputDecoration(
         labelText: 'IBAN',
-        hintText: 'TR00 0000 0000 0000 0000 0000 00',
+        hintText: '00 0000 0000 0000 0000 0000 00',
         hintStyle: TextStyle(fontSize: 13, color: colors.textSecondary),
         labelStyle: TextStyle(color: colors.textSecondary),
         prefixIcon: const Icon(Icons.credit_card, color: Color(0xFF7C3AED), size: 20),
-        prefixText: widget.ibanController.text.startsWith('TR') ? '' : 'TR',
+        prefixText: 'TR',
         prefixStyle: TextStyle(color: colors.textPrimary, fontSize: 14, fontFamily: 'monospace'),
         filled: true,
         fillColor: isDark ? const Color(0xFF1A1A2E) : const Color(0xFFF9FAFB),
