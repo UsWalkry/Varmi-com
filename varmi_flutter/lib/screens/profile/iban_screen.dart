@@ -17,28 +17,10 @@ class _IbanScreenState extends State<IbanScreen> {
   bool _loading = true;
   String? _error;
 
-  // ── Form kontrolcüleri ───────────────────────────────────────
-  final _formKey = GlobalKey<FormState>();
-  final _titleController = TextEditingController();
-  final _bankController = TextEditingController();
-  final _ibanController = TextEditingController();
-  final _holderController = TextEditingController();
-  bool _isDefault = false;
-  bool _saving = false;
-
   @override
   void initState() {
     super.initState();
     _load();
-  }
-
-  @override
-  void dispose() {
-    _titleController.dispose();
-    _bankController.dispose();
-    _ibanController.dispose();
-    _holderController.dispose();
-    super.dispose();
   }
 
   Future<void> _load() async {
@@ -47,56 +29,30 @@ class _IbanScreenState extends State<IbanScreen> {
       final list = await _service.getIbans();
       if (mounted) setState(() { _ibans = list; _loading = false; });
     } catch (e) {
-      if (mounted) setState(() { _error = e.toString(); _loading = false; });
+      // 404 → backend henüz deploy edilmemiş olabilir, boş liste gibi davran
+      final s = e.toString();
+      if (s.contains('404') || s.contains('SocketException') || s.contains('connection')) {
+        if (mounted) setState(() { _ibans = []; _loading = false; });
+      } else {
+        if (mounted) setState(() { _error = s; _loading = false; });
+      }
     }
   }
 
   // ── IBAN Ekle Dialog ─────────────────────────────────────────
-  void _showAddDialog() {
-    _titleController.clear();
-    _bankController.clear();
-    _ibanController.clear();
-    _holderController.clear();
-    _isDefault = _ibans.isEmpty; // İlk iban ise otomatik varsayılan
-
-    showModalBottomSheet(
+  void _showAddDialog() async {
+    final added = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (_) => _AddIbanSheet(
-        formKey: _formKey,
-        titleController: _titleController,
-        bankController: _bankController,
-        ibanController: _ibanController,
-        holderController: _holderController,
-        isDefault: _isDefault,
-        onDefaultChanged: (v) => setState(() => _isDefault = v),
-        onSave: _saveIban,
-        saving: _saving,
+        service: _service,
+        isFirstIban: _ibans.isEmpty,
       ),
     );
-  }
-
-  Future<void> _saveIban() async {
-    if (!(_formKey.currentState?.validate() ?? false)) return;
-    setState(() => _saving = true);
-    try {
-      await _service.addIban(
-        title: _titleController.text.trim(),
-        bankName: _bankController.text.trim(),
-        iban: 'TR${_ibanController.text.replaceAll(' ', '')}',
-        accountHolderName: _holderController.text.trim(),
-        isDefault: _isDefault,
-      );
-      if (mounted) {
-        Navigator.pop(context); // dialog'u kapat
-        _showSnack('IBAN başarıyla eklendi ✓', isError: false);
-        _load();
-      }
-    } catch (e) {
-      if (mounted) _showSnack(_parseErr(e), isError: true);
-    } finally {
-      if (mounted) setState(() => _saving = false);
+    if (added == true && mounted) {
+      _showSnack('IBAN başarıyla eklendi ✓', isError: false);
+      _load();
     }
   }
 
@@ -506,29 +462,15 @@ class _ErrorState extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────
-// IBAN Ekle Bottom Sheet
+// IBAN Ekle Bottom Sheet — tamamen self-contained
 // ─────────────────────────────────────────────────────────────
 class _AddIbanSheet extends StatefulWidget {
-  final GlobalKey<FormState> formKey;
-  final TextEditingController titleController;
-  final TextEditingController bankController;
-  final TextEditingController ibanController;
-  final TextEditingController holderController;
-  final bool isDefault;
-  final ValueChanged<bool> onDefaultChanged;
-  final VoidCallback onSave;
-  final bool saving;
+  final IbanService service;
+  final bool isFirstIban;
 
   const _AddIbanSheet({
-    required this.formKey,
-    required this.titleController,
-    required this.bankController,
-    required this.ibanController,
-    required this.holderController,
-    required this.isDefault,
-    required this.onDefaultChanged,
-    required this.onSave,
-    required this.saving,
+    required this.service,
+    required this.isFirstIban,
   });
 
   @override
@@ -536,21 +478,74 @@ class _AddIbanSheet extends StatefulWidget {
 }
 
 class _AddIbanSheetState extends State<_AddIbanSheet> {
-  late bool _isDefault;
+  final _formKey = GlobalKey<FormState>();
+  final _titleCtl = TextEditingController();
+  final _holderCtl = TextEditingController();
+  final _ibanCtl = TextEditingController();
+  String? _selectedBank;
+  bool _isDefault = false;
+  bool _saving = false;
+  String? _errorMsg;
 
   @override
   void initState() {
     super.initState();
-    _isDefault = widget.isDefault;
+    _isDefault = widget.isFirstIban;
   }
 
-  // Banka listesi
+  @override
+  void dispose() {
+    _titleCtl.dispose();
+    _holderCtl.dispose();
+    _ibanCtl.dispose();
+    super.dispose();
+  }
+
   static const List<String> _banks = [
     'Akbank', 'Garanti BBVA', 'İş Bankası', 'Yapı Kredi',
     'Ziraat Bankası', 'Halkbank', 'Vakıfbank', 'QNB Finansbank',
     'Denizbank', 'TEB', 'ING Bank', 'HSBC', 'Şekerbank',
     'Türkiye Finans', 'Kuveyt Türk', 'Albaraka Türk', 'Diğer',
   ];
+
+  Future<void> _save() async {
+    // Önce mevcut tüm validation hatalarını temizle
+    setState(() => _errorMsg = null);
+
+    if (!(_formKey.currentState?.validate() ?? false)) return;
+
+    setState(() => _saving = true);
+    try {
+      await widget.service.addIban(
+        title: _titleCtl.text.trim(),
+        bankName: _selectedBank ?? '',
+        iban: 'TR${_ibanCtl.text.replaceAll(' ', '')}',
+        accountHolderName: _holderCtl.text.trim(),
+        isDefault: _isDefault,
+      );
+      if (mounted) Navigator.pop(context, true); // başarı
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _errorMsg = _parseErr(e);
+          _saving = false;
+        });
+      }
+    }
+  }
+
+  String _parseErr(dynamic e) {
+    final s = e.toString();
+    // Dio response body içindeki "error" alanı
+    final bodyMatch = RegExp(r'"error"\s*:\s*"([^"]+)"').firstMatch(s);
+    if (bodyMatch != null) return bodyMatch.group(1)!;
+    // Bilinen hata mesajları
+    if (s.contains('zaten kayıtlı')) return 'Bu IBAN zaten kayıtlı.';
+    if (s.contains('404')) return 'Servis şu anda kullanılamıyor (404). Lütfen tekrar deneyin.';
+    if (s.contains('500')) return 'Sunucu hatası oluştu. Lütfen tekrar deneyin.';
+    if (s.contains('SocketException') || s.contains('connection')) return 'İnternet bağlantısı yok.';
+    return 'Bir hata oluştu. Lütfen tekrar deneyin.';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -568,7 +563,7 @@ class _AddIbanSheetState extends State<_AddIbanSheet> {
       ),
       child: SingleChildScrollView(
         child: Form(
-          key: widget.formKey,
+          key: _formKey,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
@@ -601,7 +596,7 @@ class _AddIbanSheetState extends State<_AddIbanSheet> {
 
               // Hesap Adı
               _buildField(
-                controller: widget.titleController,
+                controller: _titleCtl,
                 label: 'Hesap Adı',
                 hint: 'örn: Akbank Maaş Hesabım',
                 icon: Icons.label_outline,
@@ -611,13 +606,27 @@ class _AddIbanSheetState extends State<_AddIbanSheet> {
               ),
               const SizedBox(height: 14),
 
-              // Banka Adı (dropdown)
-              _buildBankDropdown(isDark: isDark, colors: colors),
+              // Banka (dropdown)
+              DropdownButtonFormField<String>(
+                value: _selectedBank,
+                decoration: _inputDeco(
+                  label: 'Banka',
+                  icon: Icons.account_balance,
+                  isDark: isDark,
+                  colors: colors,
+                ),
+                dropdownColor: colors.card,
+                style: TextStyle(color: colors.textPrimary, fontSize: 14),
+                hint: Text('Banka seçin', style: TextStyle(color: colors.textSecondary)),
+                items: _banks.map((b) => DropdownMenuItem(value: b, child: Text(b))).toList(),
+                onChanged: (v) => setState(() => _selectedBank = v),
+                validator: (v) => (v == null || v.isEmpty) ? 'Banka seçin' : null,
+              ),
               const SizedBox(height: 14),
 
               // Hesap Sahibi
               _buildField(
-                controller: widget.holderController,
+                controller: _holderCtl,
                 label: 'Hesap Sahibi Adı Soyadı',
                 hint: 'örn: Ahmet Yılmaz',
                 icon: Icons.person_outline,
@@ -628,7 +637,33 @@ class _AddIbanSheetState extends State<_AddIbanSheet> {
               const SizedBox(height: 14),
 
               // IBAN
-              _buildIbanField(isDark: isDark, colors: colors),
+              TextFormField(
+                controller: _ibanCtl,
+                inputFormatters: [_IbanFormatter()],
+                keyboardType: TextInputType.number,
+                style: TextStyle(
+                  color: colors.textPrimary,
+                  letterSpacing: 1.5,
+                  fontSize: 14,
+                  fontFamily: 'monospace',
+                ),
+                decoration: _inputDeco(
+                  label: 'IBAN',
+                  icon: Icons.credit_card,
+                  isDark: isDark,
+                  colors: colors,
+                  hint: '00 0000 0000 0000 0000 0000 00',
+                  prefixText: 'TR',
+                ),
+                validator: (v) {
+                  if (v == null || v.trim().isEmpty) return 'IBAN girin';
+                  final digits = v.replaceAll(' ', '');
+                  if (digits.length != 24 || !RegExp(r'^\d+$').hasMatch(digits)) {
+                    return 'Geçerli bir IBAN girin (24 rakam, TR olmadan)';
+                  }
+                  return null;
+                },
+              ),
               const SizedBox(height: 12),
 
               // Varsayılan switch
@@ -637,16 +672,39 @@ class _AddIbanSheetState extends State<_AddIbanSheet> {
                   Switch(
                     value: _isDefault,
                     activeColor: const Color(0xFF7C3AED),
-                    onChanged: (v) {
-                      setState(() => _isDefault = v);
-                      widget.onDefaultChanged(v);
-                    },
+                    onChanged: (v) => setState(() => _isDefault = v),
                   ),
                   Text('Varsayılan IBAN olarak ayarla',
                       style: TextStyle(color: colors.textSecondary, fontSize: 14)),
                 ],
               ),
-              const SizedBox(height: 20),
+
+              // Hata mesajı (sheet içinde görünür)
+              if (_errorMsg != null) ...[  
+                const SizedBox(height: 8),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: Colors.red.shade50,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: Colors.red.shade200),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.error_outline, color: Colors.red.shade700, size: 18),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          _errorMsg!,
+                          style: TextStyle(color: Colors.red.shade700, fontSize: 13),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+              const SizedBox(height: 16),
 
               // Kaydet butonu
               SizedBox(
@@ -659,8 +717,8 @@ class _AddIbanSheetState extends State<_AddIbanSheet> {
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     elevation: 0,
                   ),
-                  onPressed: widget.saving ? null : widget.onSave,
-                  child: widget.saving
+                  onPressed: _saving ? null : _save,
+                  child: _saving
                       ? const SizedBox(
                           height: 20, width: 20,
                           child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
@@ -674,84 +732,45 @@ class _AddIbanSheetState extends State<_AddIbanSheet> {
     );
   }
 
-  Widget _buildBankDropdown({required bool isDark, required dynamic colors}) {
-    String? selected = widget.bankController.text.isEmpty ? null : widget.bankController.text;
-    return DropdownButtonFormField<String>(
-      value: selected,
-      decoration: InputDecoration(
-        labelText: 'Banka',
-        labelStyle: TextStyle(color: colors.textSecondary),
-        prefixIcon: const Icon(Icons.account_balance, color: Color(0xFF7C3AED), size: 20),
-        filled: true,
-        fillColor: isDark ? const Color(0xFF1A1A2E) : const Color(0xFFF9FAFB),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: isDark ? Colors.white24 : Colors.grey.shade300),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: isDark ? Colors.white24 : Colors.grey.shade300),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFF7C3AED), width: 2),
-        ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+  InputDecoration _inputDeco({
+    required String label,
+    required IconData icon,
+    required bool isDark,
+    required dynamic colors,
+    String? hint,
+    String? prefixText,
+  }) {
+    return InputDecoration(
+      labelText: label,
+      hintText: hint,
+      prefixText: prefixText,
+      hintStyle: TextStyle(fontSize: 13, color: colors.textSecondary),
+      labelStyle: TextStyle(color: colors.textSecondary),
+      prefixIcon: Icon(icon, color: const Color(0xFF7C3AED), size: 20),
+      prefixStyle: TextStyle(color: colors.textPrimary, fontSize: 14, fontFamily: 'monospace'),
+      filled: true,
+      fillColor: isDark ? const Color(0xFF1A1A2E) : const Color(0xFFF9FAFB),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: isDark ? Colors.white24 : Colors.grey.shade300),
       ),
-      dropdownColor: colors.card,
-      style: TextStyle(color: colors.textPrimary, fontSize: 14),
-      hint: Text('Banka seçin', style: TextStyle(color: colors.textSecondary)),
-      items: _banks.map((b) => DropdownMenuItem(value: b, child: Text(b))).toList(),
-      onChanged: (v) => widget.bankController.text = v ?? '',
-      validator: (v) => (v == null || v.isEmpty) ? 'Banka seçin' : null,
-    );
-  }
-
-  Widget _buildIbanField({required bool isDark, required dynamic colors}) {
-    return TextFormField(
-      controller: widget.ibanController,
-      textCapitalization: TextCapitalization.characters,
-      inputFormatters: [_IbanFormatter()],
-      keyboardType: TextInputType.number,
-      style: TextStyle(
-        color: colors.textPrimary,
-        letterSpacing: 1.5,
-        fontSize: 14,
-        fontFamily: 'monospace',
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: isDark ? Colors.white24 : Colors.grey.shade300),
       ),
-      decoration: InputDecoration(
-        labelText: 'IBAN',
-        hintText: '00 0000 0000 0000 0000 0000 00',
-        hintStyle: TextStyle(fontSize: 13, color: colors.textSecondary),
-        labelStyle: TextStyle(color: colors.textSecondary),
-        prefixIcon: const Icon(Icons.credit_card, color: Color(0xFF7C3AED), size: 20),
-        prefixText: 'TR',
-        prefixStyle: TextStyle(color: colors.textPrimary, fontSize: 14, fontFamily: 'monospace'),
-        filled: true,
-        fillColor: isDark ? const Color(0xFF1A1A2E) : const Color(0xFFF9FAFB),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: isDark ? Colors.white24 : Colors.grey.shade300),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: isDark ? Colors.white24 : Colors.grey.shade300),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFF7C3AED), width: 2),
-        ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: Color(0xFF7C3AED), width: 2),
       ),
-      validator: (v) {
-        if (v == null || v.trim().isEmpty) return 'IBAN girin';
-        final cleaned = v.replaceAll(' ', '').toUpperCase();
-        final withTR = cleaned.startsWith('TR') ? cleaned : 'TR$cleaned';
-        if (!RegExp(r'^TR\d{24}$').hasMatch(withTR)) {
-          return 'Geçerli IBAN girin (TR + 24 rakam)';
-        }
-        return null;
-      },
+      errorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: Colors.red),
+      ),
+      focusedErrorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: Colors.red, width: 2),
+      ),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
     );
   }
 
@@ -767,28 +786,7 @@ class _AddIbanSheetState extends State<_AddIbanSheet> {
     return TextFormField(
       controller: controller,
       style: TextStyle(color: colors.textPrimary, fontSize: 14),
-      decoration: InputDecoration(
-        labelText: label,
-        hintText: hint,
-        hintStyle: TextStyle(fontSize: 13, color: colors.textSecondary),
-        labelStyle: TextStyle(color: colors.textSecondary),
-        prefixIcon: Icon(icon, color: const Color(0xFF7C3AED), size: 20),
-        filled: true,
-        fillColor: isDark ? const Color(0xFF1A1A2E) : const Color(0xFFF9FAFB),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: isDark ? Colors.white24 : Colors.grey.shade300),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: isDark ? Colors.white24 : Colors.grey.shade300),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFF7C3AED), width: 2),
-        ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      ),
+      decoration: _inputDeco(label: label, icon: icon, isDark: isDark, colors: colors, hint: hint),
       validator: validator,
     );
   }
