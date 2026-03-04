@@ -66,6 +66,23 @@ jobs:
         run: |
           rsync -avz -e "ssh -p ${{ secrets.SSH_PORT }}" server/dist/ ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:${{ secrets.BACKEND_REMOTE_DIR }}/dist/
           rsync -avz -e "ssh -p ${{ secrets.SSH_PORT }}" server/package.json server/pnpm-lock.yaml server/ecosystem.config.js ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:${{ secrets.BACKEND_REMOTE_DIR }}/
+          # SQL migration dosyalarını kopyala
+          rsync -avz -e "ssh -p ${{ secrets.SSH_PORT }}" create_user_ibans.sql ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:${{ secrets.BACKEND_REMOTE_DIR }}/
+
+      - name: Run SQL migrations
+        run: |
+          ssh -p ${{ secrets.SSH_PORT }} ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "
+            set -euo pipefail
+            cd ${{ secrets.BACKEND_REMOTE_DIR }}
+            if [ -f .env ]; then
+              export \$(grep -v '^#' .env | xargs)
+            fi
+            if [ -f create_user_ibans.sql ] && command -v mysql >/dev/null 2>&1; then
+              mysql -h \${DB_HOST:-127.0.0.1} -u \${DB_USER:-root} -p\${DB_PASSWORD} \${DB_NAME:-varmi_db} < create_user_ibans.sql && echo 'Migration OK' || echo 'Migration skipped (tablo zaten mevcut olabilir)'
+            else
+              echo 'mysql not found or migration file missing, skipping'
+            fi
+          "
 
       - name: Install deps & restart on server
         run: |
