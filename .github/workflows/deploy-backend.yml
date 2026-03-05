@@ -29,7 +29,9 @@ jobs:
 
       - name: Install deps (backend)
         working-directory: ./server
-        run: pnpm install --no-frozen-lockfile --shamefully-hoist
+        run: |
+          echo "shamefully-hoist=true" >> .npmrc
+          pnpm install --no-frozen-lockfile
 
       - name: Build (backend)
         working-directory: ./server
