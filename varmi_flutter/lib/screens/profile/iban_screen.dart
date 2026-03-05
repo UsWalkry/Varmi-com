@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 import '../../config/theme.dart';
 import '../../models/iban_model.dart';
+import '../../providers/auth_provider.dart';
 import '../../services/iban_service.dart';
 
 class IbanScreen extends StatefulWidget {
@@ -15,7 +17,6 @@ class _IbanScreenState extends State<IbanScreen> {
   final IbanService _service = IbanService();
   List<IbanModel> _ibans = [];
   bool _loading = true;
-  String? _error;
 
   @override
   void initState() {
@@ -24,23 +25,20 @@ class _IbanScreenState extends State<IbanScreen> {
   }
 
   Future<void> _load() async {
-    setState(() { _loading = true; _error = null; });
+    setState(() { _loading = true; });
     try {
       final list = await _service.getIbans();
       if (mounted) setState(() { _ibans = list; _loading = false; });
-    } catch (e) {
-      // 404 → backend henüz deploy edilmemiş olabilir, boş liste gibi davran
-      final s = e.toString();
-      if (s.contains('404') || s.contains('SocketException') || s.contains('connection')) {
-        if (mounted) setState(() { _ibans = []; _loading = false; });
-      } else {
-        if (mounted) setState(() { _error = s; _loading = false; });
-      }
+    } catch (_) {
+      // Herhangi bir hata (tablo yok, ağ hatası vb.) → boş liste göster
+      if (mounted) setState(() { _ibans = []; _loading = false; });
     }
   }
 
   // ── IBAN Ekle Dialog ─────────────────────────────────────────
   void _showAddDialog() async {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final userFullName = authProvider.user?.fullName ?? '';
     final added = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
@@ -48,6 +46,7 @@ class _IbanScreenState extends State<IbanScreen> {
       builder: (_) => _AddIbanSheet(
         service: _service,
         isFirstIban: _ibans.isEmpty,
+        userFullName: userFullName,
       ),
     );
     if (added == true && mounted) {
@@ -128,9 +127,7 @@ class _IbanScreenState extends State<IbanScreen> {
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator(color: Color(0xFF6B21A8)))
-          : _error != null
-              ? _ErrorState(onRetry: _load)
-              : _ibans.isEmpty
+          : _ibans.isEmpty
                   ? _EmptyState(onAdd: _showAddDialog)
                   : RefreshIndicator(
                       color: const Color(0xFF6B21A8),
@@ -467,10 +464,12 @@ class _ErrorState extends StatelessWidget {
 class _AddIbanSheet extends StatefulWidget {
   final IbanService service;
   final bool isFirstIban;
+  final String userFullName;
 
   const _AddIbanSheet({
     required this.service,
     required this.isFirstIban,
+    required this.userFullName,
   });
 
   @override
@@ -491,6 +490,7 @@ class _AddIbanSheetState extends State<_AddIbanSheet> {
   void initState() {
     super.initState();
     _isDefault = widget.isFirstIban;
+    _holderCtl.text = widget.userFullName;
   }
 
   @override
@@ -539,11 +539,18 @@ class _AddIbanSheetState extends State<_AddIbanSheet> {
     // Dio response body içindeki "error" alanı
     final bodyMatch = RegExp(r'"error"\s*:\s*"([^"]+)"').firstMatch(s);
     if (bodyMatch != null) return bodyMatch.group(1)!;
-    // Bilinen hata mesajları
+    // _handleError tarafından oluşturulan Exception mesajları
     if (s.contains('zaten kayıtlı')) return 'Bu IBAN zaten kayıtlı.';
-    if (s.contains('404')) return 'Servis şu anda kullanılamıyor (404). Lütfen tekrar deneyin.';
-    if (s.contains('500')) return 'Sunucu hatası oluştu. Lütfen tekrar deneyin.';
-    if (s.contains('SocketException') || s.contains('connection')) return 'İnternet bağlantısı yok.';
+    if (s.contains('Geçersiz IBAN')) return 'Geçersiz IBAN formatı. Lütfen kontrol edin.';
+    if (s.contains('En fazla 10')) return 'En fazla 10 IBAN kaydedebilirsiniz.';
+    if (s.contains('Sunucu hatası') || s.contains('500')) return 'Sunucu hatası oluştu. Lütfen tekrar deneyin.';
+    if (s.contains('Oturum') || s.contains('401')) return 'Oturumunuz sona erdi. Lütfen tekrar giriş yapın.';
+    if (s.contains('bulunamadı') || s.contains('404')) return 'Servis şu anda kullanılamıyor. Lütfen tekrar deneyin.';
+    if (s.contains('SocketException') || s.contains('bağlantı') || s.contains('connection')) return 'İnternet bağlantısı yok.';
+    if (s.contains('zaman aşımı') || s.contains('timeout')) return 'Bağlantı zaman aşımına uğradı.';
+    // Son çare: Exception: mesaj formatını ayıkla
+    final excMatch = RegExp(r'Exception:\s*(.+)').firstMatch(s);
+    if (excMatch != null) return excMatch.group(1)!.trim();
     return 'Bir hata oluştu. Lütfen tekrar deneyin.';
   }
 
@@ -624,14 +631,15 @@ class _AddIbanSheetState extends State<_AddIbanSheet> {
               ),
               const SizedBox(height: 14),
 
-              // Hesap Sahibi
+              // Hesap Sahibi (sadece okunur — kayıtlı ad soyadı)
               _buildField(
                 controller: _holderCtl,
                 label: 'Hesap Sahibi Adı Soyadı',
-                hint: 'örn: Ahmet Yılmaz',
+                hint: 'Ad Soyad',
                 icon: Icons.person_outline,
                 isDark: isDark,
                 colors: colors,
+                readOnly: true,
                 validator: (v) => (v == null || v.trim().isEmpty) ? 'Ad soyad girin' : null,
               ),
               const SizedBox(height: 14),
@@ -781,12 +789,28 @@ class _AddIbanSheetState extends State<_AddIbanSheet> {
     required IconData icon,
     required bool isDark,
     required dynamic colors,
+    bool readOnly = false,
     String? Function(String?)? validator,
   }) {
     return TextFormField(
       controller: controller,
-      style: TextStyle(color: colors.textPrimary, fontSize: 14),
-      decoration: _inputDeco(label: label, icon: icon, isDark: isDark, colors: colors, hint: hint),
+      readOnly: readOnly,
+      style: TextStyle(
+        color: readOnly ? colors.textSecondary : colors.textPrimary,
+        fontSize: 14,
+      ),
+      decoration: _inputDeco(label: label, icon: icon, isDark: isDark, colors: colors, hint: hint).copyWith(
+        filled: readOnly ? true : null,
+        fillColor: readOnly
+            ? (isDark ? const Color(0xFF1A1A2E) : const Color(0xFFF3F4F6))
+            : null,
+        suffixIcon: readOnly
+            ? Tooltip(
+                message: 'Hesap sahibi adı Varmii hesabınızdan alınmaktadır',
+                child: Icon(Icons.lock_outline, size: 16, color: colors.textSecondary),
+              )
+            : null,
+      ),
       validator: validator,
     );
   }
