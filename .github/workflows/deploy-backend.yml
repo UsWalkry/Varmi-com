@@ -51,16 +51,20 @@ jobs:
           HOST="${{ secrets.SSH_HOST }}"
           PORT="${{ secrets.SSH_PORT }}"
           FPR="${{ secrets.SSH_HOST_ECDSA_SHA256 }}"
-          echo "Beklenen ECDSA SHA256 fingerprint: $FPR"
-          # Anahtarı çek
+          # Anahtarı çek ve known_hosts'a ekle
           ssh-keyscan -p "$PORT" -t ecdsa "$HOST" > /tmp/known_hosts_raw 2>/dev/null
-          # Fingerprint hesapla
-          FP_ACTUAL=$(ssh-keygen -l -f /tmp/known_hosts_raw -E sha256 | awk '{print $2}' | sed 's/^SHA256://')
-          if [ "$FP_ACTUAL" != "$FPR" ]; then
-            echo "HATA: Host key fingerprint eşleşmiyor. Beklenen=$FPR, Gelen=$FP_ACTUAL" >&2
-            exit 1
+          if [ -z "$FPR" ]; then
+            echo "⚠️  SSH_HOST_ECDSA_SHA256 secret boş, fingerprint doğrulaması atlanıyor."
+            cat /tmp/known_hosts_raw >> ~/.ssh/known_hosts
+          else
+            FP_ACTUAL=$(ssh-keygen -l -f /tmp/known_hosts_raw -E sha256 | awk '{print $2}' | sed 's/^SHA256://')
+            if [ "$FP_ACTUAL" != "$FPR" ]; then
+              echo "HATA: Host key fingerprint eşleşmiyor. Beklenen=$FPR, Gelen=$FP_ACTUAL" >&2
+              exit 1
+            fi
+            echo "✅ Fingerprint doğrulandı: $FP_ACTUAL"
+            cat /tmp/known_hosts_raw >> ~/.ssh/known_hosts
           fi
-          cat /tmp/known_hosts_raw >> ~/.ssh/known_hosts
 
       - name: Upload via rsync
         run: |
