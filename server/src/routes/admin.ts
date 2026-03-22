@@ -1326,7 +1326,8 @@ router.post('/listings/approve/:id', authenticateToken, adminOnly, async (req: a
 
     // Redis cache temizle - homepage'de yeni ilan görünsün
     await redisCache.delete(CacheKeys.listingsActive());
-    console.log('🗑️ Redis cache cleared for listings:active');
+    await redisCache.delete(CacheKeys.listing(listingId));
+    console.log('🗑️ Redis cache cleared for listings:active and listing:', listingId);
 
     res.json({
       success: true,
@@ -1351,6 +1352,21 @@ router.post('/listings/approve/:id', authenticateToken, adminOnly, async (req: a
           );
           console.log('📧 Listing approval email sent to:', userResult[0].email);
         }
+
+        // Kullanıcı bildirim tablosuna kaydet (uygulama içi bildirim)
+        const notifId = uuidv4();
+        await query(
+          `INSERT INTO notifications (id, user_id, type, title, message, data, is_read, created_at)
+           VALUES (?, ?, 'listing_approved', ?, ?, ?, 0, NOW())`,
+          [
+            notifId,
+            listing.buyer_id,
+            'İlanınız Onaylandı 🎉',
+            `"${listing.title}" ilanınız onaylandı ve artık yayında!`,
+            JSON.stringify({ listing_id: listingId })
+          ]
+        );
+        console.log('🔔 Uygulama içi onay bildirimi oluşturuldu:', notifId);
       } catch (emailError) {
         console.error('❌ Email send error:', emailError);
       }
@@ -1425,6 +1441,11 @@ router.post('/listings/reject/:id', authenticateToken, adminOnly, async (req: an
 
     console.log(`❌ Listing ${listingId} rejected successfully`);
 
+    // Redis cache temizle
+    await redisCache.delete(CacheKeys.listingsActive());
+    await redisCache.delete(CacheKeys.listing(listingId));
+    console.log('🗑️ Redis cache cleared for listing reject:', listingId);
+
     res.json({
       success: true,
       message: 'İlan reddedildi'
@@ -1449,6 +1470,21 @@ router.post('/listings/reject/:id', authenticateToken, adminOnly, async (req: an
           );
           console.log('📧 Listing rejection email sent to:', userResult[0].email);
         }
+
+        // Kullanıcı bildirim tablosuna kaydet (uygulama içi bildirim)
+        const notifId = uuidv4();
+        await query(
+          `INSERT INTO notifications (id, user_id, type, title, message, data, is_read, created_at)
+           VALUES (?, ?, 'listing_rejected', ?, ?, ?, 0, NOW())`,
+          [
+            notifId,
+            listing.buyer_id,
+            'İlan Yayına Alınamadı',
+            `"${listing.title}" ilanınız reddedildi. Sebep: ${reason}`,
+            JSON.stringify({ listing_id: listingId, reason })
+          ]
+        );
+        console.log('🔔 Uygulama içi red bildirimi oluşturuldu:', notifId);
       } catch (emailError) {
         console.error('❌ Email send error:', emailError);
       }
@@ -1513,6 +1549,11 @@ router.put('/listings/:listingId/status', authenticateToken, adminOnly, async (r
     );
 
     console.log('✅ Listing status updated successfully');
+
+    // Redis cache temizle
+    await redisCache.delete(CacheKeys.listingsActive());
+    await redisCache.delete(CacheKeys.listing(listingId));
+    console.log('🗑️ Redis cache cleared for listing status change:', listingId);
 
     res.json({
       success: true,
@@ -1628,6 +1669,11 @@ router.delete('/listings/:listingId', authenticateToken, adminOnly, async (req: 
     // TODO: listing.images JSON parse edip dosyaları sil
 
     console.log('✅ Listing and all related data deleted successfully by admin');
+
+    // Redis cache temizle
+    await redisCache.delete(CacheKeys.listingsActive());
+    await redisCache.delete(CacheKeys.listing(listingId));
+    console.log('🗑️ Redis cache cleared for deleted listing:', listingId);
 
     res.json({
       success: true,
@@ -2215,6 +2261,11 @@ router.post('/offers/:offerId/approve', authenticateToken, adminOnly, async (req
 
     console.log(`✅ Offer ${offerId} approved successfully`);
 
+    // Redis cache temizle - teklif sahibi ve ilan teklifleri güncellentsin
+    await redisCache.delete(`${CacheKeys.USER_OFFERS}:${offer.seller_id}`);
+    await redisCache.delete(CacheKeys.offers(offer.listing_id));
+    console.log('🗑️ Redis cache cleared for approved offer:', offerId);
+
     res.json({
       success: true,
       message: 'Teklif onaylandı ve aktif hale getirildi'
@@ -2253,6 +2304,36 @@ router.post('/offers/:offerId/approve', authenticateToken, adminOnly, async (req
             detail.listing_id
           );
           console.log(`📧 Teklif sahibine onay bildirimi gönderildi`);
+
+          // Uygulama içi bildirim - teklif sahibine
+          const sellerNotifId = uuidv4();
+          await query(
+            `INSERT INTO notifications (id, user_id, type, title, message, data, is_read, created_at)
+             VALUES (?, ?, 'offer_approved', ?, ?, ?, 0, NOW())`,
+            [
+              sellerNotifId,
+              detail.seller_id,
+              'Teklifiniz Onaylandı 🎉',
+              `"${detail.title}" ilanına verdiğiniz teklif onaylandı ve yayında!`,
+              JSON.stringify({ listing_id: detail.listing_id, offer_id: offerId })
+            ]
+          );
+          console.log('🔔 Teklif onay bildirimi oluşturuldu (satıcı):', sellerNotifId);
+
+          // Uygulama içi bildirim - ilan sahibine (alıcı)
+          const buyerNotifId = uuidv4();
+          await query(
+            `INSERT INTO notifications (id, user_id, type, title, message, data, is_read, created_at)
+             VALUES (?, ?, 'new_offer', ?, ?, ?, 0, NOW())`,
+            [
+              buyerNotifId,
+              detail.buyer_id,
+              'Yeni Bir Teklif Var! 📦',
+              `"${detail.title}" ilanınıza yeni bir teklif onaylandı.`,
+              JSON.stringify({ listing_id: detail.listing_id, offer_id: offerId })
+            ]
+          );
+          console.log('🔔 Yeni teklif bildirimi oluşturuldu (alıcı):', buyerNotifId);
         }
       } catch (err) {
         console.error('📧 Teklif bildirimleri gönderilemedi:', err);
@@ -2336,6 +2417,11 @@ router.post('/offers/:offerId/reject', authenticateToken, adminOnly, async (req:
 
     console.log(`❌ Offer ${offerId} rejected successfully`);
 
+    // Redis cache temizle - teklif sahibi ve ilan teklifleri güncellentsin
+    await redisCache.delete(`${CacheKeys.USER_OFFERS}:${offer.seller_id}`);
+    await redisCache.delete(CacheKeys.offers(offer.listing_id));
+    console.log('🗑️ Redis cache cleared for rejected offer:', offerId);
+
     res.json({
       success: true,
       message: 'Teklif reddedildi'
@@ -2364,6 +2450,21 @@ router.post('/offers/:offerId/reject', authenticateToken, adminOnly, async (req:
             reason
           );
           console.log(`📧 Teklif sahibine red bildirimi gönderildi`);
+
+          // Uygulama içi bildirim - teklif sahibine red
+          const rejectNotifId = uuidv4();
+          await query(
+            `INSERT INTO notifications (id, user_id, type, title, message, data, is_read, created_at)
+             VALUES (?, ?, 'offer_rejected', ?, ?, ?, 0, NOW())`,
+            [
+              rejectNotifId,
+              detail.seller_id,
+              'Teklifiniz Reddedildi',
+              `"${detail.title}" ilanına verdiğiniz teklif reddedildi. Sebep: ${reason}`,
+              JSON.stringify({ listing_id: detail.listing_id, offer_id: offerId, reason })
+            ]
+          );
+          console.log('🔔 Teklif red bildirimi oluşturuldu:', rejectNotifId);
         }
       } catch (err) {
         console.error('📧 Teklif red bildirimi gönderilemedi:', err);
