@@ -66,20 +66,20 @@ class _CreateListingScreenState extends State<CreateListingScreen> {
 
   // ── Validation ─────────────────────────────────────────────────────────────
   String? _validateStep1() {
-    if (_titleController.text.trim().isEmpty) return 'Başlık gereklidir';
     if (_category.isEmpty) return 'Kategori seçiniz';
-    if (_cityVisible && (_city == null || _city!.isEmpty)) return 'Şehir seçiniz';
+    if (_titleController.text.trim().isEmpty) return 'Başlık gereklidir';
     return null;
   }
 
   String? _validateStep2() {
-    final b = double.tryParse(_budgetController.text);
-    if (b == null || b <= 0) return 'Geçerli bir bütçe girin';
+    if (_selectedImages.isEmpty) return 'En az 1 resim eklemelisiniz';
     return null;
   }
 
   String? _validateStep3() {
-    if (_selectedImages.isEmpty) return 'En az 1 resim eklemelisiniz';
+    final b = double.tryParse(_budgetController.text);
+    if (b == null || b <= 0) return 'Geçerli bir bütçe girin';
+    if (_cityVisible && (_city == null || _city!.isEmpty)) return 'Şehir seçiniz';
     return null;
   }
 
@@ -371,95 +371,8 @@ class _CreateListingScreenState extends State<CreateListingScreen> {
     );
   }
 
-  //  Step 2: Detaylar 
+  //  Step 2: Ürün Resimleri
   Widget _buildStep2() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        // Açıklama
-        TextField(
-          controller: _descriptionController,
-          maxLines: 4,
-          decoration: const InputDecoration(
-            labelText: 'Açıklama',
-            hintText: 'Aradığınız ürün hakkında detayları yazın...',
-            border: OutlineInputBorder(),
-            contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-          ),
-        ),
-        const SizedBox(height: 14),
-
-        // Bütçe
-        TextField(
-          controller: _budgetController,
-          onChanged: (_) => setState(() {}),
-          decoration: const InputDecoration(
-            labelText: 'Maksimum Bütçe (₺) *',
-            hintText: '0',
-            border: OutlineInputBorder(),
-            contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-          ),
-          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-          inputFormatters: [
-            FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}')),
-          ],
-        ),
-        const SizedBox(height: 18),
-
-        // Ürün Durumu
-        Text('Ürün Durumu',
-            style: TextStyle(
-                color: Colors.grey.shade700,
-                fontSize: 13,
-                fontWeight: FontWeight.w500)),
-        const SizedBox(height: 4),
-        Row(
-          children: [
-            _conditionItem(label: 'Fark Etmez', value: 'any'),
-            _conditionItem(label: 'Sıfır', value: 'new'),
-            _conditionItem(label: 'İkinci El', value: 'used'),
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _conditionItem({required String label, required String value}) {
-    final selected = _condition == value;
-    return Expanded(
-      child: InkWell(
-        borderRadius: BorderRadius.circular(6),
-        onTap: () => setState(() => _condition = value),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Radio<String>(
-              value: value,
-              groupValue: _condition,
-              onChanged: (v) {
-                if (v != null) setState(() => _condition = v);
-              },
-              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              visualDensity: VisualDensity.compact,
-            ),
-            Flexible(
-              child: Text(
-                label,
-                style: TextStyle(
-                    fontSize: 13,
-                    fontWeight:
-                        selected ? FontWeight.w600 : FontWeight.normal),
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // ── Step 3: Resimler ───────────────────────────────────────────────────────
-  Widget _buildStep3() {
     final count = _selectedImages.length;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -557,12 +470,139 @@ class _CreateListingScreenState extends State<CreateListingScreen> {
             padding: const EdgeInsets.symmetric(vertical: 16),
             child: Center(
               child: Text(
-                'Henüz resim yüklemediniz. En az 1 resim yüklemeniz gerekmektedir.',
+                'Henüz resim yüklemediğiniz. En az 1 resim yülemeniz gerekmektedir.',
                 textAlign: TextAlign.center,
                 style: TextStyle(color: Colors.grey.shade500, fontSize: 12),
               ),
             ),
           ),
+      ],
+    );
+  }
+
+  Widget _conditionItem({required String label, required String value}) {
+    final selected = _condition == value;
+    return Expanded(
+      child: InkWell(
+        borderRadius: BorderRadius.circular(6),
+        onTap: () => setState(() => _condition = value),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Radio<String>(
+              value: value,
+              groupValue: _condition,
+              onChanged: (v) {
+                if (v != null) setState(() => _condition = v);
+              },
+              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              visualDensity: VisualDensity.compact,
+            ),
+            Flexible(
+              child: Text(
+                label,
+                style: TextStyle(
+                    fontSize: 13,
+                    fontWeight:
+                        selected ? FontWeight.w600 : FontWeight.normal),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ── Step 3: Detaylar ───────────────────────────────────────────────────────
+  Widget _buildStep3() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // Açıklama
+        TextField(
+          controller: _descriptionController,
+          maxLines: 4,
+          decoration: const InputDecoration(
+            labelText: 'Açıklama',
+            hintText: 'Aradığınız ürün hakkında detayları yazın...',
+            border: OutlineInputBorder(),
+            contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+          ),
+        ),
+        const SizedBox(height: 14),
+
+        // Bütçe
+        TextField(
+          controller: _budgetController,
+          onChanged: (_) => setState(() {}),
+          decoration: const InputDecoration(
+            labelText: 'Maksimum Bütçe (₺) *',
+            hintText: '0',
+            border: OutlineInputBorder(),
+            contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+          ),
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          inputFormatters: [
+            FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}')),
+          ],
+        ),
+        const SizedBox(height: 18),
+
+        // Ürün Durumu
+        Text('Ürün Durumu',
+            style: TextStyle(
+                color: Colors.grey.shade700,
+                fontSize: 13,
+                fontWeight: FontWeight.w500)),
+        const SizedBox(height: 4),
+        Row(
+          children: [
+            _conditionItem(label: 'Fark Etmez', value: 'any'),
+            _conditionItem(label: 'Sıfır', value: 'new'),
+            _conditionItem(label: 'İkinci El', value: 'used'),
+          ],
+        ),
+        const SizedBox(height: 18),
+
+        // Teslimat Tercihi
+        Text('Teslimat Tercihi *',
+            style: TextStyle(
+                color: Colors.grey.shade700,
+                fontSize: 13,
+                fontWeight: FontWeight.w500)),
+        const SizedBox(height: 4),
+        Row(
+          children: [
+            _radioItem(label: 'Fark Etmez', value: 'both'),
+            _radioItem(label: 'Kargo', value: 'shipping'),
+            _radioItem(label: 'Elden Teslim', value: 'pickup'),
+          ],
+        ),
+        const SizedBox(height: 14),
+
+        // Şehir — shown only when _cityVisible
+        AnimatedCrossFade(
+          firstChild: DropdownButtonFormField<String>(
+            value: _city,
+            decoration: const InputDecoration(
+              labelText: 'Şehir *',
+              border: OutlineInputBorder(),
+              contentPadding:
+                  EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+            ),
+            hint: const Text('Şehir seçin'),
+            items: _cities
+                .map((c) => DropdownMenuItem(value: c, child: Text(c)))
+                .toList(),
+            onChanged: (v) => setState(() => _city = v),
+          ),
+          secondChild: const SizedBox.shrink(),
+          crossFadeState: _cityVisible
+              ? CrossFadeState.showFirst
+              : CrossFadeState.showSecond,
+          duration: const Duration(milliseconds: 200),
+        ),
       ],
     );
   }

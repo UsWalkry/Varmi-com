@@ -52,8 +52,8 @@ export default function CreateListing() {
   const validateStep = (currentStep: number): boolean => {
     // Adım bazlı minimal doğrulamalar
     if (currentStep === 1) {
-      if (!formData.title || !formData.description || !formData.category || !formData.city) {
-        toast.error('Lütfen başlık, açıklama, kategori ve şehir alanlarını doldurun');
+      if (!formData.title || !formData.category || !formData.city) {
+        toast.error('Lütfen başlık, kategori ve şehir alanlarını doldurun');
         return false;
       }
     }
@@ -325,8 +325,8 @@ export default function CreateListing() {
             <Stepper
               current={step}
               steps={[
-                { id: 1, title: 'Temel Bilgiler', description: 'Başlık, açıklama, kategori, şehir' },
-                { id: 2, title: 'Detay & Bütçe', description: 'Görseller, bütçe, tercihler' },
+                { id: 1, title: 'Kategori & Başlık', description: 'Kategori, şehir, ne arıyorsun' },
+                { id: 2, title: 'Görseller & Detaylar', description: 'Resimler, açıklama, bütçe' },
                 { id: 3, title: 'Önizleme', description: 'Kontrol et & yayınla' }
               ]}
               onStepClick={(id) => { if (id < step) setStep(id); }}
@@ -337,23 +337,40 @@ export default function CreateListing() {
             {step === 1 && (
               <div className="space-y-6">
                 <div className="space-y-2">
-                  <Label htmlFor="title">İlan Başlığı *</Label>
+                  <Label>Kategori *</Label>
+                  <Select value={formData.category} onValueChange={(value) => handleInputChange('category', value)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Kategori seçin" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {categories.map(category => (
+                        <SelectItem key={category} value={category}>{category}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="title">Ne arıyorsun? *</Label>
                   <Input
                     id="title"
                     placeholder="Örn: iPhone 15 Pro Max Aranıyor"
                     value={formData.title}
                     onChange={(e) => handleInputChange('title', e.target.value)}
                   />
+                  <p className="text-xs text-muted-foreground">Başlığınızın sonuna otomatik "Var mıı?" eklenecektir.</p>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="description">Açıklama *</Label>
-                  <Textarea
-                    id="description"
-                    placeholder="Aradığınız ürün hakkında detaylı bilgi verin. Marka, model, özellikler, durum vb."
-                    rows={4}
-                    value={formData.description}
-                    onChange={(e) => handleInputChange('description', e.target.value)}
-                  />
+                  <Label>Şehir *</Label>
+                  <Select value={formData.city} onValueChange={(value) => handleInputChange('city', value)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Şehir seçin" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {cities.map(c => (
+                        <SelectItem key={c} value={c}>{c}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-2">
                   <Label>Ürün Eşleşme Tercihi</Label>
@@ -363,41 +380,13 @@ export default function CreateListing() {
                   </RadioGroup>
                   <p className="text-xs text-muted-foreground">Aynı ürün seçiliyse, satıcı teklif verirken ürün adı otomatik ilan başlığından gelir (düzenleyebilirsiniz).</p>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Kategori *</Label>
-                    <Select value={formData.category} onValueChange={(value) => handleInputChange('category', value)}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Kategori seçin" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {categories.map(category => (
-                          <SelectItem key={category} value={category}>{category}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Şehir *</Label>
-                    <Select value={formData.city} onValueChange={(value) => handleInputChange('city', value)}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Şehir seçin" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {cities.map(c => (
-                          <SelectItem key={c} value={c}>{c}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
               </div>
             )}
 
             {step === 2 && (
               <div className="space-y-6">
                 <div className="space-y-2">
-                  <Label>İlan Görselleri (en az 1) *</Label>
+                  <Label>Ürün Resimleri (en az 1) *</Label>
                   <div className="flex flex-col gap-3">
                     {images.length > 0 && (
                       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
@@ -430,11 +419,29 @@ export default function CreateListing() {
                 </div>
 
                 <div className="space-y-2">
+                  <Label htmlFor="description">Açıklama</Label>
+                  <Textarea
+                    id="description"
+                    placeholder="Aradığınız ürün hakkında detaylı bilgi verin. Marka, model, özellikler, durum vb."
+                    rows={4}
+                    value={formData.description}
+                    onChange={(e) => handleInputChange('description', e.target.value)}
+                  />
+                </div>
+
+                <div className="space-y-2">
                   <Label>Maksimum Bütçe (TL) *</Label>
                   <Input id="budgetMax" type="number" placeholder="5000" value={formData.budgetMax} onChange={(e) => handleInputChange('budgetMax', e.target.value)} />
                 </div>
 
-
+                <div className="space-y-3">
+                  <Label>Ürün Durumu</Label>
+                  <RadioGroup value={formData.condition} onValueChange={(value) => handleInputChange('condition', value)}>
+                    <div className="flex items-center space-x-2"><RadioGroupItem value="any" id="cond-any" /><Label htmlFor="cond-any">Farketmez</Label></div>
+                    <div className="flex items-center space-x-2"><RadioGroupItem value="new" id="cond-new" /><Label htmlFor="cond-new">Sıfır</Label></div>
+                    <div className="flex items-center space-x-2"><RadioGroupItem value="used" id="cond-used" /><Label htmlFor="cond-used">2. El</Label></div>
+                  </RadioGroup>
+                </div>
 
                 <div className="space-y-3">
                   <Label>Teslimat Tercihi</Label>
