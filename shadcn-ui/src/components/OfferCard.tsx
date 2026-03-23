@@ -1,30 +1,103 @@
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Truck, Clock, Package2, CheckCircle, XCircle, Scale } from 'lucide-react';
+import { Truck, Clock, Package2, CheckCircle, XCircle, Scale, Star, Award, ShoppingCart } from 'lucide-react';
 import { Offer, DataManager } from '@/lib/mockData';
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import ImageLightbox from '@/components/ImageLightbox';
+import SellerReviewsModal from '@/components/SellerReviewsModal';
+import { useCart } from '@/contexts/CartContext';
+import { toast } from 'sonner';
 
 interface OfferCardProps {
   offer: Offer;
   showActions?: boolean;
+  currentUserId?: string; // Mevcut kullanıcı ID'si
+  currentUserEmail?: string; // Email-based ownership için
+  listingOwnerId?: string; // İlan sahibinin ID'si
+  listingId?: string; // İlan ID'si (sepete eklemek için)
   onAccept?: (offerId: string) => void;
   onReject?: (offerId: string) => void;
-  onMessage?: (offerId: string) => void;
   onWithdraw?: (offerId: string) => void; // teklif sahibi için sil/geri çek
   onPurchase?: (offerId: string) => void; // diğer kullanıcı için satın al
+  onImageClick?: (images: string[], index: number) => void; // Custom lightbox handler
 }
 
 export default function OfferCard({ 
   offer, 
-  showActions = false, 
+  showActions = false,
+  currentUserId,
+  currentUserEmail,
+  listingOwnerId,
+  listingId,
   onAccept, 
   onReject, 
-  onMessage,
   onWithdraw,
   onPurchase,
+  onImageClick,
 }: OfferCardProps) {
+  const navigate = useNavigate();
+  const { addToCart } = useCart();
+  const [reviewsModalOpen, setReviewsModalOpen] = useState(false);
+  
+  const handleUserClick = () => {
+    // Doğrulanmış satıcı ise mağaza profiline, değilse kullanıcı profiline git
+    if (offer.isVerifiedSeller && offer.storeName) {
+      navigate(`/store/${offer.sellerId}`);
+    } else {
+      navigate(`/profile/${offer.sellerId}`);
+    }
+  };
+  
+  const handleRatingClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (offer.sellerId) {
+      setReviewsModalOpen(true);
+    }
+  };
+  
+  const handleAddToCart = async () => {
+    if (!listingId) {
+      toast.error('İlan bilgisi eksik');
+      return;
+    }
+    
+    if (!currentUserId) {
+      toast.error('Sepete eklemek için giriş yapmalısınız');
+      navigate('/?login=true');
+      return;
+    }
+    
+    // İlan detay sayfasından - belirli teklifi seç
+    await addToCart(listingId, 1, offer.id);
+  };
+  
+  const getImageUrl = (imagePath: string | null | undefined): string => {
+    if (!imagePath) return '/placeholder-image.jpg';
+    
+    // If it's already a full HTTP URL, extract the path part
+    if (imagePath.startsWith('http://localhost:8787')) {
+      imagePath = imagePath.replace('http://localhost:8787', '');
+    }
+    
+    // If it's any other HTTP URL, return as is
+    if (imagePath.startsWith('http')) return imagePath;
+    
+    // If it starts with /uploads/, return as is (Vite proxy will handle)
+    if (imagePath.startsWith('/uploads/')) {
+      return imagePath;
+    }
+    
+    // If it's just a filename, try both /uploads/ and /uploads/images/
+    if (imagePath.includes('.')) {
+      // Check if it's a direct filename (has extension)
+      return `/uploads/${imagePath}`;
+    }
+    
+    // Default fallback
+    return `/uploads/images/${imagePath}`;
+  };
   
   const getConditionText = (condition: string) => {
     switch (condition) {
@@ -82,13 +155,55 @@ export default function OfferCard({
   const soldToOthers = offer.soldToOthers ?? 0;
   const purchasableLeft = Math.max(0, qty - 1 - soldToOthers);
 
+  // Debug log'u
+  console.log('📊 OfferCard Stock Debug:', {
+    offerId: offer.id,
+    qty,
+    soldToOthers,
+    purchasableLeft,
+    calculation: `${qty} - 1 - ${soldToOthers} = ${purchasableLeft}`
+  });
+
   return (
     <Card className="hover:shadow-md transition-shadow">
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
           <div className="flex-1">
-            <div className="flex items-center mb-2">
-              <h4 className="font-semibold">{offer.sellerName}</h4>
+            <div className="flex items-center flex-wrap gap-2 mb-2">
+              <button 
+                onClick={handleUserClick}
+                className="font-semibold text-blue-600 hover:text-blue-800 hover:underline transition-colors cursor-pointer"
+              >
+                {offer.sellerName || 'İsimsiz Kullanıcı'}
+              </button>
+              
+              {/* Rating Display (always show if rating is defined; show count even if 0) */}
+              {typeof offer.sellerRating !== 'undefined' && (
+                <button
+                  onClick={handleRatingClick}
+                  className="flex items-center gap-1 cursor-pointer hover:bg-blue-50 hover:border-blue-300 border border-transparent transition-all rounded-md px-2 py-0.5 -mx-2"
+                  title="Değerlendirmeleri görüntüle"
+                  disabled={!offer.sellerId}
+                >
+                  <div className="flex items-center">
+                    <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
+                    <span className="text-xs font-medium text-gray-700 ml-1">
+                      {Number(offer.sellerRating ?? 0).toFixed(1)}
+                    </span>
+                  </div>
+                  <span className="text-xs text-gray-500">
+                    ({offer.sellerRatingCount ?? 0})
+                  </span>
+                </button>
+              )}
+              
+              {/* Verified User Badge */}
+              {offer.sellerEmailVerified && (
+                <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-700 border-blue-200">
+                  <Award className="h-3 w-3 mr-1" />
+                  Doğrulanmış Kullanıcı
+                </Badge>
+              )}
             </div>
             {offer.productName ? (
               <p className="text-sm text-muted-foreground">{offer.productName}</p>
@@ -165,7 +280,7 @@ export default function OfferCard({
             </div>
           )}
 
-          {/* Images (optional) */}
+          {/* Images (powered by Google Drive) */}
           {offer.images && offer.images.length > 0 && (
             <>
               <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
@@ -175,22 +290,31 @@ export default function OfferCard({
                     type="button"
                     className="w-full bg-muted rounded overflow-hidden aspect-square"
                     onClick={() => {
-                      setLightboxIndex(idx);
-                      setLightboxOpen(true);
+                      if (onImageClick) {
+                        // Use parent's custom lightbox
+                        onImageClick(offer.images.map(img => getImageUrl(img)), idx);
+                      } else {
+                        // Use local lightbox
+                        setLightboxIndex(idx);
+                        setLightboxOpen(true);
+                      }
                     }}
                     aria-label={`Görseli büyüt (${idx + 1})`}
                   >
-                    <img src={src} alt={`Teklif görseli ${idx+1}`} className="w-full h-full object-cover" loading="lazy" decoding="async" onContextMenu={(e) => e.preventDefault()} draggable={false} />
+                    <img src={getImageUrl(src)} alt={`Teklif görseli ${idx+1}`} className="w-full h-full object-cover" loading="lazy" decoding="async" onContextMenu={(e) => e.preventDefault()} draggable={false} />
                   </button>
                 ))}
               </div>
 
-              <ImageLightbox
-                images={offer.images}
-                startIndex={lightboxIndex}
-                open={lightboxOpen}
-                onClose={() => setLightboxOpen(false)}
-              />
+              {/* Only show local lightbox if no custom handler */}
+              {!onImageClick && (
+                <ImageLightbox
+                  images={offer.images.map(img => getImageUrl(img))}
+                  startIndex={lightboxIndex}
+                  open={lightboxOpen}
+                  onClose={() => setLightboxOpen(false)}
+                />
+              )}
             </>
           )}
 
@@ -214,39 +338,64 @@ export default function OfferCard({
       {showActions && offer.status === 'active' && (
         <CardFooter className="pt-0">
           <div className="flex gap-2 w-full">
-            <Button 
-              variant="outline" 
-              size="sm" 
-              className="flex-1"
-              onClick={() => onMessage?.(offer.id)}
-            >
-              Mesaj Gönder
-            </Button>
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={() => onReject?.(offer.id)}
-            >
-              <XCircle className="h-4 w-4 mr-1" />
-              Reddet
-            </Button>
-            <Button 
-              size="sm"
-              onClick={() => onAccept?.(offer.id)}
-            >
-              <CheckCircle className="h-4 w-4 mr-1" />
-              Kabul Et
-            </Button>
+            {/* Sepete Ekle Butonu - Sadece ilan sahibi için göster */}
+            {listingId && (
+              <Button 
+                className="w-full bg-blue-600 hover:bg-blue-700"
+                size="sm"
+                onClick={handleAddToCart}
+              >
+                <ShoppingCart className="h-4 w-4 mr-1" />
+                Sepete Ekle
+              </Button>
+            )}
           </div>
         </CardFooter>
       )}
 
-      {/* Diğer kullanıcılar için satın alma aksiyonu (opsiyonel) */}
-      {onPurchase && (offer.status === 'active' || offer.status === 'accepted') && purchasableLeft > 0 && (
+      {/* Diğer kullanıcılar için sepete ekleme aksiyonu - kendi teklifinde ve kendi ilanında görünmez */}
+      {(() => {
+        // UUID-based ownership kontrolü (artık ID uyumsuzluğu yok)
+        const isMyOffer = currentUserId === offer.sellerId;
+        
+        const shouldShowPurchaseButton = 
+          (offer.status === 'active' || offer.status === 'accepted') && 
+          purchasableLeft > 0 && 
+          !isMyOffer && 
+          currentUserId !== listingOwnerId &&
+          listingId;
+
+        // Debug log
+        if (process.env.NODE_ENV === 'development') {
+          console.log('🛒 UUID Purchase Button Check:', {
+            'offer.id': offer.id,
+            'offer.sellerId': offer.sellerId,
+            'currentUserId': currentUserId,
+            'isMyOffer': isMyOffer,
+            'shouldShowPurchaseButton': shouldShowPurchaseButton
+          });
+        }
+        
+        return shouldShowPurchaseButton;
+      })() && (
         <CardFooter className="pt-0">
           <div className="flex w-full">
-            <Button className="ml-auto" size="sm" onClick={() => onPurchase?.(offer.id)}>
-              <Truck className="h-4 w-4 mr-1" /> Bu Teklifi Satın Al
+            <Button 
+              className="ml-auto" 
+              size="sm" 
+              onClick={() => {
+                if (!currentUserId) {
+                  toast.error('Sepete eklemek için giriş yapmalısınız');
+                  navigate('/?login=true');
+                  return;
+                }
+                // Sepete ekle - listingId prop'unu kullan
+                addToCart(listingId!, 1, offer.id);
+              }}
+              disabled={purchasableLeft <= 0}
+            >
+              <ShoppingCart className="h-4 w-4 mr-1" /> 
+              {purchasableLeft <= 0 ? 'Stokta Yok' : 'Sepete Ekle'}
             </Button>
           </div>
         </CardFooter>
@@ -257,15 +406,26 @@ export default function OfferCard({
         <CardFooter className="pt-0">
           <div className="flex w-full">
             <Button 
+              type="button"
               variant="ghost" 
               size="sm"
               className="ml-auto text-red-600 hover:text-red-700"
               onClick={() => onWithdraw?.(offer.id)}
             >
-              Teklifi Sil
+              Teklifi Geri Çek
             </Button>
           </div>
         </CardFooter>
+      )}
+      
+      {/* Seller Reviews Modal */}
+      {offer.sellerId && (
+        <SellerReviewsModal
+          isOpen={reviewsModalOpen}
+          onClose={() => setReviewsModalOpen(false)}
+          sellerId={offer.sellerId}
+          sellerName={offer.sellerName || 'Satıcı'}
+        />
       )}
     </Card>
   );

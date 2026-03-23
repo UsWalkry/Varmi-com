@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../utils/app_dialog.dart';
 import '../../models/commission.dart';
 import '../../services/commission_service.dart';
 import '../../utils/formatters.dart';
@@ -59,9 +60,7 @@ class _CommissionScreenState extends State<CommissionScreen> {
     } catch (e) {
       setState(() => _isLoading = false);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Veri yüklenemedi: $e')),
-        );
+        AppDialog.showError(context, 'Veri yüklenemedi: ${AppDialog.cleanError(e)}');
       }
     }
   }
@@ -77,12 +76,7 @@ class _CommissionScreenState extends State<CommissionScreen> {
         accountHolderName: _accountHolderController.text.trim(),
       );
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Para çekme talebi gönderildi'),
-            backgroundColor: Colors.green,
-          ),
-        );
+        AppDialog.showSuccess(context, 'Para çekme talebi gönderildi');
         setState(() => _showWithdrawalForm = false);
         _amountController.clear();
         _bankNameController.clear();
@@ -92,9 +86,7 @@ class _CommissionScreenState extends State<CommissionScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Hata: $e'), backgroundColor: Colors.red),
-        );
+        AppDialog.showError(context, AppDialog.cleanError(e));
       }
     } finally {
       setState(() => _isSubmitting = false);
@@ -225,7 +217,7 @@ class _CommissionScreenState extends State<CommissionScreen> {
                                   decoration: const InputDecoration(
                                     labelText: 'Tutar (₺)',
                                     border: OutlineInputBorder(),
-                                    prefixIcon: Icon(Icons.attach_money),
+                                    prefixIcon: Icon(Icons.currency_lira),
                                   ),
                                   validator: (v) {
                                     if (v == null || v.isEmpty) return 'Tutar girin';
@@ -409,7 +401,7 @@ class _CommissionScreenState extends State<CommissionScreen> {
                   ],
                 ),
               ),
-            ),
+          ),
     );
   }
 }

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -7,7 +7,8 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent } from '@/components/ui/card';
 import { Listing, DataManager, type DesiBracket } from '@/lib/mockData';
-import { placeOffer, supabaseEnabled } from '@/lib/api';
+import { mysqlAPI } from '@/lib/mysql-api';
+import { useAuth } from '@/hooks/use-auth-mysql';
 import Stepper from '@/components/ui/stepper';
 import { toast } from 'sonner';
 import DesiInfo from '@/components/DesiInfo';
@@ -26,14 +27,23 @@ export default function CreateOfferModal({
   listing,
   onOfferCreated
 }: CreateOfferModalProps) {
+  const { user: authUser } = useAuth();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  
+  // İlanın teslimat tercihine göre varsayılan değeri belirle
+  const getDefaultDeliveryType = () => {
+    if (listing.deliveryType === 'shipping') return 'shipping'; // Sadece kargo
+    if (listing.deliveryType === 'pickup') return 'pickup'; // Sadece elden teslim
+    return 'shipping'; // Both durumunda varsayılan kargo
+  };
+  
   const [formData, setFormData] = useState({
     price: '',
     quantity: '1',
     condition: 'new',
     productName: '',
     description: '',
-    deliveryType: 'shipping',
+    deliveryType: getDefaultDeliveryType(),
     shippingDesi: '' as '' | DesiBracket,
     shippingPackage: '' as '' | 'small' | 'medium' | 'large',
     largeWidth: '',
@@ -61,12 +71,15 @@ export default function CreateOfferModal({
   };
 
   const [isPackageDialogOpen, setIsPackageDialogOpen] = useState(false);
+  const [showSuccessDialog, setShowSuccessDialog] = useState(false);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [step, setStep] = useState(1); // 1: Fiyat & Temel, 2: Detaylar & Kargo, 3: Önizleme
   const [images, setImages] = useState<string[]>([]);
 
   const currentUser = DataManager.getCurrentUser();
+  
+
 
   // Tarih sınırları
   const minValidStr = (() => { const d = new Date(); d.setDate(d.getDate() + 1); return d.toISOString().split('T')[0]; })();
@@ -131,13 +144,59 @@ export default function CreateOfferModal({
   const goBack = () => setStep(p => Math.max(p - 1, 1));
 
   const handleFinalSubmit = async () => {
-    if (!currentUser) { toast.error('Teklif vermek için giriş yapmalısınız'); return; }
-    if (!validateStep(1) || !validateStep(2)) return;
-    // Aynı satıcı bir ilana 1 kez — Supabase tarafında unique index var; client tarafında hızlı kontrol
-    if (!supabaseEnabled()) {
-      const existing = DataManager.getOffersForListing(listing.id).some(o => o.sellerId === currentUser.id);
-      if (existing) { toast.error('Bu ilana zaten bir teklif verdiniz'); return; }
+    const token = localStorage.getItem('mysql-auth-token');
+
+    if (!authUser || !token) {
+      toast.error('Teklif vermek için giriş yapmanız gerekiyor. Lütfen önce oturum açın.');
+      onClose();
+      return;
     }
+    if (!validateStep(1) || !validateStep(2)) return;
+    
+    // Satıcı profili kontrolü modal açılmadan önce yapıldı, 
+    // burada tekrar kontrol gerekmez ama güvenlik için bırakılabilir
+    
+    // Kullanıcı kendi ilanına teklif verememeli
+    if (listing.buyerId === String(authUser.id)) {
+      toast.error('Kendi ilanınıza teklif veremezsiniz');
+      return;
+    }
+    // Aynı satıcı bir ilana 1 kez teklif verebilir kontrolü
+    try {
+  const token = localStorage.getItem('mysql-auth-token');
+  console.log('Auth token:', token ? 'Token exists' : 'No token found');
+      
+      const response = await fetch(`/api/offers/listing/${listing.id}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (response.ok) {
+        const result = await response.json();
+        console.log('Existing offers response:', result);
+        const existingOffers = Array.isArray(result) ? result : (result.data || result.offers || []);
+        console.log('Processed existing offers:', existingOffers);
+        const userHasOffer = existingOffers.some((offer: any) => 
+          offer.seller_id === authUser.id && offer.status !== 'withdrawn'
+        );
+        if (userHasOffer) {
+          toast.error('Bu ilana zaten bir teklif verdiniz');
+          return;
+        }
+      }
+    } catch (error) {
+      console.error('Error checking existing offers:', error);
+      toast.error('Mevcut teklifler kontrol edilemedi. Lütfen tekrar deneyin.');
+      return;
+    }
+    
+    // Prevent double submission
+    if (isSubmitting) {
+      console.log('⚠️ Submission already in progress, ignoring duplicate call');
+      return;
+    }
+    
     const price = parseFloat(formData.price);
     const quantity = Math.max(1, parseInt(formData.quantity));
     const shippingCost = parseFloat(formData.shippingCost);
@@ -153,49 +212,69 @@ export default function CreateOfferModal({
     }
     setIsSubmitting(true);
     try {
-      if (supabaseEnabled()) {
-        // Supabase akışı
-        await placeOffer({
-          listing_id: listing.id as unknown as string,
-          seller_id: currentUser.id as unknown as string,
-          price,
-          quantity,
-          condition: formData.condition as 'new' | 'used',
-          product_name: formData.productName || undefined,
-          description: formData.description,
-          delivery_type: formData.deliveryType as 'shipping' | 'pickup',
-          shipping_desi: formData.deliveryType === 'shipping' ? (formData.shippingDesi as DesiBracket) : undefined,
-          shipping_cost: formData.deliveryType === 'shipping' ? shippingCost : 0,
-          eta_days: etaDays,
-          status: 'active',
-          valid_until: validUntilISO,
-          images: images.length ? images : undefined,
-        });
-      } else {
-        // Local DataManager akışı
-        DataManager.addOffer({
-          listingId: listing.id,
-          sellerId: currentUser.id,
-          sellerName: currentUser.name,
-          sellerRating: currentUser.rating,
-          price,
-          quantity,
-          condition: formData.condition as 'new' | 'used',
-          productName: formData.productName || undefined,
-          description: formData.description,
-          deliveryType: formData.deliveryType as 'shipping' | 'pickup',
-          shippingDesi: formData.deliveryType === 'shipping' ? (formData.shippingDesi as DesiBracket) : undefined,
-          shippingCost,
-          etaDays,
-          status: 'active',
-          validUntil: validUntilISO,
-          images: images.length ? images : undefined
-        });
+      // MySQL API ile teklif gönder
+      const offerData = {
+        listing_id: listing.id,
+        seller_id: authUser.id,
+        seller_name: `${authUser.firstName} ${authUser.lastName}`.trim(),
+        seller_rating: 5.0, // Default rating
+        price,
+        quantity,
+        condition: formData.condition as 'new' | 'used',
+        product_name: formData.productName || undefined,
+        description: formData.description,
+        delivery_type: formData.deliveryType as 'shipping' | 'pickup',
+        shipping_desi: formData.deliveryType === 'shipping' ? (formData.shippingDesi as DesiBracket) : undefined,
+        shipping_cost: formData.deliveryType === 'shipping' ? shippingCost : 0,
+        eta_days: etaDays,
+        status: 'active',
+        valid_until: validUntilISO,
+        images: images.length ? images : undefined,
+      };
+
+  const token = localStorage.getItem('mysql-auth-token');
+  console.log('Creating offer with token:', token ? 'Token exists' : 'No token found');
+      
+      const response = await fetch('/api/offers', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(offerData)
+      });
+
+      if (!response.ok) {
+        // Try to get error message from response
+        let errorMessage = 'Teklif gönderilirken bir hata oluştu';
+        try {
+          const errorData = await response.json();
+          if (errorData.error) {
+            errorMessage = errorData.error;
+          }
+        } catch (e) {
+          // If can't parse error, use default message
+        }
+        throw new Error(errorMessage);
       }
-      toast.success('Teklifiniz başarıyla gönderildi!');
-      onOfferCreated();
-      onClose();
-      setFormData({ price: '', quantity: '1', condition: 'new', productName: '', description: '', deliveryType: 'shipping', shippingDesi: '', shippingPackage: '', largeWidth: '', largeHeight: '', largeLength: '', computedDesi: '', shippingCost: '0', etaDays: '3', validUntil: '' });
+      setShowSuccessDialog(true);
+      setFormData({ 
+        price: '', 
+        quantity: '1', 
+        condition: 'new', 
+        productName: '', 
+        description: '', 
+        deliveryType: getDefaultDeliveryType(), // İlanın teslimat tercihine göre
+        shippingDesi: '', 
+        shippingPackage: '', 
+        largeWidth: '', 
+        largeHeight: '', 
+        largeLength: '', 
+        computedDesi: '', 
+        shippingCost: '0', 
+        etaDays: '3', 
+        validUntil: '' 
+      });
       setImages([]);
       setStep(1);
     } catch (e) {
@@ -284,7 +363,8 @@ export default function CreateOfferModal({
   };
 
   // İlan durumuna göre condition kısıtları
-  const allowNew = listing.condition === 'any' || listing.condition === 'new';
+  // 'any' (farketmez) listinglerde 'new' seçeneğini gösterme, sadece 'used' göster
+  const allowNew = listing.condition === 'new' || (listing.condition === 'any' && false);
   const allowUsed = listing.condition === 'any' || listing.condition === 'used';
   const isFixedCondition = listing.condition !== 'any';
   const allowShipping = listing.deliveryType === 'both' || listing.deliveryType === 'shipping';
@@ -298,6 +378,9 @@ export default function CreateOfferModal({
       setFormData(prev => ({ ...prev, condition: 'used' }));
     } else if (listing.condition === 'new' && formData.condition !== 'new') {
       setFormData(prev => ({ ...prev, condition: 'new' }));
+    } else if (listing.condition === 'any' && formData.condition !== 'used') {
+      // 'any' (farketmez) listinglerde default 'used' yap
+      setFormData(prev => ({ ...prev, condition: 'used' }));
     }
     // Teslimat sabitse onu uygula
     if (listing.deliveryType === 'shipping' && formData.deliveryType !== 'shipping') {
@@ -612,6 +695,61 @@ export default function CreateOfferModal({
           </div>
         </SubDialogContent>
       </SubDialog>
+
+      {/* Success Dialog */}
+      <Dialog open={showSuccessDialog} onOpenChange={setShowSuccessDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-green-100">
+              <svg
+                className="h-6 w-6 text-green-600"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M5 13l4 4L19 7"
+                />
+              </svg>
+            </div>
+            <DialogTitle className="text-center">Teklifiniz Başarıyla Gönderildi!</DialogTitle>
+            <DialogDescription className="text-center space-y-3 pt-2">
+              Teklifiniz admin onayına gönderildi.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="rounded-lg bg-amber-50 border border-amber-200 p-4 space-y-2">
+              <div className="flex items-start gap-2">
+                <svg className="h-5 w-5 text-amber-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <p className="text-sm text-amber-800 text-left">
+                  Teklifiniz admin tarafından incelendikten sonra yayınlanacaktır. 
+                  Bu işlem genellikle birkaç saat sürer.
+                </p>
+              </div>
+            </div>
+            <p className="text-sm text-muted-foreground text-center">
+              Onay durumunu <strong>Panelim → Tekliflerim</strong> bölümünden takip edebilirsiniz.
+            </p>
+          </div>
+          <DialogFooter className="sm:justify-center">
+            <Button
+              onClick={() => {
+                setShowSuccessDialog(false);
+                onOfferCreated();
+                onClose();
+              }}
+              className="w-full sm:w-auto"
+            >
+              Tamam
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Dialog>
   );
 }

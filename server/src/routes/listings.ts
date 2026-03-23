@@ -164,6 +164,8 @@ router.get('/active', async (req: Request, res: Response) => {
         l.created_at,
         l.expires_at,
         l.buyer_id as user_id,
+        l.view_count,
+        l.favorite_count,
         u.firstName as first_name,
         u.lastName as last_name,
         COALESCE(o.offer_count, 0) as offer_count
@@ -210,6 +212,8 @@ router.get('/active', async (req: Request, res: Response) => {
           category: listing.category || 'genel', // Backend'den gelen kategori
           deliveryType: denormalizeDeliveryType(listing.delivery_type), // Frontend değerlerine dönüştür
           offerCount: parseInt(listing.offer_count) || 0, // Gerçek teklif sayısı
+          viewCount: parseInt(listing.view_count) || 0,
+          favoriteCount: parseInt(listing.favorite_count) || 0,
           expiresAt: listing.expires_at || null,
           buyerId: listing.user_id,
           buyerName: `${listing.first_name} ${listing.last_name}`.trim() || 'Anonim',
@@ -413,6 +417,11 @@ router.put('/:id', authenticateToken, async (req: any, res: Response) => {
       // Bildirim hatası olsa bile güncelleme başarılı sayılır
     }
 
+    // Redis cache temizle - ilan pending'e düştü, aktif listeden kalkmalı
+    await redisCache.delete(CacheKeys.listingsActive());
+    await redisCache.delete(CacheKeys.listing(listingId));
+    console.log('🗑️ Redis cache cleared after listing update (back to pending):', listingId);
+
     res.json({
       success: true,
       message: 'İlan başarıyla güncellendi ve onay için gönderildi'
@@ -457,6 +466,11 @@ router.delete('/:id', authenticateToken, async (req: any, res: Response) => {
       'UPDATE listings SET status = ?, updated_at = NOW() WHERE id = ?',
       ['deleted', listingId]
     );
+
+    // Redis cache temizle
+    await redisCache.delete(CacheKeys.listingsActive());
+    await redisCache.delete(CacheKeys.listing(listingId));
+    console.log('🗑️ Redis cache cleared after listing delete:', listingId);
 
     res.json({
       success: true,

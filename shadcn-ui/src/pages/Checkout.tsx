@@ -1,17 +1,15 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import Header from '@/components/Header';
+import Header from '@/components/Header-mysql.tsx';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import { DataManager, Offer, Listing } from '@/lib/mockData';
+import { mysqlAPI } from '@/lib/mysql-api';
 import { toast } from 'sonner';
-import { supabaseEnabled, ensureCurrentUserId, createOrder as sbCreateOrder } from '@/lib/api';
-import { supabase } from '@/lib/supabase';
+import { Plus, Minus } from 'lucide-react';
 
-// Demo ödeme sayfası: Offer veya ThirdPartyOrder ödemesi için kullanılabilir.
-// Beklenen query: ?offerId=offer_xxx
 export default function Checkout() {
   const navigate = useNavigate();
   const { search } = useLocation();
@@ -20,150 +18,269 @@ export default function Checkout() {
 
   const [offer, setOffer] = useState<Offer | null>(null);
   const [listing, setListing] = useState<Listing | null>(null);
-  const [cardName, setCardName] = useState('Demo Kullanıcı');
-  const [cardNumber, setCardNumber] = useState('4242 4242 4242 4242');
-  const [expiry, setExpiry] = useState('12/30');
-  const [cvv, setCvv] = useState('123');
+  
+  // User Info Form
+  const [userInfo, setUserInfo] = useState({
+    firstName: '',
+    lastName: '',
+    email: '',
+    phone: '',
+    address: '',
+    city: '',
+    postalCode: ''
+  });
+  
+  // Payment Info - boş başlat
+  const [cardName, setCardName] = useState('');
+  const [cardNumber, setCardNumber] = useState('');
+  const [expiry, setExpiry] = useState('');
+  const [cvv, setCvv] = useState('');
   const [isPaying, setIsPaying] = useState(false);
   const [qty, setQty] = useState<number>(1);
-  // İlan sahibi adet girişi: yazarken boş/değerli durumları desteklemek için string olarak tutuyoruz
-  const [ownerQtyInput, setOwnerQtyInput] = useState<string>('');
-  const [ownerQtyTouched, setOwnerQtyTouched] = useState<boolean>(false);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  
+  // Komisyon bakiyesi
+  const [commissionBalance, setCommissionBalance] = useState(0);
+  const [useCommissionBalance, setUseCommissionBalance] = useState(false);
+  const [commissionAmount, setCommissionAmount] = useState(0);
 
   const currentUser = DataManager.getCurrentUser();
 
+  // MySQL'den kullanıcı bilgilerini yükle ve authentication kontrolü
   useEffect(() => {
-    if (!offerId) return;
-    const found = DataManager.getAllOffers().find(o => o.id === offerId) || null;
-    setOffer(found || null);
-    if (found) setListing(DataManager.getListing(found.listingId) || null);
-  }, [offerId]);
+    const checkAuth = async () => {
+      try {
+          console.log('🔐 Authentication + address load başlatılıyor...');
+  const token = localStorage.getItem('mysql-auth-token');
+        console.log('🎫 LocalStorage token:', token ? 'Token mevcut' : 'Token yok');
+        
+        const mysqlUser = await mysqlAPI.getCurrentUser();
+        console.log('👤 MySQL user response:', mysqlUser);
+        
+        if (mysqlUser && mysqlUser.success && mysqlUser.user) {
+          console.log('✅ Authentication başarılı:', mysqlUser.user.email);
+          setCurrentUserId(mysqlUser.user.id);
+          const user = mysqlUser.user;
+            // Varsayılan adresi getir
+            let address = '';
+            let city = '';
+            let postalCode = '';
+            try {
+              const addrRes = await mysqlAPI.getAddresses();
+              const arr = addrRes.addresses || addrRes.data || [];
+              const def = arr.find((a: any) => Number(a.is_default) === 1 || a.is_default === true) || arr[0];
+              if (def) {
+                // address_line1 (+ address_line2) → tek satır string
+                address = [def.address_line1, def.address_line2].filter(Boolean).join(', ');
+                city = def.city || '';
+                postalCode = def.postal_code || '';
+              }
+            } catch (e) {
+              console.warn('Adres bilgileri yüklenemedi:', e);
+            }
 
-  // İlan sahibi için seçilebilir maksimum adet = teklif adedi - diğer kullanıcılara satılan
-  const maxOwnerQty = useMemo(() => {
-    if (!offer) return 1;
-    const qtyOffer = Math.max(1, Number(offer.quantity ?? 1));
-    const sold = Math.max(0, Number(offer.soldToOthers ?? 0));
-    return Math.max(1, qtyOffer - sold);
-  }, [offer]);
+            setUserInfo({
+              firstName: user.firstName || '',
+              lastName: user.lastName || '',
+              email: user.email || '',
+              phone: user.phone || '',
+              address,
+              city,
+              postalCode
+            });
+            
+            // Komisyon bakiyesini yükle
+            try {
+              const balanceResponse = await fetch('/api/commission/balance', {
+                headers: {
+                  'Authorization': `Bearer ${localStorage.getItem('mysql-auth-token')}`
+                }
+              });
+              const balanceData = await balanceResponse.json();
+              if (balanceData && balanceData.balance) {
+                setCommissionBalance(balanceData.balance);
+                console.log('💰 Komisyon bakiyesi yüklendi:', balanceData.balance);
+              }
+            } catch (error) {
+              console.warn('⚠️ Komisyon bakiyesi yüklenemedi:', error);
+            }
+        } else {
+          console.log('❌ MySQL authentication failed, redirecting to login');
+          toast.error('Ödeme için giriş yapmalısınız');
+          navigate('/?login=true');
+        }
+      } catch (error) {
+        console.error('❌ Error checking authentication:', error);
+        toast.error('Ödeme için giriş yapmalısınız');
+        navigate('/?login=true');
+      }
+    };
+    checkAuth();
+  }, [navigate]);
 
-  const total = useMemo(() => {
-    if (!offer) return 0;
-    const isBuyerNotOwner = !!currentUser && (!listing || currentUser.id !== listing.buyerId);
-    const ownerEntered = Math.floor(Number(ownerQtyInput));
-    const ownerUnitsRaw = Number.isFinite(ownerEntered) && ownerEntered > 0 ? ownerEntered : (offer.ownerPurchasedQuantity || offer.quantity || 1);
-    const ownerUnits = Math.max(1, Math.min(maxOwnerQty, ownerUnitsRaw));
-    const baseUnits = isBuyerNotOwner ? qty : ownerUnits;
-    const base = offer.price * baseUnits;
-    const shipping = offer.deliveryType === 'shipping' ? (offer.shippingCost ?? 0) + (offer.shippingExtraFee ?? 0) : 0;
-    return base + shipping;
-  }, [offer, qty, ownerQtyInput, currentUser, listing, maxOwnerQty]);
+  // Form validation
+  const isFormValid = () => {
+    return userInfo.firstName.trim() &&
+           userInfo.lastName.trim() &&
+           userInfo.email.trim() &&
+           userInfo.phone.trim() &&
+           userInfo.address.trim() &&
+           userInfo.city.trim() &&
+           cardName.trim() &&
+           cardNumber.trim() &&
+           expiry.trim() &&
+           cvv.trim();
+  };
 
-  const computedUnits = useMemo(() => {
-    if (!offer) return 0;
-    const isBuyerNotOwner = !!currentUser && (!listing || currentUser.id !== listing.buyerId);
-    const ownerEntered = Math.floor(Number(ownerQtyInput));
-    const ownerUnitsRaw = Number.isFinite(ownerEntered) && ownerEntered > 0 ? ownerEntered : (offer.ownerPurchasedQuantity || offer.quantity || 1);
-    const ownerUnits = Math.max(1, Math.min(maxOwnerQty, ownerUnitsRaw));
-    return isBuyerNotOwner ? qty : ownerUnits;
-  }, [offer, qty, ownerQtyInput, currentUser, listing, maxOwnerQty]);
-
-  // Alıcı için satın alınabilir maksimum adet (ilan sahibinin 1 adet hakkı ayrıdır)
-  const maxPurchasable = useMemo(() => {
-    if (!offer || !currentUser || !listing) return 0;
-    if (currentUser.id === listing.buyerId) return 0; // ilan sahibi bu alanı kullanmaz
-    const offerQty = offer.quantity ?? 1;
-    const sold = offer.soldToOthers ?? 0;
-    return Math.max(0, offerQty - 1 - sold);
-  }, [offer, currentUser, listing]);
-
-
-
-  // İlan sahibi için başlangıçta ownerQtyInput'i tek seferlik üst sınıra çek
+  // Teklifi yükle
   useEffect(() => {
-    if (!offer || !currentUser || !listing) return;
-    if (currentUser.id !== listing.buyerId) return; // sadece ilan sahibi
-    if (ownerQtyTouched) return; // kullanıcı düzenlemeye başladıysa dokunma
-    setOwnerQtyInput(String(Math.max(1, maxOwnerQty)));
-  }, [offer, currentUser, listing, maxOwnerQty, ownerQtyTouched]);
+    const loadOffer = async () => {
+      if (!offerId) {
+        toast.error('Teklif ID\'si eksik');
+        navigate('/');
+        return;
+      }
+      
+      try {
+        const offerResponse = await mysqlAPI.getOfferById(offerId);
+        if (!offerResponse.success || !offerResponse.offer) {
+          toast.error(`Teklif bulunamadı (ID: ${offerId})`);
+          navigate('/');
+          return;
+        }
+        
+        const foundOffer = offerResponse.offer;
+        const mappedOffer: Offer = {
+          id: foundOffer.id,
+          listingId: foundOffer.listing_id,
+          sellerId: foundOffer.seller_id,
+          sellerName: foundOffer.seller_name || 'Anonim',
+          sellerRating: foundOffer.seller_rating || 5.0,
+          price: parseFloat(foundOffer.price) || 0,
+          quantity: parseInt(foundOffer.quantity) || 1,
+          condition: foundOffer.offer_condition || 'used',
+          productName: foundOffer.product_name || '',
+          description: foundOffer.description || '',
+          deliveryType: foundOffer.delivery_type || 'shipping',
+          shippingDesi: foundOffer.shipping_desi || '',
+          shippingCost: parseFloat(foundOffer.shipping_cost) || 0,
+          etaDays: parseInt(foundOffer.eta_days) || 3,
+          status: foundOffer.status || 'active',
+          validUntil: foundOffer.valid_until || '',
+          createdAt: foundOffer.created_at,
+          images: [], // Images skip - sadece stok için
+          soldToOthers: parseInt(foundOffer.sold_to_others) || 0
+        };
+        
+        setOffer(mappedOffer);
+      } catch (error) {
+        console.error('Teklif yüklenirken hata:', error);
+        toast.error('Teklif yüklenemedi');
+        navigate('/');
+      }
+    };
 
-  // Üst sınır değişirse ve mevcut değer onu aşıyorsa kibarca kırp
-  useEffect(() => {
-    const entered = Math.floor(Number(ownerQtyInput));
-    if (Number.isFinite(entered) && entered > maxOwnerQty) {
-      setOwnerQtyInput(String(maxOwnerQty));
-    }
-  }, [maxOwnerQty, ownerQtyInput]);
+    loadOffer();
+  }, [offerId, navigate]);
 
+  // Satın alma işlemi
   const handlePay = async () => {
-    if (!currentUser) {
+    if (!currentUserId) {
       toast.error('Ödeme için giriş yapmalısınız');
-      navigate('/');
+      navigate('/?login=true');
       return;
     }
-    if (!offer) return;
+    if (!offer || !isFormValid()) {
+      toast.error('Lütfen tüm alanları doldurun');
+      return;
+    }
+    
+    console.log('💳 Ödeme işlemi başlatılıyor...', {
+      userId: currentUserId,
+      offerId: offer.id,
+      quantity: qty
+    });
+    
     setIsPaying(true);
     try {
-      // Demo: 1.5s bekleyip başarılı say
-      await new Promise((r) => setTimeout(r, 1500));
-      // Demo davranış: ödeme başarılı
-      // Normal kullanıcı (ilan sahibi değil) ise satın alma kaydı oluştur
-      if (currentUser && listing && currentUser.id !== listing.buyerId) {
-        // Ön doğrulama: miktar stok sınırını aşmasın
-        if (maxPurchasable <= 0) {
-          toast.error('Satın alınabilir stok yok');
-          setIsPaying(false);
-          return;
-        }
-        if (qty > maxPurchasable) {
-          toast.error(`En fazla ${maxPurchasable} adet satın alabilirsiniz`);
-          setQty(maxPurchasable);
-          setIsPaying(false);
-          return;
-        }
-        if (supabaseEnabled()) {
-          const selfId = await ensureCurrentUserId();
-          if (!selfId) throw new Error('Giriş gerekli');
-          await sbCreateOrder({
-            source_offer_id: offer.id as string,
-            listing_id: offer.listingId as string,
-            price: Number(offer.price),
-            quantity: Number(qty),
-            shipping_cost: Number((offer.shippingCost ?? 0) + (offer.shippingExtraFee ?? 0)),
-            delivery_type: (offer.deliveryType === 'shipping' ? 'shipping' : 'pickup'),
-            shipping_desi: offer.shippingDesi as string | undefined,
-          });
-        } else {
-          const res = DataManager.purchaseFromOffer(offer.id, currentUser.id, qty);
-          if (!res.success) {
-            toast.error(res.message || 'Satın alma oluşturulamadı');
-            setIsPaying(false);
-            return;
-          }
-        }
-      } else if (currentUser && listing && currentUser.id === listing.buyerId) {
-        // İlan sahibi: ödeme sonrası teklifi kabul et
-        const entered = Math.floor(Number(ownerQtyInput));
-        const fallback = Math.floor(Number(offer.ownerPurchasedQuantity || offer.quantity || 1));
-        const toUse = Number.isFinite(entered) && entered > 0 ? entered : fallback;
-        const chosen = Math.max(1, Math.min(maxOwnerQty, toUse));
-        if (supabaseEnabled()) {
-          await supabase.rpc('accept_offer_owner', { p_offer_id: offer.id as string, p_owner_qty: chosen });
-        } else {
-          DataManager.acceptOffer(offer.id, chosen);
-        }
+      // MySQL API ile satın alma işlemi
+      const totalAmount = (offer.price * qty) + (offer.deliveryType === 'shipping' ? (offer.shippingCost ?? 0) : 0);
+      
+      const purchaseResponse = await mysqlAPI.purchaseOffer(offer.id, {
+        quantity: qty,
+        totalAmount: totalAmount,
+        userInfo: {
+          firstName: userInfo.firstName,
+          lastName: userInfo.lastName,
+          email: userInfo.email,
+          phone: userInfo.phone,
+          address: userInfo.address,
+          city: userInfo.city,
+          postalCode: userInfo.postalCode
+        },
+        paymentInfo: {
+          cardName: cardName,
+          cardNumber: cardNumber,
+          expiry: expiry,
+          cvv: cvv
+        },
+        useCommissionBalance: useCommissionBalance,
+        commissionAmount: useCommissionBalance ? commissionAmount : 0
+      });
+
+      if (!purchaseResponse.success) {
+        toast.error(purchaseResponse.message || 'Satın alma işlemi başarısız');
+        setIsPaying(false);
+        return;
       }
-      toast.success('Ödeme başarılı!');
-      // Alıcı tarafında sipariş durumu görüntülemek üzere dashboard’a yönlendirelim
-      navigate('/dashboard');
-    } catch (e) {
-      toast.error('Ödeme başarısız. Lütfen tekrar deneyin.');
+
+      console.log('✅ Purchase successful, refreshing offer data...');
+
+      // Başarılı satın alma - Offer'ı yeniden yükle
+      try {
+        const updatedOfferResponse = await mysqlAPI.getOfferById(offer.id);
+        if (updatedOfferResponse.success && updatedOfferResponse.offer) {
+          const foundOffer = updatedOfferResponse.offer;
+          const updatedOffer: Offer = {
+            ...offer,
+            soldToOthers: parseInt(foundOffer.sold_to_others) || 0
+          };
+          setOffer(updatedOffer);
+          console.log('📦 Offer updated with new stock:', {
+            offerId: offer.id,
+            previousSold: offer.soldToOthers,
+            newSold: parseInt(foundOffer.sold_quantity) || 0
+          });
+        }
+      } catch (error) {
+        console.error('Error refreshing offer:', error);
+        // Fallback: UI'da manual güncelle
+        setOffer(prev => prev ? {
+          ...prev,
+          soldToOthers: (prev.soldToOthers || 0) + qty
+        } : null);
+      }
+
+      let successMessage = '🎉 Ödeme başarılı! Stok güncellendi ve satıcıya email bildirim gönderildi.';
+      if (purchaseResponse.commissionUsed && purchaseResponse.commissionUsed > 0) {
+        successMessage += ` Komisyon bakiyenizden ${DataManager.formatPrice(purchaseResponse.commissionUsed)} kullanıldı.`;
+      }
+      toast.success(successMessage);
+
+      // Dashboard'a yönlendir
+      setTimeout(() => {
+        navigate('/dashboard');
+      }, 2000);
+
+    } catch (error) {
+      console.error('❌ Ödeme hatası:', error);
+      toast.error('Ödeme işlemi sırasında bir hata oluştu. Lütfen tekrar deneyin.');
     } finally {
       setIsPaying(false);
     }
   };
 
-  if (!offer) {
+  if (!offer || !currentUserId) {
     return (
       <div className="min-h-screen bg-gray-50">
         <Header />
@@ -173,8 +290,7 @@ export default function Checkout() {
               <CardTitle>Ödeme</CardTitle>
             </CardHeader>
             <CardContent>
-              <p>Geçerli bir teklif bulunamadı.</p>
-              <Button className="mt-4" onClick={() => navigate('/')}>Anasayfaya Dön</Button>
+              <p>{!offer ? 'Teklif yükleniyor...' : 'Kullanıcı bilgileri kontrol ediliyor...'}</p>
             </CardContent>
           </Card>
         </div>
@@ -183,94 +299,329 @@ export default function Checkout() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50">
       <Header />
-      <div className="max-w-3xl mx-auto p-4 space-y-4">
-        <Card>
-          <CardHeader>
-            <CardTitle>Ödeme</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-1 text-sm text-muted-foreground">
-              <div>İlan: <span className="text-foreground font-medium">{listing?.title || offer.listingId}</span></div>
-              <div>Satıcı: <span className="text-foreground">{offer.sellerName}</span></div>
-            </div>
-            <Separator className="my-4" />
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-3">
-                <label className="text-sm">Kart Üzerindeki İsim</label>
-                <Input value={cardName} onChange={e => setCardName(e.target.value)} />
-                <label className="text-sm">Kart Numarası</label>
-                <Input value={cardNumber} onChange={e => setCardNumber(e.target.value)} />
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-sm">SKT (AA/YY)</label>
-                    <Input value={expiry} onChange={e => setExpiry(e.target.value)} />
-                  </div>
-                  <div>
-                    <label className="text-sm">CVV</label>
-                    <Input value={cvv} onChange={e => setCvv(e.target.value)} />
-                  </div>
+      <div className="max-w-6xl mx-auto px-4 py-8">
+        <div className="text-center mb-8">
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Ödeme Sayfası</h1>
+          <p className="text-gray-600">Güvenli ödeme işleminizi tamamlayın</p>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Left Column - Product Info */}
+          <div className="lg:col-span-1">
+            <div className="bg-white rounded-xl shadow-lg p-6">
+              <h2 className="text-xl font-semibold mb-4 text-gray-900">Ürün Bilgileri</h2>
+              
+              <h3 className="text-lg font-medium text-gray-800 mb-2">{offer.productName}</h3>
+              <p className="text-gray-600 text-sm mb-4">Satıcı: {offer.sellerName}</p>
+              
+              {/* Adet Seçimi */}
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">Adet Seçimi</label>
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={() => setQty(Math.max(1, qty - 1))}
+                    className="w-8 h-8 rounded-full bg-gray-200 hover:bg-gray-300 flex items-center justify-center transition-colors disabled:opacity-50"
+                    disabled={qty <= 1}
+                  >
+                    <Minus className="w-4 h-4" />
+                  </button>
+                  <input
+                    type="number"
+                    value={qty}
+                    onChange={(e) => {
+                      const val = parseInt(e.target.value) || 1;
+                      const maxAvailable = Math.max(0, (offer.quantity || 1) - 1 - (offer.soldToOthers || 0));
+                      setQty(Math.min(maxAvailable, Math.max(1, val)));
+                    }}
+                    className="w-16 text-center border border-gray-300 rounded-lg py-1"
+                    min="1"
+                    max={Math.max(0, (offer.quantity || 1) - 1 - (offer.soldToOthers || 0))}
+                  />
+                  <button
+                    onClick={() => {
+                      const maxAvailable = Math.max(0, (offer.quantity || 1) - 1 - (offer.soldToOthers || 0));
+                      setQty(Math.min(maxAvailable, qty + 1));
+                    }}
+                    className="w-8 h-8 rounded-full bg-gray-200 hover:bg-gray-300 flex items-center justify-center transition-colors disabled:opacity-50"
+                    disabled={qty >= Math.max(0, (offer.quantity || 1) - 1 - (offer.soldToOthers || 0))}
+                  >
+                    <Plus className="w-4 h-4" />
+                  </button>
+                  <span className="text-sm text-gray-500">/ {Math.max(0, (offer.quantity || 1) - 1 - (offer.soldToOthers || 0))}</span>
                 </div>
-                {currentUser && listing && currentUser.id !== listing.buyerId && (
-                  <div>
-                    <label className="text-sm">Adet</label>
-                    <Input
-                      type="number"
-                      min={1}
-                      max={Math.max(1, maxPurchasable) || 1}
-                      value={qty}
-                      onChange={(e) => {
-                        const next = Math.max(1, Number(e.target.value) || 1);
-                        setQty(maxPurchasable > 0 ? Math.min(next, maxPurchasable) : 1);
-                      }}
-                    />
-                    {/* Maksimum bilgisi kaldırıldı */}
-                  </div>
-                )}
-                {currentUser && listing && currentUser.id === listing.buyerId && (
-                  <div>
-                    <label className="text-sm">Adet (Sahip)</label>
-                    <Input
-                      type="number"
-                      min={1}
-                      max={maxOwnerQty}
-                      value={ownerQtyInput}
-                      onChange={(e) => {
-                        setOwnerQtyTouched(true);
-                        // Boş bırakmaya izin ver (kullanıcı yeni değer yazarken)
-                        const raw = e.target.value;
-                        // Sadece rakamları tut (negatif ve ondalıkları engelle)
-                        const cleaned = raw.replace(/[^0-9]/g, '');
-                        setOwnerQtyInput(cleaned);
-                      }}
-                      onBlur={() => {
-                        const entered = Math.floor(Number(ownerQtyInput));
-                        const clamped = Math.max(1, Math.min(maxOwnerQty, Number.isFinite(entered) && entered > 0 ? entered : maxOwnerQty));
-                        setOwnerQtyInput(String(clamped));
-                      }}
-                    />
-                    <div className="text-xs text-muted-foreground mt-1">
-                      Maksimum: {maxOwnerQty}
+              </div>
+              
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Teklif Fiyatı:</span>
+                  <span className="font-semibold text-green-600">{DataManager.formatPrice(offer.price)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Kargo Ücreti:</span>
+                  <span className="font-semibold text-blue-600">{offer.deliveryType === 'shipping' ? DataManager.formatPrice((offer.shippingCost ?? 0)) : 'Ücretsiz'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Adet:</span>
+                  <span className="font-semibold">{qty}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Toplam Stok:</span>
+                  <span className="font-semibold">{offer.quantity || 1}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Satılan Adet:</span>
+                  <span className="font-semibold text-red-600">{offer.soldToOthers || 0}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Diğer kullanıcılara açık:</span>
+                  <span className="font-semibold text-green-600">{Math.max(0, (offer.quantity || 1) - 1 - (offer.soldToOthers || 0))}</span>
+                </div>
+                <hr className="my-3"/>
+                <div className="flex justify-between text-lg font-bold">
+                  <span>Ödenecek Tutar:</span>
+                  <span className="text-green-600">{DataManager.formatPrice((offer.price * qty) + (offer.deliveryType === 'shipping' ? (offer.shippingCost ?? 0) : 0))}</span>
+                </div>
+              </div>
+
+              <div className="mt-6 pt-4 border-t border-gray-200">
+                <div className="flex items-center space-x-2 text-sm text-gray-600">
+                  <span>🔒 Güvenli Ödeme</span>
+                </div>
+                <div className="flex items-center space-x-2 text-sm text-gray-600 mt-2">
+                  <span>🚚 Hızlı Teslimat</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Right Column - Forms */}
+          <div className="lg:col-span-2 space-y-6">
+            
+            {/* Kişisel Bilgiler Form */}
+            <div className="bg-white rounded-xl shadow-lg p-6">
+              <h2 className="text-xl font-semibold mb-4 text-gray-900">Kişisel Bilgiler</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Ad *</label>
+                  <Input
+                    type="text"
+                    placeholder="Adınız"
+                    value={userInfo.firstName}
+                    onChange={(e) => setUserInfo(prev => ({ ...prev, firstName: e.target.value }))}
+                    className="w-full"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Soyad *</label>
+                  <Input
+                    type="text"
+                    placeholder="Soyadınız"
+                    value={userInfo.lastName}
+                    onChange={(e) => setUserInfo(prev => ({ ...prev, lastName: e.target.value }))}
+                    className="w-full"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">E-posta *</label>
+                  <Input
+                    type="email"
+                    placeholder="ornek@email.com"
+                    value={userInfo.email}
+                    onChange={(e) => setUserInfo(prev => ({ ...prev, email: e.target.value }))}
+                    className="w-full"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Telefon *</label>
+                  <Input
+                    type="tel"
+                    placeholder="0555 555 55 55"
+                    value={userInfo.phone}
+                    onChange={(e) => setUserInfo(prev => ({ ...prev, phone: e.target.value }))}
+                    className="w-full"
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Adres *</label>
+                  <Input
+                    type="text"
+                    placeholder="Mahalle, Sokak, No"
+                    value={userInfo.address}
+                    onChange={(e) => setUserInfo(prev => ({ ...prev, address: e.target.value }))}
+                    className="w-full"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Şehir *</label>
+                  <Input
+                    type="text"
+                    placeholder="İstanbul"
+                    value={userInfo.city}
+                    onChange={(e) => setUserInfo(prev => ({ ...prev, city: e.target.value }))}
+                    className="w-full"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Posta Kodu</label>
+                  <Input
+                    type="text"
+                    placeholder="34000"
+                    value={userInfo.postalCode}
+                    onChange={(e) => setUserInfo(prev => ({ ...prev, postalCode: e.target.value }))}
+                    className="w-full"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Komisyon Bakiyesi Kullanım Seçeneği */}
+            {commissionBalance > 0 && (
+              <div className="bg-gradient-to-r from-green-50 to-white rounded-xl shadow-lg p-6 border-l-4 border-l-green-500">
+                <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                  💰 Komisyon Bakiyesi
+                </h2>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-gray-600">Kullanılabilir Bakiye</p>
+                      <p className="text-2xl font-bold text-green-600">{DataManager.formatPrice(commissionBalance)}</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        id="useCommission"
+                        checked={useCommissionBalance}
+                        onChange={(e) => {
+                          setUseCommissionBalance(e.target.checked);
+                          if (e.target.checked) {
+                            const totalPrice = (offer.price * qty) + (offer.deliveryType === 'shipping' ? (offer.shippingCost ?? 0) : 0);
+                            const useAmount = Math.min(commissionBalance, totalPrice);
+                            setCommissionAmount(useAmount);
+                          } else {
+                            setCommissionAmount(0);
+                          }
+                        }}
+                        className="w-5 h-5 text-green-600 rounded focus:ring-green-500"
+                      />
+                      <label htmlFor="useCommission" className="text-sm font-medium text-gray-700 cursor-pointer">
+                        Komisyon bakiyemi kullan
+                      </label>
                     </div>
                   </div>
-                )}
+                  {useCommissionBalance && (
+                    <div className="bg-white rounded-lg p-4 border border-green-200">
+                      <div className="space-y-2">
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-600">Sipariş Toplamı:</span>
+                          <span className="font-medium">{DataManager.formatPrice((offer.price * qty) + (offer.deliveryType === 'shipping' ? (offer.shippingCost ?? 0) : 0))}</span>
+                        </div>
+                        <div className="flex justify-between text-sm text-green-600">
+                          <span>Komisyondan Düşülecek:</span>
+                          <span className="font-semibold">-{DataManager.formatPrice(commissionAmount)}</span>
+                        </div>
+                        <Separator />
+                        <div className="flex justify-between text-base font-bold">
+                          <span>Kart ile Ödenecek:</span>
+                          <span className="text-blue-600">{DataManager.formatPrice(Math.max(0, (offer.price * qty) + (offer.deliveryType === 'shipping' ? (offer.shippingCost ?? 0) : 0) - commissionAmount))}</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
-              <div className="space-y-3">
-                <div className="flex justify-between text-sm"><span>Ürün</span><span>{DataManager.formatPrice(offer.price)} × {computedUnits}</span></div>
-                {offer.deliveryType === 'shipping' && (
-                  <div className="flex justify-between text-sm"><span>Kargo</span><span>{DataManager.formatPrice((offer.shippingCost ?? 0) + (offer.shippingExtraFee ?? 0))}</span></div>
-                )}
-                <Separator />
-                <div className="flex justify-between font-semibold"><span>Toplam</span><span>{DataManager.formatPrice(total)}</span></div>
-                <Button className="w-full mt-2" disabled={isPaying} onClick={handlePay}>
-                  {isPaying ? 'Ödeniyor…' : 'Ödemeyi Tamamla'}
-                </Button>
-                <Button variant="outline" className="w-full" onClick={() => navigate(-1)}>Geri Dön</Button>
+            )}
+
+            {/* Ödeme Bilgileri Form */}
+            <div className="bg-white rounded-xl shadow-lg p-6">
+              <h2 className="text-xl font-semibold text-gray-900">Ödeme Bilgileri</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Kart Üzerindeki İsim *</label>
+                  <Input 
+                    value={cardName} 
+                    onChange={e => setCardName(e.target.value)}
+                    placeholder="Ad Soyad"
+                    className="w-full"
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Kart Numarası *</label>
+                  <Input 
+                    value={cardNumber} 
+                    onChange={e => setCardNumber(e.target.value)}
+                    placeholder="Kart numaranızı girin"
+                    className="w-full"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Son Kullanma Tarihi *</label>
+                  <Input 
+                    value={expiry} 
+                    onChange={(e) => {
+                      let value = e.target.value.replace(/\D/g, '');
+                      if (value.length >= 2) {
+                        value = value.substring(0, 2) + '/' + value.substring(2, 4);
+                      }
+                      setExpiry(value);
+                    }}
+                    placeholder="MM/YY"
+                    maxLength={5}
+                    className="w-full"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">CVV *</label>
+                  <Input 
+                    value={cvv} 
+                    onChange={e => setCvv(e.target.value)}
+                    placeholder="123"
+                    maxLength={4}
+                    className="w-full"
+                  />
+                </div>
+              </div>
+
+              <div className="mt-6">
+                <div className="flex justify-between items-center text-lg font-semibold">
+                  <span>Ödenecek Tutar:</span>
+                  <span className="text-2xl text-green-600">{DataManager.formatPrice((offer.price * qty) + (offer.deliveryType === 'shipping' ? (offer.shippingCost ?? 0) : 0))}</span>
+                </div>
+                
+                <div className="space-y-3 mt-4">
+                  <Button 
+                    className="w-full h-12 text-lg font-semibold" 
+                    onClick={handlePay}
+                    disabled={isPaying || !isFormValid()}
+                  >
+                    {isPaying ? (
+                      <div className="flex items-center space-x-2">
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                        <span>Ödeme İşleniyor...</span>
+                      </div>
+                    ) : (
+                      `${DataManager.formatPrice((offer.price * qty) + (offer.deliveryType === 'shipping' ? (offer.shippingCost ?? 0) : 0))} Öde`
+                    )}
+                  </Button>
+                  
+                  <Button 
+                    variant="outline" 
+                    className="w-full h-12" 
+                    onClick={() => navigate(-1)}
+                  >
+                    Geri Dön
+                  </Button>
+                </div>
+
+                <p className="text-xs text-gray-500 text-center mt-4">
+                  Ödeme yaparak <a href="#" className="text-blue-600 hover:underline">kullanım şartlarını</a> ve 
+                  <a href="#" className="text-blue-600 hover:underline ml-1">gizlilik politikasını</a> kabul etmiş olursunuz.
+                </p>
               </div>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
     </div>
   );

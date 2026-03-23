@@ -1,0 +1,7 @@
+Contact: mailto:security@varmii.com
+Expires: 2027-01-28T23:59:59.000Z
+Preferred-Languages: tr, en
+Canonical: https://varmii.com/.well-known/security.txt
+
+# Güvenlik açığı bildirimleri için
+# Please report security vulnerabilities to security@varmii.com

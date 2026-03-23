@@ -1,12 +1,15 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { MessageCircle, User, LogOut, BarChart3 } from 'lucide-react';
-import { Link, useNavigate } from 'react-router-dom';
-import { DataManager } from '@/lib/mockData';
-import MessageCenter from './MessageCenter';
-import AuthModal from './AuthModal';
+import { Input } from '@/components/ui/input';
+import { User, LogOut, BarChart3, Settings, Search, MapPin, ShoppingCart, Wallet, CreditCard, Sun, Moon } from 'lucide-react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { useAuth } from '@/hooks/use-auth-mysql';
+import { useCart } from '@/contexts/CartContext';
+import { useTheme } from '@/contexts/ThemeContext';
+import AuthModal from './AuthModal-mysql';
+import NotificationBell from './NotificationBell';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,153 +18,278 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { toast } from 'sonner';
 
-export default function Header() {
+interface HeaderProps {
+  onCreateListingClick?: () => void;
+}
+
+export default function Header({ onCreateListingClick }: HeaderProps) {
   const navigate = useNavigate();
-  const [isMessageCenterOpen, setIsMessageCenterOpen] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const { user, logout } = useAuth();
+  const { itemCount } = useCart();
+  const { theme, toggleTheme } = useTheme();
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
-  const [unreadCount, setUnreadCount] = useState(0);
-  const [user, setUser] = useState(DataManager.getCurrentUser());
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [defaultAddress, setDefaultAddress] = useState<any>(null);
+
+  // URL'den search parametresini oku ve senkronize et
+  useEffect(() => {
+    const searchParam = searchParams.get('search');
+    setSearchQuery(searchParam || '');
+  }, [searchParams]);
+
+  // URL parametresinden login modalını aç
+  useEffect(() => {
+    if (searchParams.get('login') === 'true') {
+      setIsAuthModalOpen(true);
+      // URL'den parametreyi temizle
+      searchParams.delete('login');
+      setSearchParams(searchParams, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
   useEffect(() => {
-    const updateState = () => {
-      const current = DataManager.getCurrentUser();
-      setUser(current);
-      setUnreadCount(current ? DataManager.getUnreadMessageCount(current.id) : 0);
-    };
+    // MySQL auth'da email confirmation gerekmiyor şimdilik
+  }, [user]);
 
-    updateState();
-
-    window.addEventListener('storage', updateState);
-    window.addEventListener('user-updated', updateState as EventListener);
-    window.addEventListener('messages-updated', updateState as EventListener);
-    const handleAvatarPreview = (ev: Event) => {
-      try {
-        const ce = ev as CustomEvent<{ avatarUrl?: string }>;
-        setAvatarPreview(ce.detail?.avatarUrl || null);
-      } catch {
-        setAvatarPreview(null);
+  // Kullanıcının adreslerini yükle
+  useEffect(() => {
+    const loadAddresses = async () => {
+      if (user) {
+        try {
+          const { mysqlAPI } = await import('@/lib/mysql-api');
+          const response = await mysqlAPI.getAddresses();
+          if (response.success && response.addresses) {
+            // Varsayılan adresi bul veya ilk adresi kullan
+            const defaultAddr = response.addresses.find((a: any) => a.is_default) || response.addresses[0];
+            setDefaultAddress(defaultAddr);
+          }
+        } catch (error) {
+          console.error('Error loading addresses:', error);
+        }
+      } else {
+        setDefaultAddress(null);
       }
     };
-    const clearAvatarPreview = () => setAvatarPreview(null);
-    window.addEventListener('user-avatar-preview', handleAvatarPreview as EventListener);
-    window.addEventListener('user-avatar-preview-clear', clearAvatarPreview as EventListener);
-    return () => {
-      window.removeEventListener('storage', updateState);
-      window.removeEventListener('user-updated', updateState as EventListener);
-      window.removeEventListener('messages-updated', updateState as EventListener);
-      window.removeEventListener('user-avatar-preview', handleAvatarPreview as EventListener);
-      window.removeEventListener('user-avatar-preview-clear', clearAvatarPreview as EventListener);
-    };
-  }, []);
+    loadAddresses();
+  }, [user]);
 
-  const handleLogin = () => {
-    setIsAuthModalOpen(true);
+  // Kullanıcının adreslerini yükle
+  useEffect(() => {
+    const loadAddresses = async () => {
+      if (user) {
+        try {
+          const { mysqlAPI } = await import('@/lib/mysql-api');
+          const response = await mysqlAPI.getAddresses();
+          if (response.success && response.addresses) {
+            // Varsayılan adresi bul veya ilk adresi kullan
+            const defaultAddr = response.addresses.find((a: any) => a.is_default) || response.addresses[0];
+            setDefaultAddress(defaultAddr);
+          }
+        } catch (error) {
+          console.error('Error loading addresses:', error);
+        }
+      } else {
+        setDefaultAddress(null);
+      }
+    };
+    loadAddresses();
+  }, [user]);
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      toast.success('Başarıyla çıkış yapıldı');
+      navigate('/');
+    } catch (error) {
+      console.error('Logout error:', error);
+      toast.error('Çıkış yaparken hata oluştu');
+    }
   };
 
   const handleAuthSuccess = () => {
     setIsAuthModalOpen(false);
-    window.location.reload();
+    toast.success('Başarıyla giriş yapıldı!');
   };
 
-  const handleLogout = () => {
-    DataManager.logoutUser();
-    navigate('/');
-    window.location.reload();
+  const getUserDisplayName = () => {
+    if (!user) return 'Kullanıcı';
+    return 'Kullanıcı'; // Ad-soyad maskelenmiş
   };
 
-  const memoizedOnClose = useCallback(() => setIsMessageCenterOpen(false), []);
+  const getUserInitials = () => {
+    if (!user) return 'U';
+    return 'U'; // İlk harf gösterme
+  };
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      navigate(`/?search=${encodeURIComponent(searchQuery.trim())}`);
+    }
+  };
 
   return (
-    <>
-      <header className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            {/* Logo */}
-            <Link to="/" className="flex items-center cursor-pointer">
-              <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-green-600 bg-clip-text text-transparent">
-                var mıı?
-              </h1>
-            </Link>
+    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex h-16 items-center gap-4 justify-between">
+          {/* Logo */}
+          <Link to="/" className="flex items-center space-x-2 group flex-shrink-0">
+            <span className="font-bold text-xl bg-gradient-to-r from-purple-600 via-blue-600 to-green-500 bg-clip-text text-transparent hover:from-purple-700 hover:via-blue-700 hover:to-green-600 transition-all duration-300">
+              Var mıı?
+            </span>
+          </Link>
 
-            {/* Navigation (sadeleştirildi) */}
-            <nav className="hidden md:flex items-center space-x-4">
-              <Button type="button" variant="ghost" asChild>
-                <Link to="/">Ana Sayfa</Link>
-              </Button>
-              <Button type="button" variant="default" size="lg" asChild className="shadow-md shadow-blue-200 hover:shadow-lg hover:shadow-blue-300">
-                <Link to="/create-listing">İlan Ver</Link>
-              </Button>
-            </nav>
-
-            {/* User Actions */}
-            <div className="flex items-center space-x-4">
-              {/* Mobile CTA: her sayfada görünür belirgin İlan Ver butonu */}
-              <Button type="button" className="md:hidden" asChild>
-                <Link to="/create-listing">İlan Ver</Link>
-              </Button>
-              {user ? (
-                <>
-                  {/* Account Dropdown */}
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <div className="flex items-center gap-2 cursor-pointer" tabIndex={0} aria-label="Hesap menüsü">
-                        <Button variant="outline" size="sm" type="button" className="flex items-center gap-2">
-                          <User className="h-4 w-4" />
-                          <span className="hidden md:inline">Hesabım</span>
-                          {unreadCount > 0 && (
-                            <Badge className="ml-1 bg-red-500 text-white">{unreadCount}</Badge>
-                          )}
-                        </Button>
-                        {/* Profil resmi butonun dışında sağda */}
-                        <Avatar className="h-8 w-8 ring-2 ring-blue-500/40 ring-offset-1 ring-offset-white shadow-sm">
-                          <AvatarImage src={avatarPreview || user?.avatarUrl || ''} alt={user?.name || 'Profil'} />
-                          <AvatarFallback className="text-[10px]">
-                            {(user?.name || 'U').charAt(0).toUpperCase()}
-                          </AvatarFallback>
-                        </Avatar>
-                      </div>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-48">
-                      <DropdownMenuLabel>{user.name}</DropdownMenuLabel>
-                      <DropdownMenuItem onClick={() => navigate('/profile')}>Profilim</DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => setIsMessageCenterOpen(true)}>
-                        Mesajlarım {unreadCount > 0 ? `(${unreadCount})` : ''}
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => navigate('/dashboard')}>
-                        Panelim
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={handleLogout} className="text-red-600">
-                        Çıkış Yap
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </>
-              ) : (
-                <Button type="button" onClick={handleLogin}>
-                  <User className="h-4 w-4 mr-2" />
-                  Giriş Yap
-                </Button>
-              )}
+          {/* Arama Çubuğu */}
+          <form onSubmit={handleSearch} className="flex-1 max-w-2xl mx-auto">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                type="text"
+                placeholder="Ürün, kategori, marka ara"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9 pr-4"
+              />
             </div>
+          </form>
+
+          {/* Sağ Taraf - Teslimat Adresi, Bildirim, Hesap */}
+          <div className="flex items-center gap-3 flex-shrink-0">{/* Teslimat Adresi */}
+            <Button
+              variant="ghost"
+              size="sm"
+              className="hidden lg:flex items-center gap-2 text-sm"
+              onClick={() => user ? navigate('/profile?tab=adresler') : setIsAuthModalOpen(true)}
+            >
+              <MapPin className="h-4 w-4" />
+              <div className="flex flex-col items-start">
+                <span className="text-xs text-muted-foreground">TESLİMAT ADRESİ</span>
+                <span className="font-medium">
+                  {defaultAddress ? (
+                    <span className="max-w-[120px] truncate inline-block">
+                      {defaultAddress.city || defaultAddress.title || 'Adresim'}
+                    </span>
+                  ) : 'Adres Ekle'}
+                </span>
+              </div>
+            </Button>
+            
+            {user ? (
+              <>
+                
+                {/* Sepet İkonu */}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="relative"
+                  onClick={() => navigate('/cart')}
+                >
+                  <ShoppingCart className="h-5 w-5" />
+                  {itemCount > 0 && (
+                    <Badge 
+                      className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs"
+                      variant="destructive"
+                    >
+                      {itemCount}
+                    </Badge>
+                  )}
+                </Button>
+                
+                <NotificationBell />
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="sm" className="flex items-center gap-2">
+                      <div className="flex flex-col items-start">
+                        <span className="text-xs text-muted-foreground">HESABIM</span>
+                        <span className="font-medium">Hesabım</span>
+                      </div>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="w-56" align="end" forceMount>
+                    <DropdownMenuLabel className="font-normal">
+                      <div className="flex flex-col space-y-1">
+                        <p className="text-sm font-medium leading-none">
+                          {getUserDisplayName()}
+                        </p>
+                        <p className="text-xs leading-none text-muted-foreground">
+                          {user.email}
+                        </p>
+                      </div>
+                    </DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem asChild>
+                      <Link to="/profile">
+                        <User className="mr-2 h-4 w-4" />
+                        <span>Profilim</span>
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link to="/dashboard">
+                        <BarChart3 className="mr-2 h-4 w-4" />
+                        <span>Panelim</span>
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link to="/commission">
+                        <Wallet className="mr-2 h-4 w-4" />
+                        <span>Komisyonlarım</span>
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link to="/profile/ibans">
+                        <CreditCard className="mr-2 h-4 w-4" />
+                        <span>IBAN Yönetimi</span>
+                      </Link>
+                    </DropdownMenuItem>
+                    {user?.role === 'admin' && (
+                      <DropdownMenuItem asChild>
+                        <Link to="/admin">
+                          <Settings className="mr-2 h-4 w-4" />
+                          <span>Admin Panel</span>
+                        </Link>
+                      </DropdownMenuItem>
+                    )}
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={toggleTheme}>
+                      {theme === 'dark'
+                        ? <Sun className="mr-2 h-4 w-4" />
+                        : <Moon className="mr-2 h-4 w-4" />}
+                      <span>{theme === 'dark' ? 'Açık Tema' : 'Koyu Tema'}</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={handleLogout} className="text-red-600">
+                      <LogOut className="mr-2 h-4 w-4" />
+                      <span>Çıkış Yap</span>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </>
+            ) : (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="flex items-center gap-2"
+                onClick={() => setIsAuthModalOpen(true)}
+              >
+                <div className="flex flex-col items-start">
+                  <span className="text-xs text-muted-foreground">HESABIM</span>
+                  <span className="font-medium">Üye Ol | Giriş Yap</span>
+                </div>
+              </Button>
+            )}
           </div>
         </div>
-      </header>
+      </div>
 
-      {/* Auth Modal */}
       <AuthModal
         isOpen={isAuthModalOpen}
         onClose={() => setIsAuthModalOpen(false)}
         onAuthSuccess={handleAuthSuccess}
       />
-
-      {/* Message Center Modal */}
-      <MessageCenter 
-        isOpen={isMessageCenterOpen} 
-        onClose={memoizedOnClose} 
-      />
-    </>
+    </header>
   );
 }

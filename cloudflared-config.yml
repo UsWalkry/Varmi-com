@@ -1,0 +1,23 @@
+tunnel: TUNNEL_ID_BURAYA
+credentials-file: /home/burak/.cloudflared/TUNNEL_ID_BURAYA.json
+
+ingress:
+  # Frontend (React App)
+  - hostname: varmii.com
+    service: https://localhost:443
+    originRequest:
+      noTLSVerify: true
+  
+  - hostname: www.varmii.com
+    service: https://localhost:443
+    originRequest:
+      noTLSVerify: true
+  
+  # Backend API (opsiyonel, eğer direkt expose etmek isterseniz)
+  # - hostname: api.varmii.com
+  #   service: https://localhost:8787
+  #   originRequest:
+  #     noTLSVerify: true
+  
+  # Catch-all rule
+  - service: http_status:404

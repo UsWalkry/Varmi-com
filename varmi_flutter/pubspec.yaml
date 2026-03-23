@@ -23,6 +23,7 @@ dependencies:
   # Networking
   dio: ^5.4.0
   http: ^1.1.2
+  http_parser: ^4.0.0
   
   # Storage
   shared_preferences: ^2.2.2
@@ -39,9 +40,9 @@ dependencies:
   url_launcher: ^6.2.4
   
   # Notifications (Mobile only)
-  # firebase_core: ^2.24.2
-  # firebase_messaging: ^14.7.10
-  # flutter_local_notifications: ^16.3.2
+  firebase_core: ^2.24.2
+  firebase_messaging: ^14.7.10
+  flutter_local_notifications: ^17.2.4
   
   # UI Components
   fluttertoast: ^8.2.4

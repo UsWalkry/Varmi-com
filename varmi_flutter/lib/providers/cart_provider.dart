@@ -1,42 +1,90 @@
 import 'package:flutter/foundation.dart';
 import '../models/cart_item.dart';
-import '../models/offer.dart';
+import '../services/api_service.dart';
 
 class CartProvider with ChangeNotifier {
-  final List<CartItem> _items = [];
+  List<CartItem> _items = [];
+  bool _isLoading = false;
+  String? _error;
+  double _subtotal = 0;
+  double _totalShipping = 0;
 
   List<CartItem> get items => List.unmodifiable(_items);
+  bool get isLoading => _isLoading;
+  String? get error => _error;
+  int get itemCount => _items.fold(0, (s, i) => s + i.quantity);
+  double get subtotal => _subtotal;
+  double get totalShipping => _totalShipping;
+  double get total => _subtotal + _totalShipping;
 
-  int get itemCount => _items.length;
+  bool containsOffer(String offerId) =>
+      _items.any((i) => i.offer.id == offerId);
 
-  double get subtotal => _items.fold(0, (sum, item) => sum + item.offer.amount * item.quantity);
-
-  double get totalShipping => _items.fold(
-      0, (sum, item) => sum + (item.offer.shippingCost ?? 0) * item.quantity);
-
-  double get total => subtotal + totalShipping;
-
-  bool containsOffer(String offerId) {
-    return _items.any((item) => item.offer.id == offerId);
-  }
-
-  void addOffer(Offer offer) {
-    if (!containsOffer(offer.id)) {
-      _items.add(CartItem(
-        id: offer.id,
-        offer: offer,
-      ));
+  Future<void> loadCart() async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+    try {
+      final res = await apiService.get('/api/cart');
+      final data = res.data as Map<String, dynamic>;
+      if (data['success'] == true && data['cart'] != null) {
+        final cart = data['cart'] as Map<String, dynamic>;
+        final rawItems =
+            (cart['items'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+        _items = rawItems.map((j) => CartItem.fromJson(j)).toList();
+        final summary = cart['summary'] as Map<String, dynamic>?;
+        _subtotal =
+            double.tryParse(summary?['subtotal']?.toString() ?? '0') ?? 0.0;
+        _totalShipping =
+            double.tryParse(summary?['shipping']?.toString() ?? '0') ?? 0.0;
+      }
+    } catch (e) {
+      _error = e.toString();
+    } finally {
+      _isLoading = false;
       notifyListeners();
     }
   }
 
-  void removeItem(String offerId) {
-    _items.removeWhere((item) => item.offer.id == offerId);
-    notifyListeners();
+  Future<void> addOffer(String listingId, String offerId) async {
+    try {
+      await apiService.post('/api/cart/add',
+          data: {'listingId': listingId, 'offerId': offerId});
+      await loadCart();
+    } catch (e) {
+      rethrow;
+    }
   }
 
-  void clear() {
-    _items.clear();
+  Future<void> removeItem(String cartItemId) async {
+    _items.removeWhere((i) => i.id == cartItemId);
+    _recalculate();
     notifyListeners();
+    try {
+      await apiService.delete('/api/cart/item/$cartItemId');
+    } catch (_) {
+      await loadCart(); // sync back
+    }
+  }
+
+  Future<void> clearCart() async {
+    _items.clear();
+    _subtotal = 0;
+    _totalShipping = 0;
+    notifyListeners();
+    try {
+      await apiService.delete('/api/cart/clear');
+    } catch (_) {}
+  }
+
+  // Legacy sync alias
+  void clear() {
+    clearCart();
+  }
+
+  void _recalculate() {
+    _subtotal = _items.fold(0, (s, i) => s + i.offer.amount * i.quantity);
+    _totalShipping =
+        _items.fold(0, (s, i) => s + (i.offer.shippingCost ?? 0) * i.quantity);
   }
 }

@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../../utils/app_dialog.dart';
+import '../../utils/formatters.dart';
 import '../../config/api_config.dart';
 import '../../models/listing.dart';
 import '../../services/listing_service.dart';
@@ -69,22 +71,12 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
       try {
         await _listingService.deleteListing(listingId);
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('İlan silindi'),
-              backgroundColor: Colors.green,
-            ),
-          );
+          AppDialog.showSuccess(context, 'İlan silindi');
           _loadMyListings();
         }
       } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Hata: ${e.toString()}'),
-              backgroundColor: Colors.red,
-            ),
-          );
+          AppDialog.showError(context, AppDialog.cleanError(e));
         }
       }
     }
@@ -249,7 +241,7 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    '₺${listing.budgetMax.toStringAsFixed(2)}',
+                    formatPriceShort(listing.budgetMax),
                     style: const TextStyle(
                       fontSize: 20,
                       color: Colors.green,

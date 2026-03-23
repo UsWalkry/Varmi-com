@@ -1,0 +1,57 @@
+{
+  "name": "Varmii - İhtiyacınızı İlan Edin",
+  "short_name": "Varmii",
+  "description": "İhtiyacınızı ilan edin, satıcılar size teklif versin. Türkiye'nin en yenilikçi pazaryeri platformu.",
+  "lang": "tr",
+  "start_url": "/?source=pwa",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#ffffff",
+  "theme_color": "#9333EA",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "data:image/png;base64,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",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAgAAAAIACAYAAAD0eNT6AAAACXBIWXMAAAsTAAALEwEAmpwYAAAMbklEQVR4nO3dXYhc1RnA8TPZbHYzmyRN0o+kaRPTWq0f9UOttlpbW7VqH1Twww+oL/rgBx9Ef", 
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "İlan Oluştur",
+      "short_name": "İlan",
+      "description": "Yeni ilan oluştur",
+      "url": "/dashboard?action=create",
+      "icons": [{ "src": "/favicon.svg", "sizes": "96x96" }]
+    },
+    {
+      "name": "Hesabım",
+      "short_name": "Profil",
+      "description": "Hesap ayarlarını görüntüle",
+      "url": "/profile",
+      "icons": [{ "src": "/favicon.svg", "sizes": "96x96" }]
+    },
+    {
+      "name": "Teklifler",
+      "short_name": "Teklifler",
+      "description": "Gelen teklifleri görüntüle",
+      "url": "/offers",
+      "icons": [{ "src": "/favicon.svg", "sizes": "96x96" }]
+    }
+  ],
+  "categories": ["shopping", "marketplace", "e-commerce"],
+  "dir": "ltr",
+  "display_override": ["window-controls-overlay", "standalone", "browser"],
+  "prefer_related_applications": false
+}

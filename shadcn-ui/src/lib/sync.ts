@@ -1,7 +1,5 @@
-import { DataManager } from './mockData';
-import { createListing as sbCreateListing, supabaseEnabled, ensureCurrentUserId } from './sbApi';
-
-const SYNC_KEY = 'syncedListingsMap';
+// Sync functionality is no longer needed as we're using pure Supabase
+// This file is kept for compatibility but functions are now no-ops
 
 function getMap(): Record<string, string> {
   try {
@@ -17,7 +15,7 @@ function saveMap(map: Record<string, string>) {
 }
 
 export function getSyncedLocalListingIds(): Set<string> {
-  return new Set(Object.keys(getMap()));
+  return new Set();
 }
 
 export async function syncLocalListingsToSupabase(): Promise<number> {

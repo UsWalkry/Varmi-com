@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../utils/app_dialog.dart';
 import '../../models/address.dart';
 import '../../services/address_service.dart';
 
@@ -31,9 +32,7 @@ class _AddressesScreenState extends State<AddressesScreen> {
     } catch (e) {
       setState(() => _isLoading = false);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Adresler yüklenemedi: $e')),
-        );
+        AppDialog.showError(context, 'Adresler yüklenemedi: ${AppDialog.cleanError(e)}');
       }
     }
   }
@@ -59,9 +58,7 @@ class _AddressesScreenState extends State<AddressesScreen> {
       _loadAddresses();
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Hata: $e'), backgroundColor: Colors.red),
-        );
+        AppDialog.showError(context, AppDialog.cleanError(e));
       }
     }
   }
@@ -72,9 +69,7 @@ class _AddressesScreenState extends State<AddressesScreen> {
       _loadAddresses();
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Hata: $e'), backgroundColor: Colors.red),
-        );
+        AppDialog.showError(context, AppDialog.cleanError(e));
       }
     }
   }
@@ -99,9 +94,7 @@ class _AddressesScreenState extends State<AddressesScreen> {
             _loadAddresses();
           } catch (e) {
             if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Hata: $e'), backgroundColor: Colors.red),
-              );
+              AppDialog.showError(context, AppDialog.cleanError(e));
             }
           }
         },

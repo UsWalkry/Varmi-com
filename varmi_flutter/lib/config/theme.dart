@@ -48,7 +48,192 @@ class AppColors {
   );
 }
 
+// ─── Semantic color tokens (light + dark) ────────────────────────────────────
+class AppThemeColors extends ThemeExtension<AppThemeColors> {
+  final Color bg;
+  final Color card;
+  final Color cardAlt;
+  final Color border;
+  final Color textPrimary;
+  final Color textSecondary;
+  final Color textTertiary;
+  final Color chipBg;
+  final Color inputFill;
+  final Color divider;
+
+  const AppThemeColors({
+    required this.bg,
+    required this.card,
+    required this.cardAlt,
+    required this.border,
+    required this.textPrimary,
+    required this.textSecondary,
+    required this.textTertiary,
+    required this.chipBg,
+    required this.inputFill,
+    required this.divider,
+  });
+
+  static const light = AppThemeColors(
+    bg: Color(0xFFF8FAFC),
+    card: Color(0xFFFFFFFF),
+    cardAlt: Color(0xFFF9FAFB),
+    border: Color(0xFFE5E7EB),
+    textPrimary: Color(0xFF111827),
+    textSecondary: Color(0xFF6B7280),
+    textTertiary: Color(0xFF9CA3AF),
+    chipBg: Color(0xFFF3F4F6),
+    inputFill: Color(0xFFF9FAFB),
+    divider: Color(0xFFF3F4F6),
+  );
+
+  static const dark = AppThemeColors(
+    bg: Color(0xFF0F172A),
+    card: Color(0xFF1E293B),
+    cardAlt: Color(0xFF1A2537),
+    border: Color(0xFF334155),
+    textPrimary: Color(0xFFF1F5F9),
+    textSecondary: Color(0xFF94A3B8),
+    textTertiary: Color(0xFF64748B),
+    chipBg: Color(0xFF263348),
+    inputFill: Color(0xFF1A2537),
+    divider: Color(0xFF1E293B),
+  );
+
+  @override
+  AppThemeColors copyWith({
+    Color? bg,
+    Color? card,
+    Color? cardAlt,
+    Color? border,
+    Color? textPrimary,
+    Color? textSecondary,
+    Color? textTertiary,
+    Color? chipBg,
+    Color? inputFill,
+    Color? divider,
+  }) {
+    return AppThemeColors(
+      bg: bg ?? this.bg,
+      card: card ?? this.card,
+      cardAlt: cardAlt ?? this.cardAlt,
+      border: border ?? this.border,
+      textPrimary: textPrimary ?? this.textPrimary,
+      textSecondary: textSecondary ?? this.textSecondary,
+      textTertiary: textTertiary ?? this.textTertiary,
+      chipBg: chipBg ?? this.chipBg,
+      inputFill: inputFill ?? this.inputFill,
+      divider: divider ?? this.divider,
+    );
+  }
+
+  @override
+  AppThemeColors lerp(ThemeExtension<AppThemeColors>? other, double t) {
+    if (other is! AppThemeColors) return this;
+    return AppThemeColors(
+      bg: Color.lerp(bg, other.bg, t)!,
+      card: Color.lerp(card, other.card, t)!,
+      cardAlt: Color.lerp(cardAlt, other.cardAlt, t)!,
+      border: Color.lerp(border, other.border, t)!,
+      textPrimary: Color.lerp(textPrimary, other.textPrimary, t)!,
+      textSecondary: Color.lerp(textSecondary, other.textSecondary, t)!,
+      textTertiary: Color.lerp(textTertiary, other.textTertiary, t)!,
+      chipBg: Color.lerp(chipBg, other.chipBg, t)!,
+      inputFill: Color.lerp(inputFill, other.inputFill, t)!,
+      divider: Color.lerp(divider, other.divider, t)!,
+    );
+  }
+}
+
+// Quick-access extension: final c = context.appColors;
+extension AppThemeExtension on BuildContext {
+  AppThemeColors get appColors => Theme.of(this).extension<AppThemeColors>()!;
+  bool get isDark => Theme.of(this).brightness == Brightness.dark;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 class AppTheme {
+  static ThemeData darkTheme = ThemeData(
+    useMaterial3: true,
+    brightness: Brightness.dark,
+    colorScheme: const ColorScheme.dark(
+      primary: AppColors.primary,
+      secondary: AppColors.secondary,
+      surface: Color(0xFF1E293B),
+      error: AppColors.error,
+    ),
+    scaffoldBackgroundColor: const Color(0xFF0F172A),
+    appBarTheme: const AppBarTheme(
+      backgroundColor: Color(0xFF1E293B),
+      foregroundColor: Color(0xFFF1F5F9),
+      elevation: 0,
+      centerTitle: false,
+    ),
+    cardTheme: const CardThemeData(
+      color: Color(0xFF1E293B),
+      elevation: 1,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.all(Radius.circular(12)),
+      ),
+    ),
+    dividerColor: const Color(0xFF334155),
+    inputDecorationTheme: InputDecorationTheme(
+      filled: true,
+      fillColor: const Color(0xFF1A2537),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: Color(0xFF334155)),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: Color(0xFF334155)),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: AppColors.primary, width: 2),
+      ),
+      errorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: AppColors.error),
+      ),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      hintStyle: const TextStyle(color: Color(0xFF64748B)),
+      labelStyle: const TextStyle(color: Color(0xFF94A3B8)),
+    ),
+    elevatedButtonTheme: ElevatedButtonThemeData(
+      style: ElevatedButton.styleFrom(
+        backgroundColor: AppColors.primary,
+        foregroundColor: Colors.white,
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        elevation: 0,
+      ),
+    ),
+    textButtonTheme: TextButtonThemeData(
+      style: TextButton.styleFrom(
+        foregroundColor: AppColors.primary,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      ),
+    ),
+    outlinedButtonTheme: OutlinedButtonThemeData(
+      style: OutlinedButton.styleFrom(
+        foregroundColor: AppColors.primary,
+        side: const BorderSide(color: AppColors.primary),
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+    ),
+    bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+      backgroundColor: Color(0xFF1E293B),
+      selectedItemColor: AppColors.primary,
+      unselectedItemColor: Color(0xFF64748B),
+      type: BottomNavigationBarType.fixed,
+      elevation: 8,
+    ),
+    extensions: const [AppThemeColors.dark],
+  );
+
   static ThemeData lightTheme = ThemeData(
     useMaterial3: true,
     colorScheme: ColorScheme.light(
@@ -126,6 +311,7 @@ class AppTheme {
       type: BottomNavigationBarType.fixed,
       elevation: 8,
     ),
+    extensions: const [AppThemeColors.light],
   );
 }
 

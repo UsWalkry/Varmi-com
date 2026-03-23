@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../../utils/app_dialog.dart';
+import '../../utils/formatters.dart';
 import '../../models/order.dart';
 import '../../services/order_service.dart';
 
@@ -72,22 +74,12 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
       try {
         await _orderService.confirmOrder(widget.orderId);
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Sipariş onaylandı'),
-              backgroundColor: Colors.green,
-            ),
-          );
+          AppDialog.showSuccess(context, 'Sipariş onaylandı');
           _loadOrder();
         }
       } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Hata: ${e.toString()}'),
-              backgroundColor: Colors.red,
-            ),
-          );
+          AppDialog.showError(context, AppDialog.cleanError(e));
         }
       }
     }
@@ -97,22 +89,12 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     try {
       await _orderService.startProcessing(widget.orderId);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Sipariş hazırlanmaya başlandı'),
-            backgroundColor: Colors.green,
-          ),
-        );
+        AppDialog.showSuccess(context, 'Sipariş hazırlanmaya başlandı');
         _loadOrder();
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Hata: ${e.toString()}'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        AppDialog.showError(context, AppDialog.cleanError(e));
       }
     }
   }
@@ -161,12 +143,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     if (confirmed == true) {
       if (carrierController.text.isEmpty || trackingController.text.isEmpty) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Lütfen tüm alanları doldurun'),
-              backgroundColor: Colors.orange,
-            ),
-          );
+          AppDialog.showWarning(context, 'Lütfen tüm alanları doldurun');
         }
         return;
       }
@@ -178,22 +155,12 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
           trackingController.text,
         );
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Sipariş kargoya verildi'),
-              backgroundColor: Colors.green,
-            ),
-          );
+          AppDialog.showSuccess(context, 'Sipariş kargoya verildi');
           _loadOrder();
         }
       } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Hata: ${e.toString()}'),
-              backgroundColor: Colors.red,
-            ),
-          );
+          AppDialog.showError(context, AppDialog.cleanError(e));
         }
       }
     }
@@ -222,22 +189,12 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
       try {
         await _orderService.confirmDelivery(widget.orderId);
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Teslimat onaylandı'),
-              backgroundColor: Colors.green,
-            ),
-          );
+          AppDialog.showSuccess(context, 'Teslimat onaylandı');
           _loadOrder();
         }
       } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Hata: ${e.toString()}'),
-              backgroundColor: Colors.red,
-            ),
-          );
+          AppDialog.showError(context, AppDialog.cleanError(e));
         }
       }
     }
@@ -333,12 +290,12 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                   if (order.productName != null)
                     _buildInfoRow('Ürün', order.productName!),
                   if (order.orderAmount != null)
-                    _buildInfoRow('Tutar', '₺${order.orderAmount!.toStringAsFixed(2)}'),
+                    _buildInfoRow('Tutar', formatPriceShort(order.orderAmount!)),
                   _buildInfoRow(
                     widget.isBuyer ? 'Satıcı' : 'Alıcı',
                     widget.isBuyer
-                        ? (order.sellerName ?? 'Bilinmiyor')
-                        : (order.buyerName ?? 'Bilinmiyor'),
+                        ? maskName(order.sellerName)
+                        : maskName(order.buyerName),
                   ),
                   _buildInfoRow(
                     'Sipariş Tarihi',

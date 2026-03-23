@@ -1,4 +1,5 @@
 import { supabase, type ListingRow, type OfferRow, type UUID } from './supabase';
+import { Mailer } from './mail';
 
 export async function fetchListings(): Promise<ListingRow[]> {
   const { data, error } = await supabase
@@ -19,10 +20,13 @@ export type CreateListingInput = {
   city: string;
   delivery_type: 'shipping' | 'pickup' | 'both';
   buyer_id: UUID;
+  buyer_name?: string;
   offers_public?: boolean;
   offers_purchasable?: boolean;
   status?: ListingRow['status'];
   expires_at?: string | null;
+  mask_owner_name?: boolean;
+  exact_product_only?: boolean;
 };
 
 export async function createListing(payload: CreateListingInput): Promise<ListingRow> {
@@ -51,6 +55,8 @@ export async function fetchOffers(listingId?: UUID) {
 export async function placeOffer(payload: {
   listing_id: UUID;
   seller_id: UUID;
+  seller_name?: string;
+  seller_rating?: number;
   price: number;
   quantity?: number;
   condition?: 'new' | 'used';
@@ -65,12 +71,177 @@ export async function placeOffer(payload: {
   status?: 'active' | 'accepted' | 'rejected' | 'withdrawn';
   product_name?: string;
 }): Promise<Record<string, unknown>> {
-  const { data, error } = await supabase.from('offers').insert({
+  // Proactive check: if an offer already exists for (listing_id, seller_id), decide whether to update or revive
+  const existing = await supabase
+    .from('offers')
+    .select('*')
+    .match({ listing_id: payload.listing_id, seller_id: payload.seller_id })
+    .maybeSingle();
+
+  if (!existing.error && existing.data) {
+    const row = existing.data as OfferRow;
+    // If withdrawn, revive with latest payload fields
+    if (row.status === 'withdrawn') {
+      const revivePatch: Partial<OfferRow> = {
+        status: 'active',
+        price: payload.price,
+        quantity: payload.quantity ?? 1,
+        condition: payload.condition ?? row.condition,
+        delivery_type: payload.delivery_type ?? row.delivery_type,
+        shipping_desi: payload.shipping_desi ?? row.shipping_desi,
+        shipping_cost: payload.shipping_cost ?? row.shipping_cost,
+        description: payload.description ?? row.description,
+        images: (payload.images as any) ?? row.images,
+        eta_days: payload.eta_days ?? row.eta_days,
+        valid_until: payload.valid_until ?? row.valid_until,
+        product_name: payload.product_name ?? row.product_name,
+        seller_name: payload.seller_name ?? row.seller_name,
+        seller_rating: payload.seller_rating ?? row.seller_rating,
+        accepted_at: null,
+        order_stage: null,
+        tracking_no: null,
+        order_notes: null,
+        order_updated_at: null,
+        shipping_carrier_id: null,
+        shipping_carrier_name: null,
+        shipping_extra_fee: null,
+        completed_at: null,
+        created_at: new Date().toISOString() as any,
+      } as Partial<OfferRow>;
+      const upd = await supabase
+        .from('offers')
+        .update(revivePatch)
+        .eq('id', row.id)
+        .select('*')
+        .single();
+      if (upd.error) throw upd.error;
+      const revived = upd.data as OfferRow;
+      notifyListingOwnerByEmailSafe(revived).catch(() => {});
+      return revived as unknown as Record<string, unknown>;
+    }
+    // Otherwise, there is an existing non-withdrawn offer. Treat this as an update/edit to avoid duplicate
+      const updatePatch: Partial<OfferRow> = {
+        // keep status as is if not withdrawn; for 'active' this is a simple edit
+        price: payload.price,
+        quantity: payload.quantity ?? row.quantity ?? 1,
+        condition: payload.condition ?? row.condition,
+        delivery_type: payload.delivery_type ?? row.delivery_type,
+        shipping_desi: payload.shipping_desi ?? row.shipping_desi,
+        shipping_cost: payload.shipping_cost ?? row.shipping_cost,
+        description: payload.description ?? row.description,
+        images: (payload.images as any) ?? row.images,
+        eta_days: payload.eta_days ?? row.eta_days,
+        valid_until: payload.valid_until ?? row.valid_until,
+        product_name: payload.product_name ?? row.product_name,
+        seller_name: payload.seller_name ?? row.seller_name,
+        seller_rating: payload.seller_rating ?? row.seller_rating,
+        order_updated_at: new Date().toISOString() as any,
+      } as Partial<OfferRow>;
+      const upd = await supabase
+        .from('offers')
+        .update(updatePatch)
+        .eq('id', row.id)
+        .select('*')
+        .single();
+      if (upd.error) throw upd.error;
+      const updated = upd.data as OfferRow;
+      // No email on edit to prevent spam
+      return updated as unknown as Record<string, unknown>;
+  }
+
+  const insertResp = await supabase.from('offers').insert({
     ...payload,
     quantity: payload.quantity ?? 1,
   }).select('*').single();
-  if (error) throw error;
-  return data;
+  if (!insertResp.error) {
+    const created = insertResp.data as OfferRow;
+    // Fire-and-forget: notify listing owner by email
+    notifyListingOwnerByEmailSafe(created).catch(() => {});
+    return created as unknown as Record<string, unknown>;
+  }
+  const error: any = insertResp.error;
+  // If unique constraint conflicts, try to revive a withdrawn offer for the same (listing_id, seller_id)
+  const status = (insertResp as any)?.status;
+  const message = String(error?.message || '').toLowerCase();
+  const details = String(error?.details || '').toLowerCase();
+  const isDuplicate = error?.code === '23505'
+    || status === 409
+    || message.includes('duplicate key')
+    || message.includes('already exists')
+    || details.includes('duplicate')
+    || details.includes('already exists');
+  if (isDuplicate) {
+    const existing = await supabase
+      .from('offers')
+      .select('*')
+      .match({ listing_id: payload.listing_id, seller_id: payload.seller_id })
+      .maybeSingle();
+    if (existing.error) throw existing.error;
+    const row = existing.data as OfferRow | null;
+    if (row && row.status === 'withdrawn') {
+      const revivePatch: Partial<OfferRow> = {
+        status: 'active',
+        price: payload.price,
+        quantity: payload.quantity ?? 1,
+        condition: payload.condition ?? row.condition,
+        delivery_type: payload.delivery_type ?? row.delivery_type,
+        shipping_desi: payload.shipping_desi ?? row.shipping_desi,
+        shipping_cost: payload.shipping_cost ?? row.shipping_cost,
+        description: payload.description ?? row.description,
+        images: (payload.images as any) ?? row.images,
+        eta_days: payload.eta_days ?? row.eta_days,
+        valid_until: payload.valid_until ?? row.valid_until,
+        product_name: payload.product_name ?? row.product_name,
+        seller_name: payload.seller_name ?? row.seller_name,
+        seller_rating: payload.seller_rating ?? row.seller_rating,
+        accepted_at: null,
+        order_stage: null,
+        tracking_no: null,
+        order_notes: null,
+        order_updated_at: null,
+        shipping_carrier_id: null,
+        shipping_carrier_name: null,
+        shipping_extra_fee: null,
+        completed_at: null,
+        // Optionally refresh created_at to bubble up in lists
+        created_at: new Date().toISOString() as any,
+      } as Partial<OfferRow>;
+      const upd = await supabase
+        .from('offers')
+        .update(revivePatch)
+        .eq('id', row.id)
+        .select('*')
+        .single();
+      if (upd.error) throw upd.error;
+      const revived = upd.data as OfferRow;
+      notifyListingOwnerByEmailSafe(revived).catch(() => {});
+      return revived as unknown as Record<string, unknown>;
+    }
+  }
+  // Otherwise propagate the original error
+  throw error;
+}
+
+// Helper: fetch listing owner name/email and send offer received email
+async function notifyListingOwnerByEmailSafe(offer: OfferRow) {
+  try {
+    // Join listing and owner (users) to fetch email/name
+    const { data, error } = await supabase
+      .from('listings')
+      .select(`id,title,buyer:buyer_id(name,email)`) // FK join
+      .eq('id', offer.listing_id)
+      .maybeSingle();
+    if (error || !data) return;
+    const owner = (data as any).buyer as { name?: string; email?: string } | null;
+    if (!owner?.email) return;
+    await Mailer.sendOfferReceived(
+      { name: owner.name || 'Kullanıcı', email: owner.email },
+      { id: (data as any).id, title: (data as any).title },
+      { sellerName: offer.seller_name || 'Satıcı', price: Number(offer.price), deliveryType: (offer.delivery_type as any) || undefined }
+    );
+  } catch {
+    // ignore mail errors
+  }
 }
 
 export async function deleteOffer(offerId: UUID) {
@@ -172,11 +343,15 @@ export type UiListing = {
   city: string;
   deliveryType: 'shipping' | 'pickup' | 'both';
   buyerId: string;
+  buyerName: string;
   status: 'active' | 'closed' | 'expired';
   createdAt: string;
+  offerCount: number;
+  maskOwnerName?: boolean;
+  exactProductOnly?: boolean;
 };
 
-export function mapListingRowToUi(l: ListingRow): UiListing {
+export function mapListingRowToUi(l: ListingRow & { buyer?: { name: string }; mask_owner_name?: boolean; exact_product_only?: boolean; buyer_name?: string }): UiListing {
   return {
     id: l.id,
     title: l.title,
@@ -188,8 +363,12 @@ export function mapListingRowToUi(l: ListingRow): UiListing {
     city: l.city,
     deliveryType: l.delivery_type,
     buyerId: l.buyer_id,
+    buyerName: l.buyer?.name || l.buyer_name || 'Kullanıcı',
     status: l.status,
     createdAt: l.created_at,
+    offerCount: l.offer_count || 0,
+    maskOwnerName: l.mask_owner_name ?? false,
+    exactProductOnly: l.exact_product_only ?? false,
   };
 }
 
@@ -198,10 +377,85 @@ export async function fetchListingsUi(): Promise<UiListing[]> {
   return list.map(mapListingRowToUi);
 }
 
+// Fetch active listings with nested aggregate offers(count) to get accurate counts in one request
+export async function fetchActiveListingsUi(): Promise<UiListing[]> {
+  // Note: This relies on PostgREST embedded resources. The relation name is the table name `offers`.
+  const { data, error } = await supabase
+    .from('listings')
+    .select(`
+      *,
+      offers(count)
+    `)
+    .eq('status', 'active')
+    // Count only non-withdrawn offers in the aggregate
+    .neq('offers.status', 'withdrawn')
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+
+  // Map rows to UiListing, preferring the embedded aggregate for count when present
+  const rows = (data ?? []) as Array<ListingRow & { offers?: Array<{ count: number }> }>;
+  return rows.map((l) => {
+    const ui = mapListingRowToUi(l as ListingRow);
+    const aggCount = Array.isArray((l as any).offers) ? (l as any).offers?.[0]?.count ?? undefined : undefined;
+    return { ...ui, offerCount: aggCount ?? ui.offerCount ?? 0 };
+  });
+}
+
+// Fetch only current user's listings (requires Supabase session)
+export async function fetchMyListingsUi(): Promise<UiListing[]> {
+  const userId = await ensureCurrentUserId();
+  if (!userId) return [];
+  // Prefer view if available; fallback to direct table filter
+  let { data, error } = await supabase
+    .from('my_listings')
+    .select('*')
+    .order('created_at', { ascending: false });
+  if (error) {
+    // Likely the view doesn't exist (404). Fallback to direct filter by buyer_id
+    if (import.meta.env.DEV) console.debug('[fetchMyListingsUi] view error, falling back:', error);
+    const resp = await supabase
+      .from('listings')
+      .select('*')
+      .eq('buyer_id', userId)
+      .order('created_at', { ascending: false });
+    if (resp.error) throw resp.error;
+    data = resp.data;
+  }
+  // If still empty, attempt a join on users.auth_user_id to be robust against id mismatches
+  if (!data || data.length === 0) {
+    try {
+      const { data: authRes } = await supabase.auth.getUser();
+      const authUserId = authRes?.user?.id;
+      if (authUserId) {
+        const j = await supabase
+          .from('listings')
+          .select('*, buyer:users!inner(auth_user_id)')
+          .eq('buyer.auth_user_id', authUserId)
+          .order('created_at', { ascending: false });
+        if (!j.error && Array.isArray(j.data) && j.data.length > 0) {
+          data = j.data as any[];
+        }
+      }
+    } catch (e) {
+      if (import.meta.env.DEV) console.debug('[fetchMyListingsUi] join fallback failed:', e);
+    }
+  }
+  return (data ?? []).map(mapListingRowToUi);
+}
+
 // Single listing fetch
 export async function fetchListingById(id: UUID): Promise<ListingRow | null> {
   const { data, error } = await supabase.from('listings').select('*').eq('id', id).maybeSingle();
   if (error) throw error;
+  
+  // DEBUG: Supabase'den gelen listing verisini logla
+  console.log('📦 Supabase fetchListingById:', {
+    id: id,
+    'data?.buyer_id': data?.buyer_id,
+    'data?.title': data?.title,
+    rawData: data
+  });
+  
   return data as ListingRow;
 }
 
@@ -289,6 +543,70 @@ export function supabaseEnabled(): boolean {
   const looksUrl = !!url && /^https?:\/\//.test(url);
   const looksJwt = !!key && key.split('.').length >= 3 && key.length > 20; // anon key is a JWT
   return looksUrl && looksJwt;
+}
+
+// Favorites API
+export async function addToFavorites(listingId: UUID): Promise<void> {
+  const userId = await ensureCurrentUserId();
+  if (!userId) throw new Error('Must be logged in to add favorites');
+  
+  const { error } = await supabase
+    .from('favorites')
+    .insert({ user_id: userId, listing_id: listingId });
+  
+  if (error) throw error;
+}
+
+export async function removeFromFavorites(listingId: UUID): Promise<void> {
+  const userId = await ensureCurrentUserId();
+  if (!userId) throw new Error('Must be logged in to remove favorites');
+  
+  const { error } = await supabase
+    .from('favorites')
+    .delete()
+    .match({ user_id: userId, listing_id: listingId });
+  
+  if (error) throw error;
+}
+
+export async function getUserFavorites(): Promise<UUID[]> {
+  const userId = await ensureCurrentUserId();
+  if (!userId) return [];
+  
+  const { data, error } = await supabase
+    .from('favorites')
+    .select('listing_id')
+    .eq('user_id', userId);
+  
+  if (error) throw error;
+  return data.map(f => f.listing_id);
+}
+
+export async function isFavorite(listingId: UUID): Promise<boolean> {
+  const userId = await ensureCurrentUserId();
+  if (!userId) return false;
+  
+  const { data, error } = await supabase
+    .from('favorites')
+    .select('id')
+    .match({ user_id: userId, listing_id: listingId })
+    .maybeSingle();
+  
+  if (error) throw error;
+  return !!data;
+}
+
+export async function getFavoriteListings(): Promise<UiListing[]> {
+  const favoriteIds = await getUserFavorites();
+  if (favoriteIds.length === 0) return [];
+  
+  const { data, error } = await supabase
+    .from('listings')
+    .select('*')
+    .in('id', favoriteIds);
+  
+  if (error) throw error;
+  return data.map(mapListingRowToUi);
 }
 
 // Helper to ensure current user id exists in public.users (requires being logged in)

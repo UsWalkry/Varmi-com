@@ -75,8 +75,13 @@ class Listing {
         try {
           final decoded = json['images'] as String;
           if (decoded.startsWith('[')) {
-            imageList = (json['images'] as List).map((e) => e.toString()).toList();
-          } else {
+            // JSON dizisi string olarak geldi - parse et
+            final parsed = RegExp(r'"([^"]*)"').allMatches(decoded)
+                .map((m) => m.group(1) ?? '')
+                .where((s) => s.isNotEmpty)
+                .toList();
+            imageList = parsed;
+          } else if (decoded.isNotEmpty) {
             imageList = [decoded];
           }
         } catch (e) {
@@ -96,16 +101,16 @@ class Listing {
     }
 
     return Listing(
-      id: json['id'] as String,
-      buyerId: (json['buyerId'] ?? json['buyer_id']) as String,
-      title: json['title'] as String,
-      category: json['category'] as String,
-      listingCondition: (json['condition'] ?? json['listing_condition']) as String,
+      id: json['id']?.toString() ?? '',
+      buyerId: (json['buyerId'] ?? json['buyer_id'])?.toString() ?? '',
+      title: (json['title'] ?? '').toString(),
+      category: (json['category'] ?? '').toString(),
+      listingCondition: ((json['condition'] ?? json['listing_condition']) ?? '').toString(),
       budgetMin: parseDouble(json['price'] ?? json['budget_min']),
       budgetMax: parseDouble(json['budgetMax'] ?? json['budget_max'] ?? json['price']) ?? 0.0,
-      city: (json['city'] ?? json['location']) as String?,
-      deliveryType: (json['deliveryType'] ?? json['delivery_type']) as String,
-      description: json['description'] as String?,
+      city: (json['city'] ?? json['location'])?.toString(),
+      deliveryType: ((json['deliveryType'] ?? json['delivery_type']) ?? 'kargo').toString(),
+      description: json['description']?.toString(),
       images: imageList,
       status: json['status'] as String? ?? 'active',
       approvalStatus: (json['approvalStatus'] ?? json['approval_status']) as String? ?? 'approved',
@@ -114,20 +119,20 @@ class Listing {
           ? DateTime.parse((json['approvedAt'] ?? json['approved_at']) as String)
           : null,
       rejectionReason: (json['rejectionReason'] ?? json['rejection_reason']) as String?,
-      viewCount: (json['viewCount'] ?? json['view_count']) as int? ?? 0,
-      favoriteCount: (json['favoriteCount'] ?? json['favorite_count']) as int? ?? 0,
+      viewCount: int.tryParse((json['viewCount'] ?? json['view_count'])?.toString() ?? '0') ?? 0,
+      favoriteCount: int.tryParse((json['favoriteCount'] ?? json['favorite_count'])?.toString() ?? '0') ?? 0,
       expiresAt: (json['expiresAt'] ?? json['expires_at']) != null
           ? DateTime.parse((json['expiresAt'] ?? json['expires_at']) as String)
           : null,
       maskOwnerName: (json['maskOwnerName'] ?? json['mask_owner_name']) == 1 || (json['maskOwnerName'] ?? json['mask_owner_name']) == true,
-      createdAt: DateTime.parse((json['createdAt'] ?? json['created_at']) as String),
+      createdAt: DateTime.tryParse((json['createdAt'] ?? json['created_at'])?.toString() ?? '') ?? DateTime.now(),
       updatedAt: (json['updatedAt'] ?? json['updated_at']) != null
-          ? DateTime.parse((json['updatedAt'] ?? json['updated_at']) as String)
+          ? DateTime.tryParse((json['updatedAt'] ?? json['updated_at']).toString())
           : null,
-      buyerName: (json['buyerName'] ?? json['buyer_name']) as String?,
-      buyerEmail: (json['buyerEmail'] ?? json['buyer_email']) as String?,
-      isFavorited: (json['isFavorited'] ?? json['is_favorited']) as bool?,
-      offerCount: (json['offerCount'] ?? json['offer_count']) as int?,
+      buyerName: (json['buyerName'] ?? json['buyer_name'])?.toString(),
+      buyerEmail: (json['buyerEmail'] ?? json['buyer_email'])?.toString(),
+      isFavorited: json['isFavorited'] as bool? ?? json['is_favorited'] as bool?,
+      offerCount: int.tryParse((json['offerCount'] ?? json['offer_count'])?.toString() ?? '0'),
     );
   }
 

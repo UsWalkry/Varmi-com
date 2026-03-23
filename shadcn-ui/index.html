@@ -3,21 +3,36 @@
 
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <link rel="icon" href="https://public-frontend-cos.metadl.com/mgx/img/favicon.png" type="image/png">
-  <title>var mıı? - Ters İlan Pazaryeri</title>
-  <meta name="description" content="İhtiyacınızı ilan edin, teklifleri karşılaştırın. Ters pazaryeri platformu." />
-  <meta name="author" content="MGX" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover" />
+  <link rel="icon" href="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIiIGhlaWdodD0iMzIiIHZpZXdCb3g9IjAgMCAzMiAzMiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiByeD0iOCIgZmlsbD0idXJsKCNncmFkaWVudDApIi8+CjxkZWZzPgo8bGluZWFyR3JhZGllbnQgaWQ9ImdyYWRpZW50MCIgeDE9IjAiIHkxPSIwIiB4Mj0iMzIiIHkyPSIzMiIgZ3JhZGllbnRVbml0cz0idXNlclNwYWNlT25Vc2UiPgo8c3RvcCBzdG9wLWNvbG9yPSIjOTMzM0VBIi8+CjxzdG9wIG9mZnNldD0iMC41IiBzdG9wLWNvbG9yPSIjMjU2M0VCIi8+CjxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iIzEwQjk4MSIvPgo8L2xpbmVhckdyYWRpZW50Pgo8L2RlZnM+Cjx0ZXh0IHg9IjE2IiB5PSIyMCIgZm9udC1mYW1pbHk9InNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMTAiIGZvbnQtd2VpZ2h0PSJib2xkIiBmaWxsPSJ3aGl0ZSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+Vj88L3RleHQ+Cjwvc3ZnPg==" type="image/svg+xml">
+  <meta name="theme-color" content="#9333EA" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <title>Varmii? - İhtiyacınızı İlan Edin</title>
+  <meta name="description" content="İhtiyacınızı ilan edin, satıcılar size teklif versin. Türkiye'nin en yenilikçi pazaryeri platformu." />
+  <meta name="author" content="Varmii.com" />
 
-  <meta property="og:title" content="var mıı? - Ters İlan Pazaryeri" />
-  <meta property="og:description" content="İhtiyacınızı ilan edin, teklifleri karşılaştırın. Ters pazaryeri platformu." />
+  <meta property="og:title" content="Varmii? - İhtiyacınızı İlan Edin" />
+  <meta property="og:description" content="İhtiyacınızı ilan edin, satıcılar size teklif versin. Türkiye'nin en yenilikçi pazaryeri platformu." />
   <meta property="og:type" content="website" />
+
+  <!-- PWA manifest -->
+  <link rel="manifest" href="/manifest.webmanifest" />
 
 </head>
 
 <body>
   <div id="root"></div>
+  <!-- Debug scripts disabled for production -->
+  <!-- <script type="module" src="/src/debug-localStorage.js"></script> -->
   <script type="module" src="/src/main.tsx"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js').catch(console.warn);
+      });
+    }
+  </script>
 </body>
 
 </html>

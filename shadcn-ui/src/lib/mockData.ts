@@ -1,4 +1,5 @@
 // TOTP (RFC 6238) için tarayıcı uyumlu yardımcılar
+import { safeRandomUUID } from './utils';
 
 // Browser-safe Base32 secret generator (RFC 4648, no padding)
 function base32Encode(bytes: Uint8Array): string {
@@ -148,7 +149,6 @@ export interface User {
   notifications?: {
     email: boolean;
     sms: boolean;
-    inApp: boolean;
   };
   recovery?: {
     backupEmail?: string;
@@ -161,6 +161,7 @@ export interface User {
 
 export interface Listing {
   id: string;
+  listing_id?: string; // For favorites data where id is favorites.id and listing_id is listings.id
   title: string;
   description: string;
   // İlan görselleri (data URL veya uzak URL). En az 1 önerilir.
@@ -183,6 +184,7 @@ export interface Listing {
   status: 'active' | 'closed' | 'expired';
   createdAt: string;
   offerCount: number;
+  favoriteCount?: number; // Favori sayısı
   expiresAt?: string;
 }
 
@@ -192,6 +194,10 @@ export interface Offer {
   sellerId: string;
   sellerName: string;
   sellerRating: number;
+  sellerRatingCount?: number;  // Değerlendirme sayısı
+  sellerEmailVerified?: boolean;  // Email doğrulama durumu
+  isVerifiedSeller?: boolean;  // Doğrulanmış satıcı mı
+  storeName?: string;  // Mağaza adı (doğrulanmış satıcılar için)
   price: number;
   // Teklif edilen ürün adedi (varsayılan 1)
   quantity?: number;
@@ -259,16 +265,7 @@ export interface ThirdPartyOrder {
   completedAt?: string;
 }
 
-export interface Message {
-  id: string;
-  listingId: string;
-  fromUserId: string;
-  fromUserName: string;
-  toUserId: string;
-  content: string;
-  read: boolean;
-  createdAt: string;
-}
+
 
 export interface SearchFilters {
   category?: string;
@@ -631,11 +628,10 @@ function getDesiRange(bracket: DesiBracket): { min: number; max?: number } {
   return DESI_RULES[bracket] ? { min: DESI_RULES[bracket].min, max: DESI_RULES[bracket].max } : { min: 0 };
 }
 
-// Seed data removed: start with an empty application (no demo users, listings, offers, or messages)
+// Seed data removed: start with an empty application (no demo users, listings, or offers)
 const mockUsers: User[] = [];
 const mockListings: Listing[] = [];
 const mockOffers: Offer[] = [];
-const mockMessages: Message[] = [];
 
 // DataManager class with all static methods
 export class DataManager {
@@ -647,70 +643,14 @@ export class DataManager {
   }
   // Mesaj yönetimi
   // Sadece aşağıdaki versiyonlar kalacak
-  static getAllMessages(): Message[] {
-    this.initializeData();
-    const messagesStr = localStorage.getItem(this.STORAGE_KEYS.MESSAGES);
-    return messagesStr ? JSON.parse(messagesStr) : [];
-  }
 
-  static addMessage(messageData: {
-    listingId: string;
-    fromUserId: string;
-    fromUserName: string;
-    toUserId: string;
-    message: string;
-  }): Message {
-    const messages = this.getAllMessages();
-    const newMessage: Message = {
-      id: `msg_${Date.now()}`,
-      listingId: messageData.listingId,
-      fromUserId: messageData.fromUserId,
-      fromUserName: messageData.fromUserName,
-      toUserId: messageData.toUserId,
-      content: messageData.message,
-      read: false,
-      createdAt: new Date().toISOString()
-    };
-    messages.push(newMessage);
-    localStorage.setItem(this.STORAGE_KEYS.MESSAGES, JSON.stringify(messages));
-    try {
-      window.dispatchEvent(new Event('messages-updated'));
-    } catch (e) {
-      // ignore in non-browser contexts
-    }
-    // Mesaj geldiğinde mail gönder
-    try {
-      const recipient = this.getUser(messageData.toUserId);
-      const sender = this.getUser(messageData.fromUserId);
-      const listing = this.getListing(messageData.listingId);
-      if (recipient && sender && listing) {
-        import('@/lib/mail').then(({ Mailer }) => {
-          Mailer.sendNewMessage(
-            { name: recipient.name, email: recipient.email },
-            { name: sender.name },
-            { id: listing.id, title: listing.title },
-            messageData.message
-          );
-        });
-      }
-    } catch (e) {
-      // ignore
-    }
-    return newMessage;
-  }
 
-  static getConversation(userA: string, userB: string, listingId?: string): Message[] {
-    return this.getAllMessages().filter(m =>
-      ((m.fromUserId === userA && m.toUserId === userB) || (m.fromUserId === userB && m.toUserId === userA)) &&
-      (listingId ? m.listingId === listingId : true)
-    ).sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
-  }
   // Review management
   static addReview(review: Omit<Review, 'id' | 'createdAt'>): Review {
     const reviews = this.getAllReviews();
     const newReview: Review = {
       ...review,
-      id: `review_${Date.now()}`,
+  id: safeRandomUUID(), // Supabase-compatible UUID format
       createdAt: new Date().toISOString()
     };
     reviews.push(newReview);
@@ -750,13 +690,29 @@ export class DataManager {
     LISTINGS: 'listings',
     OFFERS: 'offers',
   TP_ORDERS: 'tp_orders',
-    MESSAGES: 'messages',
     FAVORITES: 'favorites',
     SESSIONS: 'sessions', // map: userId -> Session[]
     LOGIN_LOGS: 'loginLogs', // map: userId -> LoginLog[]
     PENDING_LOGIN: 'pendingLogin', // { userId: string, createdAt: string }
     PENDING_AUTH_SETUP: 'pendingAuthSetup', // map: userId -> secret
   };
+
+  // Sistemdeki tüm veriyi temizle
+  static clearAllData(): void {
+    console.log('🗑️ DataManager: Tüm localStorage verileri temizleniyor...');
+    
+    // Her storage key'i için temizlik
+    Object.values(this.STORAGE_KEYS).forEach(key => {
+      localStorage.removeItem(key);
+    });
+    
+    // Ek olarak userId gibi diğer key'leri de temizle
+    localStorage.removeItem('userId');
+    localStorage.removeItem('authToken');
+    localStorage.removeItem('theme');
+    
+    console.log('✅ DataManager: Tüm veriler temizlendi');
+  }
 
   // Sessions and login logs
   static getSessions(userId: string): UserSession[] {
@@ -796,9 +752,6 @@ export class DataManager {
     if (!localStorage.getItem(this.STORAGE_KEYS.OFFERS)) {
       localStorage.setItem(this.STORAGE_KEYS.OFFERS, JSON.stringify([]));
     }
-    if (!localStorage.getItem(this.STORAGE_KEYS.MESSAGES)) {
-      localStorage.setItem(this.STORAGE_KEYS.MESSAGES, JSON.stringify([]));
-    }
     if (!localStorage.getItem(this.STORAGE_KEYS.FAVORITES)) {
       localStorage.setItem(this.STORAGE_KEYS.FAVORITES, JSON.stringify({}));
     }
@@ -813,7 +766,6 @@ export class DataManager {
     localStorage.setItem(this.STORAGE_KEYS.USERS, JSON.stringify([]));
     localStorage.setItem(this.STORAGE_KEYS.LISTINGS, JSON.stringify([]));
     localStorage.setItem(this.STORAGE_KEYS.OFFERS, JSON.stringify([]));
-    localStorage.setItem(this.STORAGE_KEYS.MESSAGES, JSON.stringify([]));
     localStorage.setItem(this.STORAGE_KEYS.FAVORITES, JSON.stringify({}));
     localStorage.setItem('reviews', JSON.stringify([]));
   }
@@ -893,16 +845,26 @@ export class DataManager {
 
   private static finalizeLogin(user: User): User {
     localStorage.setItem(this.STORAGE_KEYS.CURRENT_USER, JSON.stringify(user));
+    localStorage.setItem('userId', user.id); // KRITIK: userId'yi de kaydet!
+    
+    // DEBUG: Login sonrası ID kontrolü
+    console.log('✅ finalizeLogin:', {
+      'user.id': user.id,
+      'user.email': user.email,
+      'localStorage.userId': localStorage.getItem('userId'),
+      'localStorage.currentUser': !!localStorage.getItem(this.STORAGE_KEYS.CURRENT_USER)
+    });
+    
     // Log login and create a session (demo values)
     const ip = '127.0.0.1';
     const deviceName = navigator?.userAgent || 'Bilinmeyen Cihaz';
     const logs = this.getLoginLogs(user.id);
-    logs.push({ id: `log_${Date.now()}`, timestamp: new Date().toISOString(), ip, location: 'Local' });
+  logs.push({ id: safeRandomUUID(), timestamp: new Date().toISOString(), ip, location: 'Local' });
     this.saveLoginLogs(user.id, logs);
 
     const sessions = this.getSessions(user.id);
     const session: UserSession = {
-      id: `sess_${Date.now()}`,
+  id: safeRandomUUID(), // Supabase-compatible UUID format
       deviceName,
       ip,
       lastActiveAt: new Date().toISOString(),
@@ -935,6 +897,44 @@ export class DataManager {
       }
       return { status: 'ok', user: this.finalizeLogin(user) };
     }
+    
+    // Demo amaçlı: kullanıcı bulunamazsa otomatik oluştur
+    if (!user && (password === '123456' || password === '')) {
+      // Email formatında ise auto-register
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (emailRegex.test(identifier)) {
+        // Email'den isim çıkar - özel mapping ile
+        const emailToNameMap: Record<string, string> = {
+          'bybrkaydn@gmail.com': 'Burak Rüştü Aydın',
+          'awasdz95@gmail.com': 'Mete Yanar',
+          // Diğer özel durumlar buraya eklenebilir
+        };
+        
+        const nameFromEmail = identifier.split('@')[0];
+        const capitalizedName = emailToNameMap[identifier] || 
+          nameFromEmail.charAt(0).toUpperCase() + nameFromEmail.slice(1);
+        
+        const newUser = this.registerUser({
+          name: capitalizedName,
+          email: identifier,
+          password: password,
+          city: 'İstanbul', // Default şehir
+          phone: ''
+        });
+        
+        if (newUser) {
+          // DEBUG: Yeni kullanıcı oluşturma
+          console.log('👤 AUTO-REGISTER User:', {
+            'newUser.id': newUser.id,
+            'newUser.email': newUser.email,
+            'localStorage.userId': localStorage.getItem('userId')
+          });
+          
+          return { status: 'ok', user: this.finalizeLogin(newUser) };
+        }
+      }
+    }
+    
     return null;
   }
 
@@ -981,7 +981,7 @@ export class DataManager {
     }
 
     const newUser: User = {
-      id: `user_${Date.now()}`,
+  id: safeRandomUUID(), // Supabase-compatible UUID format
       name: userData.name,
       email: userData.email,
       city: userData.city,
@@ -1055,11 +1055,10 @@ export class DataManager {
     const user = this.getUser(userId);
     const listings = this.getListings().filter(l => l.buyerId === userId);
     const offers = this.getAllOffers().filter(o => o.sellerId === userId);
-    const messages = this.getAllMessages().filter(m => m.fromUserId === userId || m.toUserId === userId);
     const favorites = this.getFavorites(userId);
     const sessions = this.getSessions(userId);
     const loginLogs = this.getLoginLogs(userId);
-    return { user, listings, offers, messages, favorites, sessions, loginLogs };
+    return { user, listings, offers, favorites, sessions, loginLogs };
   }
 
   static getUsers(): User[] {
@@ -1112,10 +1111,6 @@ export class DataManager {
     const remainingOffers = this.getOffers().filter((o) => o.listingId !== listingId);
     localStorage.setItem(this.STORAGE_KEYS.OFFERS, JSON.stringify(remainingOffers));
 
-    // Remove related messages
-    const messages = this.getAllMessages().filter((m) => m.listingId !== listingId);
-    localStorage.setItem(this.STORAGE_KEYS.MESSAGES, JSON.stringify(messages));
-
     // Remove from all favorites
     const favoritesStr = localStorage.getItem(this.STORAGE_KEYS.FAVORITES);
     const favMap: Record<string, string[]> = favoritesStr ? JSON.parse(favoritesStr) : {};
@@ -1161,11 +1156,6 @@ export class DataManager {
     const offers: Offer[] = offersStr ? JSON.parse(offersStr) : [];
     const offersKept = offers.filter(o => !expiredIds.includes(o.listingId));
     localStorage.setItem(this.STORAGE_KEYS.OFFERS, JSON.stringify(offersKept));
-    // Cascade remove related messages
-    const messagesStr = localStorage.getItem(this.STORAGE_KEYS.MESSAGES);
-    const messages: Message[] = messagesStr ? JSON.parse(messagesStr) : [];
-    const messagesKept = messages.filter(m => !expiredIds.includes(m.listingId));
-    localStorage.setItem(this.STORAGE_KEYS.MESSAGES, JSON.stringify(messagesKept));
     // Remove from favorites
     const favoritesStr = localStorage.getItem(this.STORAGE_KEYS.FAVORITES);
     const favMap: Record<string, string[]> = favoritesStr ? JSON.parse(favoritesStr) : {};
@@ -1235,7 +1225,7 @@ export class DataManager {
       offersPublic: (listing as Listing).offersPublic ?? true,
       offersPurchasable: (listing as Listing).offersPurchasable ?? true,
       title: finalTitle,
-      id: `listing_${Date.now()}`,
+  id: safeRandomUUID(), // Supabase-compatible UUID format
       createdAt: new Date().toISOString(),
       offerCount: 0
     };
@@ -1286,7 +1276,7 @@ export class DataManager {
       throw new Error('Teklife en fazla 5 görsel yükleyebilirsiniz');
     }
     const alreadyOffered = offers.some(
-      (o) => o.listingId === offer.listingId && o.sellerId === offer.sellerId
+      (o) => o.listingId === offer.listingId && o.sellerId === offer.sellerId && o.status !== 'withdrawn'
     );
     if (alreadyOffered) {
       throw new Error('Aynı ilana birden fazla teklif verilemez');
@@ -1378,7 +1368,7 @@ export class DataManager {
 
     const newOffer: Offer = {
       ...mutableOffer,
-      id: `offer_${Date.now()}`,
+  id: safeRandomUUID(), // Supabase-compatible UUID format
       soldToOthers: 0,
       createdAt: new Date().toISOString()
     };
@@ -1435,22 +1425,7 @@ export class DataManager {
       listings[lidx].status = 'closed';
       localStorage.setItem(this.STORAGE_KEYS.LISTINGS, JSON.stringify(listings));
     }
-    // Otomatik onay mesajı (satıcıdan ilan sahibine)
-    try {
-      const listing = this.getListing(target.listingId);
-      const seller = this.getUser(target.sellerId);
-      if (listing && seller) {
-        this.addMessage({
-          listingId: target.listingId,
-          fromUserId: seller.id,
-          fromUserName: seller.name,
-          toUserId: listing.buyerId,
-          message: 'Siparişiniz alındı. Hazırlığa başlıyoruz.'
-        });
-      }
-    } catch (e) {
-      // mesaj gönderimi başarısız olabilir; görmezden gel
-    }
+    // Otomatik onay mesajı kaldırıldı
     return true;
   }
 
@@ -1608,7 +1583,7 @@ export class DataManager {
     const tpOrdersRaw = localStorage.getItem(this.STORAGE_KEYS.TP_ORDERS);
     const tpOrders: ThirdPartyOrder[] = tpOrdersRaw ? JSON.parse(tpOrdersRaw) : [];
     const newOrder: ThirdPartyOrder = {
-      id: `tp_${Date.now()}`,
+      id: crypto.randomUUID(), // Supabase-compatible UUID format
       sourceOfferId: offer.id,
       listingId: offer.listingId,
       sellerId: offer.sellerId,
@@ -1626,17 +1601,10 @@ export class DataManager {
     };
     tpOrders.push(newOrder);
     localStorage.setItem(this.STORAGE_KEYS.TP_ORDERS, JSON.stringify(tpOrders));
-    // Satıcıya otomatik bilgi mesajı ve mail
+    // Satıcıya otomatik bilgi mesajı kaldırıldı
     try {
       const seller = this.getUser(offer.sellerId);
       if (seller) {
-        this.addMessage({
-          listingId: offer.listingId,
-          fromUserId: buyerUserId,
-          fromUserName: buyer?.name || 'Alıcı',
-          toUserId: seller.id,
-          message: 'Teklifinizden bir satın alma yapıldı. Siparişi hazırlayabilirsiniz.'
-        });
         // Mail gönder
         const listing = this.getListing(offer.listingId);
         if (listing) {
@@ -1719,59 +1687,6 @@ export class DataManager {
     orders[idx].orderUpdatedAt = new Date().toISOString();
     localStorage.setItem(this.STORAGE_KEYS.TP_ORDERS, JSON.stringify(orders));
     return true;
-  }
-
-  // Messages management
-
-  static markMessagesAsRead(listingId: string, currentUserId: string, otherUserId: string) {
-    const messages = this.getAllMessages();
-    let updated = false;
-    
-    messages.forEach(msg => {
-      if (msg.listingId === listingId && 
-          msg.fromUserId === otherUserId && 
-          msg.toUserId === currentUserId && 
-          !msg.read) {
-        msg.read = true;
-        updated = true;
-      }
-    });
-    
-    if (updated) {
-      localStorage.setItem(this.STORAGE_KEYS.MESSAGES, JSON.stringify(messages));
-      try {
-        window.dispatchEvent(new Event('messages-updated'));
-      } catch (e) {
-        // ignore in non-browser contexts
-      }
-    }
-  }
-
-  // Kişi bazlı okundu işaretleme: tüm ilanlardan bağımsız olarak otherUserId'den currentUserId'ye gelen okunmamışları okundu yapar
-  static markMessagesAsReadWithUser(currentUserId: string, otherUserId: string) {
-    const messages = this.getAllMessages();
-    let updated = false;
-
-    messages.forEach((msg) => {
-      if (msg.fromUserId === otherUserId && msg.toUserId === currentUserId && !msg.read) {
-        msg.read = true;
-        updated = true;
-      }
-    });
-
-    if (updated) {
-      localStorage.setItem(this.STORAGE_KEYS.MESSAGES, JSON.stringify(messages));
-      try {
-        window.dispatchEvent(new Event('messages-updated'));
-      } catch (e) {
-        // ignore in non-browser contexts
-      }
-    }
-  }
-
-  static getUnreadMessageCount(userId: string): number {
-    const messages = this.getAllMessages();
-    return messages.filter(msg => msg.toUserId === userId && !msg.read).length;
   }
 
   // Favorites management

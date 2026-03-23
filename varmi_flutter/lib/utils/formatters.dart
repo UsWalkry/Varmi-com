@@ -18,10 +18,7 @@ class Formatters {
   }
 
   static String formatPriceShort(double price) {
-    if (price >= 1000) {
-      return '₺${(price / 1000).toStringAsFixed(price % 1000 == 0 ? 0 : 1)}B';
-    }
-    return '₺${price.toStringAsFixed(price == price.roundToDouble() ? 0 : 2)}';
+    return _priceShortFormat.format(price);
   }
 
   static String formatDate(String? dateString) {
@@ -90,11 +87,8 @@ class Formatters {
   static String conditionToTr(String condition) {
     const map = {
       'new': 'Sıfır',
-      'like-new': 'Sıfır Ayarında',
-      'used': '2. El',
-      'good': 'İyi',
-      'fair': 'Orta',
-      'poor': 'Kötü',
+      'used': 'İkinci El',
+      'good': 'İkinci El',
       'any': 'Fark Etmez',
     };
     return map[condition] ?? condition;
@@ -108,6 +102,16 @@ class Formatters {
     };
     return map[delivery] ?? delivery;
   }
+
+  /// Masks a user name showing only the first letter of each word followed by ***
+  /// Example: "Burak Aydın" → "B*** A***"
+  static String maskName(String? name) {
+    if (name == null || name.trim().isEmpty) return 'Kullanıcı';
+    return name.trim().split(RegExp(r'\s+')).map((word) {
+      if (word.isEmpty) return word;
+      return '${word[0].toUpperCase()}***';
+    }).join(' ');
+  }
 }
 
 // Top-level convenience wrappers
@@ -119,3 +123,4 @@ String timeAgo(String? dateString) => Formatters.timeAgo(dateString);
 String statusToTr(String status) => Formatters.statusToTr(status);
 String conditionToTr(String condition) => Formatters.conditionToTr(condition);
 String deliveryToTr(String delivery) => Formatters.deliveryToTr(delivery);
+String maskName(String? name) => Formatters.maskName(name);

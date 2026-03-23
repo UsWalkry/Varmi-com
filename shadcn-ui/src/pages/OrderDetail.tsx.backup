@@ -1,0 +1,331 @@
+import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { ArrowLeft, Package, Truck, MapPin, Calendar, User, MessageCircle, RotateCcw, ExternalLink } from 'lucide-react';
+import Header from '../components/Header';
+import { mysqlAPI } from '../lib/mysql-api';
+import { toast } from 'sonner';
+import OrderStatusTimeline from '@/components/ui/OrderStatusTimeline';
+import { useAuth } from '@/hooks/use-auth-mysql';
+import OrderStatusTimeline from '@/components/ui/OrderStatusTimeline';
+import { useAuth } from '@/hooks/use-auth-mysql';
+
+export default function OrderDetail() {
+  const { orderId } = useParams();
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const [isLoading, setIsLoading] = useState(true);
+  const [orderData, setOrderData] = useState<any>(null);
+
+  useEffect(() => {
+    const loadOrderData = async () => {
+      if (!orderId) return;
+      
+      // Auth kontrolü
+      if (!user) {
+        console.log('❌ User not authenticated, redirecting to login');
+        toast.error('Bu sayfaya erişmek için giriş yapmalısınız');
+        navigate('/');
+        return;
+      }
+      
+      console.log('✅ User authenticated:', { userId: user.id, email: user.email });
+      
+      try {
+        setIsLoading(true);
+        const response = await mysqlAPI.getOrderDetails(orderId);
+        console.log('🔍 OrderDetail API response:', response);
+        console.log('🔍 Response type:', typeof response);
+        console.log('🔍 Response keys:', response ? Object.keys(response) : 'null/undefined');
+        
+        if (response && response.success && response.order) {
+          console.log('✅ Valid response, setting order data:', response.order);
+          setOrderData(response.order);
+        } else {
+          console.error('❌ Invalid response format:', {
+            hasResponse: !!response,
+            hasSuccess: response?.success,
+            hasOrder: response?.order,
+            fullResponse: response
+          });
+          throw new Error('Invalid response format');
+        }
+      } catch (error) {
+        console.error('Error loading order:', error);
+        toast.error('Sipariş detayları yüklenirken hata oluştu');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadOrderData();
+  }, [orderId, user, navigate]);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Header />
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <Card>
+            <CardContent className="flex flex-col items-center justify-center py-16">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+              <p className="text-lg font-medium text-muted-foreground mt-4">Sipariş detayları yükleniyor...</p>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
+  if (!orderData) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Header />
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <Card>
+            <CardContent className="flex flex-col items-center justify-center py-16">
+              <Package className="h-12 w-12 text-muted-foreground mb-4" />
+              <p className="text-lg font-medium text-muted-foreground mb-2">Sipariş bulunamadı</p>
+              <Button onClick={() => navigate('/dashboard')} variant="outline">
+                Panele Dön
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
+  const getStatusIcon = () => {
+    switch (orderData.status) {
+      case 'shipped':
+        return <Truck className="h-5 w-5" />;
+      case 'preparing':
+        return <Package className="h-5 w-5" />;
+      case 'delivered':
+        return <Package className="h-5 w-5" />;
+      default:
+        return <Package className="h-5 w-5" />;
+    }
+  };
+
+  const getStatusBadge = () => {
+    const statusLabels = {
+      pending: 'Beklemede',
+      confirmed: 'Onaylandı',
+      preparing: 'Hazırlanıyor',
+      shipped: 'Kargoya Verildi',
+      delivered: 'Teslim Edildi',
+      cancelled: 'İptal Edildi'
+    };
+
+    const colors = {
+      pending: 'bg-yellow-100 text-yellow-700',
+      confirmed: 'bg-blue-100 text-blue-700',
+      preparing: 'bg-orange-100 text-orange-700',
+      shipped: 'bg-green-100 text-green-700',
+      delivered: 'bg-green-100 text-green-700',
+      cancelled: 'bg-red-100 text-red-700'
+    };
+    
+    return (
+      <Badge variant="secondary" className={colors[orderData.status as keyof typeof colors]}>
+        <div className="flex items-center gap-1">
+          {getStatusIcon()}
+          {statusLabels[orderData.status as keyof typeof statusLabels]}
+        </div>
+      </Badge>
+    );
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <Header />
+      
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Header */}
+        <div className="flex items-center gap-4 mb-6">
+          <Button 
+            variant="ghost" 
+            onClick={() => navigate('/dashboard')}
+            className="flex items-center gap-2"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Geri Dön
+          </Button>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Sipariş #{orderData.id}</h1>
+            <p className="text-gray-600">{new Date(orderData.created_at).toLocaleDateString('tr-TR')}</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Sol Kolon - Sipariş Detayları */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* Sipariş Durumu */}
+            <Card>
+              <CardHeader className="pb-4">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-lg">Sipariş Durumu</CardTitle>
+                  {getStatusBadge()}
+                </div>
+              </CardHeader>
+              <CardContent>
+                <OrderStatusTimeline
+                  status={orderData.status}
+                  createdAt={orderData.created_at}
+                  startedProcessingAt={orderData.started_processing_at}
+                  shippedAt={orderData.shipped_at}
+                  deliveredAt={orderData.delivered_at}
+                  completedAt={orderData.completed_at}
+                  trackingNumber={orderData.tracking_number}
+                  carrierCompany={orderData.carrier_company}
+                  estimatedDelivery={orderData.estimated_delivery}
+                />
+                
+                {orderData.tracking_number && (
+                  <div className="pt-4 border-t mt-6">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Truck className="h-4 w-4 text-gray-600" />
+                        <span className="text-sm font-medium">Kargo Takip No:</span>
+                        <span className="text-sm font-mono">{orderData.tracking_number}</span>
+                      </div>
+                      <Button variant="outline" size="sm" className="flex items-center gap-1">
+                        <ExternalLink className="h-3 w-3" />
+                        Takip Et
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Sipariş Ürünleri */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Sipariş Detayları</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {orderData.items && orderData.items.map((item: any) => (
+                    <div key={item.id} className="flex items-start gap-4 p-4 border rounded-lg">
+                      <img 
+                        src={item.image || "/image-placeholder.png"} 
+                        alt={item.title} 
+                        className="w-16 h-16 object-cover rounded-lg"
+                      />
+                      <div className="flex-1">
+                        <h3 className="font-medium text-gray-900">{item.title}</h3>
+                        <p className="text-sm text-gray-600 mt-1">{item.description}</p>
+                        <div className="flex items-center justify-between mt-2">
+                          <span className="text-sm text-gray-600">Adet: {item.quantity}</span>
+                          <span className="font-semibold text-gray-900">{item.price} TL</span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Sağ Kolon - Özet ve Eylemler */}
+          <div className="space-y-6">
+            {/* Sipariş Özeti */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Sipariş Özeti</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Sipariş No:</span>
+                  <span className="font-mono text-sm">{orderData.orderNumber || orderData.id}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Sipariş Tarihi:</span>
+                  <span>{new Date(orderData.createdAt).toLocaleDateString('tr-TR')}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Ürün Adedi:</span>
+                  <span>{orderData.itemCount || orderData.items?.length || 0} adet</span>
+                </div>
+                <hr className="my-3" />
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Ara Toplam:</span>
+                  <span>{orderData.total || orderData.total_amount} TL</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Kargo:</span>
+                  <span>{orderData.shippingCost || orderData.shipping_cost || '0'} TL</span>
+                </div>
+                <div className="border-t pt-3">
+                  <div className="flex justify-between font-semibold text-lg">
+                    <span>Toplam:</span>
+                    <span>{orderData.total || orderData.total_amount} TL</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Alıcı Bilgileri */}
+            {orderData.buyer && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Alıcı Bilgileri</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="flex items-center gap-3">
+                    <User className="h-4 w-4 text-gray-600" />
+                    <div>
+                      <p className="font-medium">{orderData.buyer.firstName} {orderData.buyer.lastName}</p>
+                      <p className="text-sm text-gray-600">{orderData.buyer.email}</p>
+                      {orderData.buyer.phone && (
+                        <p className="text-sm text-gray-600">{orderData.buyer.phone}</p>
+                      )}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Teslimat Adresi */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Teslimat Adresi</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-start gap-3">
+                  <MapPin className="h-4 w-4 text-gray-600 mt-1" />
+                  <div>
+                    <p className="font-medium">
+                      {orderData.shippingAddress || orderData.shipping_address || 'Teslimat adresi belirtilmemiş'}
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Eylemler */}
+            <Card>
+              <CardContent className="pt-6">
+                <div className="space-y-3">
+                  <Button className="w-full flex items-center gap-2">
+                    <MessageCircle className="h-4 w-4" />
+                    Satıcıyla İletişime Geç
+                  </Button>
+                  <Button variant="outline" className="w-full flex items-center gap-2">
+                    <RotateCcw className="h-4 w-4" />
+                    İade Talebinde Bulun
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

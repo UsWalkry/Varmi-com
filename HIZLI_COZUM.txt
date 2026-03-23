@@ -1,0 +1,50 @@
+# HIZLI ÇÖZÜMWindows PowerShell'i **YÖNETİCİ OLARAK** aç ve şunu çalıştır:
+
+```powershell
+# 1. Yedek al
+Copy-Item C:\Windows\System32\drivers\etc\hosts C:\Windows\System32\drivers\etc\hosts.backup
+
+# 2. Eski varmii.com kayıtlarını temizle
+(Get-Content C:\Windows\System32\drivers\etc\hosts) | Where-Object { $_ -notmatch 'varmii.com' } | Set-Content C:\Windows\System32\drivers\etc\hosts
+
+# 3. Doğru IP'yi ekle (192.168.1.106)
+Add-Content C:\Windows\System32\drivers\etc\hosts "`n# Local network - varmii.com`n192.168.1.106 varmii.com`n192.168.1.106 www.varmii.com"
+
+# 4. DNS cache temizle
+ipconfig /flushdns
+
+# 5. Test et
+nslookup varmii.com
+```
+
+Ya da daha basit:
+
+1. Notepad'i YÖNETİCİ olarak aç
+2. Dosya → Aç → `C:\Windows\System32\drivers\etc\hosts`
+3. varmii.com ile ilgili BÜTÜN satırları SİL
+4. Sonuna ekle:
+   ```
+   192.168.1.106 varmii.com
+   192.168.1.106 www.varmii.com
+   ```
+5. Kaydet
+6. CMD'de: `ipconfig /flushdns`
+7. Browser'da test: https://varmii.com
+
+
+## Şu An Hosts Dosyasındaki YANLIŞ Kayıtlar:
+
+```
+127.0.0.1 varmii.com          ❌ (localhost - yanlış)
+127.0.0.1 www.varmii.com      ❌ (localhost - yanlış)
+192.168.1.116 varmii.com      ❌ (yanlış IP)
+```
+
+## Olması Gereken DOĞRU Kayıt:
+
+```
+192.168.1.106 varmii.com      ✅ (server IP)
+192.168.1.106 www.varmii.com  ✅ (server IP)
+```
+
+Server IP: **192.168.1.106** ← Bu önemli!

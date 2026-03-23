@@ -1,0 +1,64 @@
+===============================================
+SCHEMA.ORG STRUCTURED DATA - MANUEL DEPLOY
+===============================================
+
+✅ Build tamamlandı! Şimdi dosyaları servera kopyalayın:
+
+1️⃣ BACKEND DOSYALARI
+-------------------
+scp "c:\Users\Burak AYDIN\Desktop\Varmi-com-sql\server\dist\utils\schemaGenerator.js" root@192.168.1.116:~/varmi-com/server/dist/utils/
+
+scp "c:\Users\Burak AYDIN\Desktop\Varmi-com-sql\server\dist\routes\listings.js" root@192.168.1.116:~/varmi-com/server/dist/routes/
+
+
+2️⃣ FRONTEND DOSYALARI
+-------------------
+scp -r "c:\Users\Burak AYDIN\Desktop\Varmi-com-sql\shadcn-ui\dist\*" root@192.168.1.116:/var/www/varmii.com/public_html/
+
+
+3️⃣ BACKEND RESTART
+-------------------
+ssh root@192.168.1.116
+
+Sunucuda:
+  cd ~/varmi-com/server
+  pm2 restart varmi-mail-server
+  pm2 logs --lines 20
+
+
+4️⃣ TEST
+-------------------
+Windows:
+  curl https://varmii.com/api/listings/active
+
+Linux (sunucuda):
+  curl -s https://varmii.com/api/listings/active | jq '.schema'
+
+
+📊 DEĞİŞİKLİKLER
+-------------------
+✅ Backend: schemaGenerator.ts (yeni)
+✅ Backend: listings.ts (schema response eklendi)
+✅ Frontend: SchemaOrg.tsx component
+✅ Frontend: ListingDetail.tsx (schema injection)
+✅ Frontend: mobile.css düzeltme
+
+
+🎯 BEKLENEN SONUÇ
+-------------------
+İlan detay sayfalarında JSON-LD schema markup görünecek:
+- Product schema (fiyat, resim, satıcı)
+- Breadcrumb schema (navigasyon)
+
+Google Search Console'da "Rich Results Test" ile test edebilirsiniz:
+https://search.google.com/test/rich-results
+
+
+💡 NOT
+-------------------
+Her komut için SSH şifresi girilecek.
+SSH key eklemek için:
+  ssh-keygen -t ed25519
+  type $env:USERPROFILE\.ssh\id_ed25519.pub | ssh root@192.168.1.116 "cat >> ~/.ssh/authorized_keys"
+
+===============================================

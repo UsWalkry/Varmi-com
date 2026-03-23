@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Debug Test</title>
+  <script>
+    console.log('🔍 HTML loaded');
+    window.addEventListener('DOMContentLoaded', () => {
+      console.log('✅ DOM loaded');
+      const root = document.getElementById('root');
+      if (root) {
+        console.log('✅ Root div found:', root);
+        root.innerHTML = '<h1>Test Page Loaded</h1>';
+      } else {
+        console.error('❌ Root div NOT found');
+      }
+    });
+    
+    window.addEventListener('error', (e) => {
+      console.error('❌ Global error:', e.message, e.filename, e.lineno, e.colno);
+      document.body.innerHTML += '<div style="color:red;padding:20px;"><strong>ERROR:</strong> ' + e.message + '</div>';
+    });
+    
+    window.addEventListener('unhandledrejection', (e) => {
+      console.error('❌ Unhandled promise rejection:', e.reason);
+      document.body.innerHTML += '<div style="color:orange;padding:20px;"><strong>PROMISE ERROR:</strong> ' + e.reason + '</div>';
+    });
+  </script>
+</head>
+<body>
+  <div id="root"></div>
+  <script>
+    console.log('🔍 Body script executed');
+    document.getElementById('root').innerHTML = '<p>Initial content</p>';
+  </script>
+</body>
+</html>

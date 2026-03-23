@@ -415,7 +415,7 @@ router.get('/me', authenticateToken, async (req: any, res: Response) => {
       `SELECT 
          id, email, firstName, lastName, city, phone, gender,
          DATE_FORMAT(birth_date, '%Y-%m-%d') AS birth_date,
-         address_line1, district, postal_code, role, created_at
+         address_line1, district, postal_code, role, email_verified, email_verified_at, created_at
        FROM users WHERE id = ?`,
       [req.userId]
     ) as any[];
@@ -443,6 +443,8 @@ router.get('/me', authenticateToken, async (req: any, res: Response) => {
         district: user.district || '',
         postalCode: user.postal_code || '',
         role: user.role || 'user',
+        emailVerified: user.email_verified === 1 || user.email_verified === true,
+        emailVerifiedAt: user.email_verified_at || null,
         createdAt: user.created_at
       }
     });
@@ -1972,6 +1974,27 @@ router.post('/login/email-2fa/send', async (req: Request, res: Response) => {
       success: false,
       error: 'Email 2FA kodu gönderilirken hata oluştu'
     });
+  }
+});
+
+// ============================================================
+// FCM TOKEN — save push notification token for authenticated user
+// ============================================================
+router.post('/fcm-token', authenticateToken, async (req: any, res: Response) => {
+  try {
+    const userId = req.userId;
+    const { fcm_token } = req.body;
+
+    if (!fcm_token || typeof fcm_token !== 'string' || fcm_token.length > 512) {
+      return res.status(400).json({ success: false, message: 'Geçersiz FCM token' });
+    }
+
+    await query('UPDATE users SET fcm_token = ? WHERE id = ?', [fcm_token, userId]);
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('❌ Save FCM token error:', error);
+    res.status(500).json({ success: false, message: 'FCM token kaydedilemedi' });
   }
 });
 

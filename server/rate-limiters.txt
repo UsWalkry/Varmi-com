@@ -1,0 +1,54 @@
+// Rate limiting configuration for different endpoints
+import rateLimit from 'express-rate-limit';
+
+// Genel API rate limit (60 dakika / 500 istek)
+export const generalLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 saat
+  max: 500,
+  message: 'Çok fazla istek gönderdiniz, lütfen bir saat sonra tekrar deneyin.',
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Auth endpoints için sıkı limit (60 dakika / 20 istek)
+export const authLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 20,
+  message: 'Çok fazla giriş denemesi, lütfen bir saat sonra tekrar deneyin.',
+  skipSuccessfulRequests: true,
+});
+
+// Listings endpoint için orta limit (15 dakika / 100 istek)
+export const listingsLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+  message: 'Çok fazla ilan görüntüleme isteği, lütfen 15 dakika bekleyin.',
+});
+
+// Offer create için sıkı limit (60 dakika / 50 istek)
+export const offerCreateLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 50,
+  message: 'Çok fazla teklif gönderdiniz, lütfen bir saat bekleyin.',
+});
+
+// Comment create için spam koruması (15 dakika / 30 istek)
+export const commentLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 30,
+  message: 'Çok fazla yorum gönderd iniz, lütfen 15 dakika bekleyin.',
+});
+
+// Image upload için limit (60 dakika / 50 istek)
+export const uploadLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 50,
+  message: 'Çok fazla resim yükleme isteği, lütfen bir saat bekleyin.',
+});
+
+// Admin endpoints için gevşek limit (15 dakika / 200 istek)
+export const adminLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 200,
+  message: 'Çok fazla admin isteği, lütfen 15 dakika bekleyin.',
+});

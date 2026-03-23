@@ -1,0 +1,3 @@
+@echo off
+echo Starting Chrome with CORS disabled for development...
+"C:\Program Files\Google\Chrome\Application\chrome.exe" --user-data-dir="C:\temp\chrome_dev_session" --disable-web-security --disable-features=VizDisplayCompositor --disable-site-isolation-trials http://localhost:5173

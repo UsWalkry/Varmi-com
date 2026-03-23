@@ -7,7 +7,9 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { DataManager, Listing, categories, cities } from '@/lib/mockData';
+import { Listing, categories, cities } from '@/lib/mockData';
+import { mysqlAPI, getImageUrl } from '@/lib/mysql-api';
+import { useAuth } from '@/hooks/use-auth-mysql';
 import Header from '@/components/Header';
 import { applyWatermarkToDataUrl } from '@/lib/watermark';
 import Stepper from '@/components/ui/stepper';
@@ -16,7 +18,9 @@ import { toast } from 'sonner';
 export default function EditListing() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { user: authUser } = useAuth();
   const [listing, setListing] = useState<Listing | null>(null);
+  const [loading, setLoading] = useState(true);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [form, setForm] = useState({
     title: '',
@@ -40,25 +44,77 @@ export default function EditListing() {
   const maxStr = maxDate.toISOString().split('T')[0];
 
   useEffect(() => {
-    if (id) {
-      const found = DataManager.getListings().find(l => l.id === id);
-      if (found) {
-        setListing(found);
+    const loadListing = async () => {
+      if (!id) return;
+      
+      try {
+        setLoading(true);
+        console.log('🔄 Loading listing for edit:', id);
+        const response = await mysqlAPI.getListingById(id);
+        console.log('📥 Edit listing response:', response);
+        
+        if (!response.success || !response.listing) {
+          toast.error('İlan bulunamadı');
+          navigate('/');
+          return;
+        }
+        
+        const found = response.listing;
+        
+        // Owner kontrolü
+        if (!authUser || authUser.id?.toString() !== found.seller?.id?.toString()) {
+          toast.error('Bu ilanı düzenleme yetkiniz yok');
+          navigate('/');
+          return;
+        }
+        
+        // Map to expected Listing format
+        const mappedListing: Listing = {
+          id: found.id,
+          title: found.title,
+          description: found.description || '',
+          budgetMax: found.price || 0,
+          category: found.category || 'genel',
+          city: found.location || '',
+          condition: found.condition || 'any',
+          deliveryType: found.deliveryType || 'both', // Backend'den gelen değer
+          buyerId: found.seller?.id || '',
+          buyerName: `${found.seller?.firstName || ''} ${found.seller?.lastName || ''}`.trim() || 'Anonim',
+          status: 'active',
+          createdAt: found.createdAt || '',
+          expiresAt: found.expiresAt || '',
+          offerCount: 0,
+          offersPublic: true,
+          offersPurchasable: true,
+          images: found.images || [],
+          maskOwnerName: found.maskOwnerName || false
+        };
+        
+        setListing(mappedListing);
         setImages(found.images || []);
         setForm({
           title: found.title,
-          description: found.description,
-          budgetMax: found.budgetMax.toString(),
-          city: found.city,
-          category: found.category,
-          condition: found.condition,
-          deliveryType: found.deliveryType,
-          expiresAt: (found.expiresAt ? new Date(found.expiresAt) : (()=>{ const d=new Date(found.createdAt); d.setDate(d.getDate()+30); return d; })()).toISOString().split('T')[0],
-          maskOwnerName: found.maskOwnerName ?? false
+          description: found.description || '',
+          budgetMax: (found.price || 0).toString(),
+          city: found.location || '',
+          category: found.category || 'genel',
+          condition: found.condition || 'new',
+          deliveryType: found.deliveryType || 'both', // Backend'den gelen değer
+          expiresAt: found.expiresAt ? new Date(found.expiresAt).toISOString().split('T')[0] : '',
+          maskOwnerName: found.maskOwnerName || false
         });
+        
+      } catch (error) {
+        console.error('❌ Edit listing load error:', error);
+        toast.error('İlan yüklenemedi');
+        navigate('/');
+      } finally {
+        setLoading(false);
       }
-    }
-  }, [id]);
+    };
+    
+    loadListing();
+  }, [id, authUser, navigate]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -66,8 +122,14 @@ export default function EditListing() {
 
   const validateStep = (s: number): boolean => {
     if (s === 1) {
-      if (!form.title || !form.description || !form.category || !form.city) {
-        toast.error('Başlık, açıklama, kategori ve şehir zorunlu');
+      if (!form.title || !form.description || !form.category) {
+        toast.error('Başlık, açıklama ve kategori zorunlu');
+        return false;
+      }
+      // Şehir sadece elden teslim veya fark etmez seçiliyse zorunlu
+      const cityRequired = form.deliveryType === 'pickup' || form.deliveryType === 'both';
+      if (cityRequired && !form.city) {
+        toast.error('Seçtiğiniz teslimat tercihi için şehir bilgisi gereklidir');
         return false;
       }
     }
@@ -92,23 +154,38 @@ export default function EditListing() {
   const goNext = () => { if (validateStep(step)) setStep(p => Math.min(p + 1, 3)); };
   const goBack = () => setStep(p => Math.max(p - 1, 1));
 
-  const handleSave = () => {
-    if (!listing) return;
+  const handleSave = async () => {
+    if (!listing || !authUser) return;
     if (!validateStep(1) || !validateStep(2)) return; // güvenlik
-    DataManager.updateListing(listing.id, {
-      title: form.title,
-      description: form.description,
-      budgetMax: parseInt(form.budgetMax),
-      city: form.city,
-      category: form.category,
-      condition: form.condition as 'new' | 'used' | 'any',
-      deliveryType: form.deliveryType as 'shipping' | 'pickup' | 'both',
-      expiresAt: form.expiresAt ? new Date(form.expiresAt).toISOString() : listing.expiresAt,
-      maskOwnerName: form.maskOwnerName,
-      images
-    });
-    toast.success('İlan başarıyla güncellendi!');
-    navigate(`/listing/${listing.id}`);
+    
+    try {
+      console.log('💾 Updating listing:', listing.id);
+      const updateData = {
+        title: form.title,
+        description: form.description,
+        category: form.category,
+        price: parseInt(form.budgetMax),
+        location: form.deliveryType === 'shipping' ? '' : (form.city || ''), // Sadece kargo ise şehir boş
+        condition: form.condition,
+        deliveryType: form.deliveryType, // Teslimat tercihi
+        expiresAt: form.expiresAt ? new Date(form.expiresAt).toISOString() : null,
+        maskOwnerName: form.maskOwnerName,
+        // Images ayrıca güncellenebilir
+      };
+      
+      const response = await mysqlAPI.updateListing(listing.id, updateData);
+      console.log('📤 Update response:', response);
+      
+      if (response.success) {
+        toast.success(response.message || 'İlan başarıyla güncellendi ve admin onayına gönderildi!');
+        navigate('/dashboard');
+      } else {
+        toast.error(response.error || 'İlan güncellenemedi');
+      }
+    } catch (error) {
+      console.error('❌ Update listing error:', error);
+      toast.error('İlan güncellenirken hata oluştu');
+    }
   };
 
   // Image helpers (same compression approach as CreateListing)
@@ -212,7 +289,7 @@ export default function EditListing() {
             <Stepper
               current={step}
               steps={[
-                { id: 1, title: 'Temel Bilgiler', description: 'Başlık, açıklama, kategori, şehir' },
+                { id: 1, title: 'Temel Bilgiler', description: 'Başlık, açıklama, kategori, teslimat' },
                 { id: 2, title: 'Detay & Bütçe', description: 'Görseller, bütçe, tercihler' },
                 { id: 3, title: 'Önizleme', description: 'Kontrol & kaydet' }
               ]}
@@ -229,18 +306,42 @@ export default function EditListing() {
                   <label className="block text-sm font-medium mb-1">Açıklama *</label>
                   <textarea name="description" value={form.description} onChange={handleChange} rows={4} className="w-full border rounded-md p-2" />
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Kategori *</label>
-                    <Select value={form.category} onValueChange={value => setForm(f => ({ ...f, category: value }))}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Kategori seçin" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {categories.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Kategori *</label>
+                  <Select value={form.category} onValueChange={value => setForm(f => ({ ...f, category: value }))}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Kategori seçin" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {categories.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                {/* Teslimat Tercihi - Önce bu seçilecek */}
+                <div>
+                  <label className="block text-sm font-medium mb-1">Teslimat Tercihi *</label>
+                  <Select 
+                    value={form.deliveryType} 
+                    onValueChange={value => {
+                      // Kargo seçilirse şehir bilgisini temizle
+                      const newCity = value === 'shipping' ? '' : form.city;
+                      setForm(f => ({ ...f, deliveryType: value, city: newCity }));
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Teslimat tercihi seçin" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="both">Fark Etmez</SelectItem>
+                      <SelectItem value="shipping">Kargo</SelectItem>
+                      <SelectItem value="pickup">Elden Teslim</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Şehir - Sadece elden teslim veya fark etmez seçiliyse göster */}
+                {(form.deliveryType === 'pickup' || form.deliveryType === 'both') && (
                   <div>
                     <label className="block text-sm font-medium mb-1">Şehir *</label>
                     <Select value={form.city} onValueChange={value => setForm(f => ({ ...f, city: value }))}>
@@ -252,7 +353,7 @@ export default function EditListing() {
                       </SelectContent>
                     </Select>
                   </div>
-                </div>
+                )}
               </div>
             )}
 
@@ -264,7 +365,7 @@ export default function EditListing() {
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
                       {images.map((src, idx) => (
                         <div key={idx} className="relative group border rounded-md overflow-hidden bg-muted aspect-square">
-                          <img src={src} alt={`İlan görseli ${idx+1}`} className="w-full h-full object-cover" onContextMenu={(e) => e.preventDefault()} draggable={false} />
+                          <img src={getImageUrl(src)} alt={`İlan görseli ${idx+1}`} className="w-full h-full object-cover" onContextMenu={(e) => e.preventDefault()} draggable={false} />
                           <button type="button" onClick={() => removeImage(idx)} className="absolute top-1 right-1 inline-flex items-center justify-center rounded-full bg-black/60 text-white text-xs px-2 py-1 opacity-0 group-hover:opacity-100 transition">Kaldır</button>
                         </div>
                       ))}
@@ -278,40 +379,12 @@ export default function EditListing() {
                   <Input name="budgetMax" value={form.budgetMax} onChange={handleChange} type="number" />
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Durum</label>
-                    <select name="condition" value={form.condition} onChange={handleChange} className="w-full border rounded-md p-2">
-                      <option value="new">Sıfır</option>
-                      <option value="used">2. El</option>
-                      <option value="any">Farketmez</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Teslimat</label>
-                    <select name="deliveryType" value={form.deliveryType} onChange={handleChange} className="w-full border rounded-md p-2">
-                      <option value="shipping">Kargo</option>
-                      <option value="pickup">Elden Teslim</option>
-                      <option value="both">Her İkisi de</option>
-                    </select>
-                  </div>
+
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-1">İlan Bitiş Tarihi</label>
                   <Input name="expiresAt" type="date" value={form.expiresAt} onChange={handleChange} min={todayStr} max={maxStr} />
                   <p className="text-xs text-muted-foreground mt-1">Maksimum +30 gün</p>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <Label>Kullanıcı Adı Gizliliği</Label>
-                    <div className="flex items-start space-x-2">
-                      <Checkbox id="maskOwnerName" checked={form.maskOwnerName} onCheckedChange={(checked) => setForm(p => ({ ...p, maskOwnerName: checked === true }))} />
-                      <div className="grid gap-1.5 leading-none">
-                        <label htmlFor="maskOwnerName" className="text-sm font-medium">Kullanıcı adımı gizle</label>
-                        <p className="text-xs text-muted-foreground">Soyad(lar) '**' ile maskelenir.</p>
-                      </div>
-                    </div>
-                  </div>
-                  {/* Teklif görünürlüğü kaldırıldı: tüm ilanlarda teklifler herkese açıktır */}
                 </div>
               </div>
             )}
@@ -342,7 +415,7 @@ export default function EditListing() {
                     {images.length === 0 ? <p className="text-xs text-muted-foreground">Görsel yok</p> : (
                       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
                         {images.map((src, i) => (
-                          <img key={i} src={src} className="rounded-md border object-cover aspect-square" />
+                          <img key={i} src={getImageUrl(src)} className="rounded-md border object-cover aspect-square" />
                         ))}
                       </div>
                     )}

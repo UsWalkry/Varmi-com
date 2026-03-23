@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../../utils/app_dialog.dart';
+import '../../utils/formatters.dart';
 import '../../config/api_config.dart';
 import 'package:provider/provider.dart';
 import '../../models/offer.dart';
@@ -68,22 +70,12 @@ class _MyOffersScreenState extends State<MyOffersScreen> {
       try {
         await _offerService.withdrawOffer(offerId);
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Teklif geri çekildi'),
-              backgroundColor: Colors.green,
-            ),
-          );
+          AppDialog.showSuccess(context, 'Teklif geri çekildi');
           _loadOffers();
         }
       } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Hata: ${e.toString()}'),
-              backgroundColor: Colors.red,
-            ),
-          );
+          AppDialog.showError(context, AppDialog.cleanError(e));
         }
       }
     }
@@ -187,7 +179,7 @@ class _MyOffersScreenState extends State<MyOffersScreen> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  '₺${offer.amount.toStringAsFixed(2)}',
+                  formatPriceShort(offer.amount),
                   style: const TextStyle(
                     fontSize: 20,
                     color: Colors.green,

@@ -1,0 +1,42 @@
+# ===========================================
+# PRODUCTION AÇMAK İÇİN GEREKLİLER
+# ===========================================
+
+## SEÇENEK 1: 192.168.1.106 Production İse
+-----------------------------------------
+1. Router'da Port Forward açın:
+   - Port 80 → 192.168.1.106:80
+   - Port 443 → 192.168.1.106:443
+
+2. Cloudflare DNS'i güncelleyin:
+   - A record: varmii.com → Dış IP adresiniz
+   - (veya Cloudflare Tunnel kullanın)
+
+3. Let's Encrypt SSL kurun (sunucuda):
+   sudo apt install certbot python3-certbot-nginx -y
+   sudo certbot --nginx -d varmii.com -d www.varmii.com
+   sudo systemctl reload nginx
+
+4. Test:
+   https://varmii.com/listing/4953ba3e-dc4d-4a0f-a512-ad14a12cd92e
+
+
+## SEÇENEK 2: Farklı Production Sunucu Varsa
+-----------------------------------------
+Production sunucu bilgilerini verin:
+- IP adresi
+- SSH kullanıcı adı
+- Backend path (~/varmi-com/server)
+- Frontend path (/var/www/html)
+
+Aynı deployment'ı oraya yaparız (5 dk).
+
+
+## SEÇENEK 3: Cloudflare Tunnel (En Kolay)
+-----------------------------------------
+1. Sunucuda cloudflared kurun
+2. Tunnel oluşturun
+3. Local 192.168.1.106 → varmii.com bağlantısı
+4. SSL otomatik, port forward gerekmez
+
+Hangi seçeneği tercih edersiniz?

@@ -28,6 +28,11 @@ CMakeCache.txt
 yarn-error.log
 npm-debug.log
 *~
+
+# Portable MySQL (data dosyalarini yedekleyin!)
+mysql-portable/
+mysql-*.zip
+*.corrupt_backup
 *.bak
 *.swp
 Thumbs.db

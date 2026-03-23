@@ -85,7 +85,9 @@ class User {
       emailVerifiedAt: emailVerifiedAt != null
           ? DateTime.parse(emailVerifiedAt as String)
           : null,
-      createdAt: DateTime.parse(createdAt as String),
+      createdAt: createdAt != null
+          ? DateTime.parse(createdAt as String)
+          : DateTime.now(),
       updatedAt: updatedAt != null
           ? DateTime.parse(updatedAt as String)
           : null,

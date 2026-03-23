@@ -1,0 +1,28 @@
+// ============================================
+// SEO Routes - Sitemap & Robots.txt
+// ============================================
+import { generateSitemap, generateRobotsTxt } from './sitemap.js';
+
+app.get('/sitemap.xml', async (req, res) => {
+  try {
+    const xml = await generateSitemap();
+    res.header('Content-Type', 'application/xml');
+    res.header('Cache-Control', 'public, max-age=3600');
+    res.send(xml);
+  } catch (error) {
+    console.error('Sitemap error:', error);
+    res.status(500).send('Sitemap generation failed');
+  }
+});
+
+app.get('/robots.txt', async (req, res) => {
+  try {
+    const txt = await generateRobotsTxt();
+    res.header('Content-Type', 'text/plain');
+    res.header('Cache-Control', 'public, max-age=86400');
+    res.send(txt);
+  } catch (error) {
+    console.error('Robots.txt error:', error);
+    res.status(500).send('robots.txt generation failed');
+  }
+});

@@ -1,0 +1,1099 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Varmi.com - Uygulama Özellikleri Dökümanı</title>
+<style>
+  body { font-family: Calibri, Arial, sans-serif; font-size: 11pt; color: #222; margin: 40px 60px; line-height: 1.6; }
+  h1 { font-size: 22pt; color: #4f46e5; border-bottom: 3px solid #4f46e5; padding-bottom: 8px; margin-top: 30px; }
+  h2 { font-size: 16pt; color: #1e40af; border-bottom: 1px solid #93c5fd; padding-bottom: 4px; margin-top: 24px; }
+  h3 { font-size: 13pt; color: #1d4ed8; margin-top: 18px; }
+  h4 { font-size: 11pt; color: #1e3a8a; margin-top: 12px; }
+  table { border-collapse: collapse; width: 100%; margin: 12px 0; font-size: 10pt; }
+  th { background: #4f46e5; color: white; padding: 8px 12px; text-align: left; }
+  td { border: 1px solid #cbd5e1; padding: 7px 12px; }
+  tr:nth-child(even) td { background: #f1f5f9; }
+  ul, ol { margin: 6px 0 6px 24px; }
+  li { margin-bottom: 3px; }
+  .badge { display: inline-block; background: #e0e7ff; color: #3730a3; padding: 2px 8px; border-radius: 12px; font-size: 9pt; font-weight: bold; margin: 2px; }
+  .badge-green { background: #d1fae5; color: #065f46; }
+  .badge-red { background: #fee2e2; color: #991b1b; }
+  .badge-yellow { background: #fef3c7; color: #92400e; }
+  .badge-gray { background: #f1f5f9; color: #475569; }
+  .section-box { border-left: 4px solid #4f46e5; padding: 10px 16px; background: #f8fafc; margin: 14px 0; }
+  .warning-box { border-left: 4px solid #f59e0b; padding: 10px 16px; background: #fffbeb; margin: 14px 0; }
+  .info-box { border-left: 4px solid #0ea5e9; padding: 10px 16px; background: #f0f9ff; margin: 14px 0; }
+  .cover { text-align: center; padding: 60px 0 40px 0; }
+  .cover h1 { font-size: 32pt; border: none; color: #4f46e5; }
+  .cover p { font-size: 13pt; color: #475569; }
+  .toc-item { margin: 4px 0; }
+  .toc-item a { color: #1e40af; text-decoration: none; }
+  code { background: #f1f5f9; font-family: Consolas, monospace; padding: 1px 5px; border-radius: 3px; font-size: 9.5pt; }
+  hr { border: none; border-top: 1px solid #cbd5e1; margin: 20px 0; }
+  .flow-step { display: inline-block; background: #4f46e5; color: white; padding: 4px 14px; border-radius: 20px; margin: 2px; font-size: 9.5pt; }
+  .flow-arrow { color: #4f46e5; font-weight: bold; margin: 0 4px; }
+  .screen-box { border: 2px solid #c7d2fe; border-radius: 8px; padding: 12px 16px; margin: 10px 0; background: white; }
+  .screen-box h4 { margin: 0 0 8px 0; color: #4f46e5; }
+</style>
+</head>
+<body>
+
+<!-- KAPAK -->
+<div class="cover">
+  <h1>🛍️ Varmi.com</h1>
+  <p style="font-size:18pt; color:#4f46e5; font-weight:bold;">Mobil Uygulama Geliştirme Dökümanı</p>
+  <p>İkinci El & Talep Tabanlı Pazar Yeri Uygulaması</p>
+  <p style="color:#94a3b8;">Hazırlanma Tarihi: Şubat 2026</p>
+  <hr>
+  <p style="font-size:10pt; color:#64748b;">Bu döküman Varmi.com web sitesinin tüm özelliklerini, ekranlarını,<br>iş akışlarını ve veri modellerini mobil uygulama geliştirme için eksiksiz biçimde açıklamaktadır.</p>
+</div>
+
+<hr>
+
+<!-- İÇİNDEKİLER -->
+<h1>📋 İçindekiler</h1>
+<div class="toc-item">1. Uygulama Hakkında Genel Bakış</div>
+<div class="toc-item">2. Kullanıcı Rolleri ve Yetkiler</div>
+<div class="toc-item">3. Kimlik Doğrulama ve Güvenlik</div>
+<div class="toc-item">4. Ana Ekran (Home)</div>
+<div class="toc-item">5. İlanlar Sistemi</div>
+<div class="toc-item">6. Teklifler Sistemi</div>
+<div class="toc-item">7. Sipariş Sistemi</div>
+<div class="toc-item">8. Kullanıcı Paneli (Dashboard)</div>
+<div class="toc-item">9. Favoriler</div>
+<div class="toc-item">10. Bildirimler</div>
+<div class="toc-item">11. Yorumlar / Sorular</div>
+<div class="toc-item">12. Sepet ve Ödeme (Checkout)</div>
+<div class="toc-item">13. Profil ve Ayarlar</div>
+<div class="toc-item">14. Mağaza Profili</div>
+<div class="toc-item">15. Adres Defteri</div>
+<div class="toc-item">16. Güvenlik Ayarları (2FA)</div>
+<div class="toc-item">17. Komisyon Sistemi</div>
+<div class="toc-item">18. Destek / İletişim</div>
+<div class="toc-item">19. Admin Paneli</div>
+<div class="toc-item">20. Veri Modelleri (Veritabanı Tabloları)</div>
+<div class="toc-item">21. API Uç Noktaları</div>
+<div class="toc-item">22. Ekran Listesi (Tüm Sayfalar)</div>
+<div class="toc-item">23. İş Akışları</div>
+
+<hr>
+
+<!-- 1. GENEL BAKIŞ -->
+<h1>1. Uygulama Hakkında Genel Bakış</h1>
+<div class="section-box">
+  <strong>Varmi.com</strong> — Türkiye'de ikinci el ürünlere talep/istek ilanı açılabilen, satıcıların bu taleplere teklif verebildiği tersine pazar yeri uygulamasıdır. Normal pazar yerlerinden farkı: <em>alıcı ilan açar, satıcı teklif verir.</em>
+</div>
+
+<h3>Temel Konsept</h3>
+<ul>
+  <li><strong>Alıcı</strong>: "X ürününü arıyorum, maksimum Y TL veriyorum" şeklinde ilan açar</li>
+  <li><strong>Satıcılar</strong>: Bu ilanlara ürün bilgileri ve fiyatlarıyla teklif verir</li>
+  <li><strong>Alıcı</strong>: Teklifleri inceler, beğendiği teklifi kabul eder</li>
+  <li><strong>Sipariş</strong>: Kabul edilen teklif siparişe dönüşür</li>
+  <li><strong>Teslimat</strong>: Kargo veya elden teslim ile tamamlanır</li>
+</ul>
+
+<h3>Teknoloji Altyapısı (Referans)</h3>
+<table>
+  <tr><th>Katman</th><th>Teknoloji</th></tr>
+  <tr><td>Backend API</td><td>Node.js + Express + TypeScript</td></tr>
+  <tr><td>Veritabanı</td><td>MySQL (UUID primary keys, utf8mb4)</td></tr>
+  <tr><td>Kimlik Doğrulama</td><td>JWT Token (localStorage: <code>mysql-auth-token</code>)</td></tr>
+  <tr><td>Dosya Yükleme</td><td>Multer — /uploads/ klasörü (jpeg/png/webp, max 5MB)</td></tr>
+  <tr><td>Email</td><td>Nodemailer SMTP</td></tr>
+  <tr><td>Cache</td><td>Redis (aktif ilanlar, 5 dk TTL)</td></tr>
+</table>
+
+<hr>
+
+<!-- 2. KULLANICI ROLLERİ -->
+<h1>2. Kullanıcı Rolleri ve Yetkiler</h1>
+<table>
+  <tr><th>Rol</th><th>Tanım</th><th>Yetkiler</th></tr>
+  <tr>
+    <td><span class="badge">Misafir</span></td>
+    <td>Giriş yapmamış ziyaretçi</td>
+    <td>İlanları görüntüleme, arama yapma, iletişim formu, ilan detayı görme</td>
+  </tr>
+  <tr>
+    <td><span class="badge badge-green">Kullanıcı (user)</span></td>
+    <td>Kayıtlı standart kullanıcı</td>
+    <td>İlan açma/düzenleme/silme, teklif verme, sipariş yönetimi, favoriler, yorumlar, profil, mağaza, komisyon, adres defteri</td>
+  </tr>
+  <tr>
+    <td><span class="badge badge-red">Admin</span></td>
+    <td>Platform yöneticisi</td>
+    <td>Tüm kullanıcı yetkileri + ilan onay/red, teklif onay/red, sipariş yönetimi, kullanıcı yönetimi, komisyon ayarları, destek biletleri, istatistikler</td>
+  </tr>
+</table>
+
+<hr>
+
+<!-- 3. KİMLİK DOĞRULAMA -->
+<h1>3. Kimlik Doğrulama ve Güvenlik</h1>
+
+<h2>3.1 Kayıt (Register)</h2>
+<div class="screen-box">
+  <h4>📱 Kayıt Ekranı</h4>
+  <strong>Form Alanları:</strong>
+  <ul>
+    <li>Ad (firstName) — zorunlu</li>
+    <li>Soyad (lastName) — zorunlu</li>
+    <li>E-posta (email) — zorunlu, benzersiz</li>
+    <li>Şifre (password) — zorunlu, min 6 karakter</li>
+    <li>Şehir (city) — zorunlu</li>
+    <li>Telefon (phone) — isteğe bağlı</li>
+    <li>Cinsiyet (gender) — isteğe bağlı: Erkek / Kadın / Belirtmek istemiyorum</li>
+    <li>Doğum Tarihi (birth_date) — isteğe bağlı</li>
+  </ul>
+  <strong>Akış:</strong> Kayıt → Email doğrulama maili gönderilir → Kullanıcı maildeki linke tıklar → Email onaylanır → Giriş yapılabilir
+</div>
+
+<h2>3.2 Giriş (Login)</h2>
+<div class="screen-box">
+  <h4>📱 Giriş Ekranı (Modal)</h4>
+  <ul>
+    <li>E-posta + Şifre ile giriş</li>
+    <li>Şifremi Unuttum bağlantısı</li>
+    <li>2FA aktifse: 2FA doğrulama adımı açılır</li>
+    <li>Başarılı girişte JWT token alınır</li>
+    <li>Token: <code>mysql-auth-token</code> key'i ile saklanır</li>
+  </ul>
+  <div class="warning-box"><strong>Önemli:</strong> Uygulama ayrı bir /login sayfası yerine modal (popup) kullanır. Giriş gerekli durumlarda kullanıcı ana sayfaya yönlendirilir ve modal otomatik açılır.</div>
+</div>
+
+<h2>3.3 İki Faktörlü Doğrulama (2FA)</h2>
+<table>
+  <tr><th>Yöntem</th><th>Açıklama</th></tr>
+  <tr><td>Authenticator Uygulaması (TOTP)</td><td>Google Authenticator / Authy ile QR kod taranır, 6 haneli kod girilir. Yedek kodlar oluşturulur.</td></tr>
+  <tr><td>E-posta 2FA</td><td>Giriş sırasında e-posta ile 6 haneli doğrulama kodu gönderilir</td></tr>
+</table>
+<div class="info-box">Authenticator ve E-posta 2FA aynı anda aktif olamaz — biri aktifken diğeri otomatik devre dışı bırakılır.</div>
+
+<h2>3.4 E-posta Doğrulama</h2>
+<ul>
+  <li>Kayıt sonrası doğrulama maili gönderilir</li>
+  <li>E-posta değiştirildiğinde yeni adres doğrulanır</li>
+  <li>Token tabanlı, 24 saat geçerlilik süresi</li>
+</ul>
+
+<h2>3.5 Şifre Sıfırlama</h2>
+<ul>
+  <li>E-posta ile şifre sıfırlama linki gönderilir</li>
+  <li>Link geçici token içerir</li>
+  <li>Yeni şifre belirleme ekranı</li>
+</ul>
+
+<hr>
+
+<!-- 4. ANA EKRAN -->
+<h1>4. Ana Ekran (Home)</h1>
+<div class="screen-box">
+  <h4>📱 Ana Ekran Bileşenleri</h4>
+  <ol>
+    <li><strong>Header / Navbar</strong>: Logo, arama çubuğu, favoriler, bildirimler ikonu, giriş/kayıt butonu veya kullanıcı menüsü</li>
+    <li><strong>Hero Banner</strong>: Karşılama metni, "İlan Ver" ve "İlanlara Bak" aksiyon butonları</li>
+    <li><strong>Arama Çubuğu</strong>: Keyword arama, şehir filtresi</li>
+    <li><strong>Filtre Çubuğu</strong>: Kategori, kargo türü (Kargo / Elden Teslim)</li>
+    <li><strong>İlan Kartları Listesi</strong>: Aktif/onaylanmış ilanlar grid veya liste görünümünde</li>
+  </ol>
+</div>
+
+<h3>İlan Kartı Gösterilen Bilgiler</h3>
+<ul>
+  <li>İlan görseli (çoklu fotoğraf varsa ilk fotoğraf)</li>
+  <li>Başlık</li>
+  <li>Şehir + teslimat türü</li>
+  <li>Maksimum bütçe (fiyat)</li>
+  <li>Kaç teklif aldığı</li>
+  <li>Kategori etiketi</li>
+  <li>Tarih / "X dakika önce"</li>
+  <li>Favori butonu (heart ikonu)</li>
+</ul>
+
+<h3>Filtreleme & Arama</h3>
+<table>
+  <tr><th>Filtre</th><th>Açıklama</th></tr>
+  <tr><td>Anahtar Kelime</td><td>İlan başlığı ve açıklamasında arama</td></tr>
+  <tr><td>Şehir</td><td>İlan sahibinin şehrine göre filtreleme</td></tr>
+  <tr><td>Kategori</td><td>Elektronik, Giyim, Kitap, Mobilya, Spor, Oyun, Diğer vb.</td></tr>
+  <tr><td>Teslimat Türü</td><td>Kargo / Elden Teslim</td></tr>
+  <tr><td>Sıralama</td><td>En yeniler, En fazla teklif alan, Fiyat artan/azalan</td></tr>
+</table>
+
+<hr>
+
+<!-- 5. İLANLAR -->
+<h1>5. İlanlar Sistemi</h1>
+
+<h2>5.1 İlan Oluşturma</h2>
+<div class="screen-box">
+  <h4>📱 İlan Oluştur Ekranı</h4>
+  <strong>Form Alanları:</strong>
+  <table>
+    <tr><th>Alan</th><th>Tip</th><th>Açıklama</th></tr>
+    <tr><td>Başlık</td><td>Text</td><td>İlanın kısa başlığı</td></tr>
+    <tr><td>Açıklama</td><td>Textarea</td><td>Detaylı açıklama</td></tr>
+    <tr><td>Kategori</td><td>Dropdown</td><td>Elektronik, Giyim, Kitap, Mobilya, Spor, Oyun, Diğer</td></tr>
+    <tr><td>Alt Kategori</td><td>Dropdown</td><td>Seçilen kategoriye göre dinamik</td></tr>
+    <tr><td>Ürün Durumu</td><td>Radio</td><td>Sıfır / Az Kullanılmış / 2. El / Fark Etmez</td></tr>
+    <tr><td>Minimum Bütçe</td><td>Number</td><td>TL cinsinden minimum fiyat</td></tr>
+    <tr><td>Maksimum Bütçe</td><td>Number</td><td>TL cinsinden maksimum fiyat</td></tr>
+    <tr><td>Şehir</td><td>Dropdown</td><td>Türkiye şehirleri listesi</td></tr>
+    <tr><td>Teslimat Türü</td><td>Radio</td><td>Kargo / Elden Teslim / Her İkisi</td></tr>
+    <tr><td>Son Geçerlilik</td><td>Date</td><td>İlanın yayında kalacağı bitiş tarihi</td></tr>
+    <tr><td>İsim Gizle</td><td>Toggle</td><td>Alıcı adının gizlenmesi (opsiyonel)</td></tr>
+    <tr><td>Görseller</td><td>Multi-upload</td><td>Birden fazla fotoğraf (max 5MB/adet, jpeg/png/webp)</td></tr>
+  </table>
+</div>
+
+<h2>5.2 İlan Onay Akışı</h2>
+<div class="section-box">
+  <span class="flow-step">İlan Oluşturulur</span>
+  <span class="flow-arrow">→</span>
+  <span class="flow-step">pending + inactive</span>
+  <span class="flow-arrow">→</span>
+  <span class="flow-step">Admin İnceler</span>
+  <span class="flow-arrow">→</span>
+  <span class="flow-step">Onay: approved + active</span>
+  <br><br>
+  Reddedilirse → <span class="flow-step" style="background:#dc2626;">rejected</span> durumu + red sebebi açıklaması → Kullanıcı düzenleyip yeniden gönderebilir
+</div>
+
+<h2>5.3 İlan Durumları</h2>
+<table>
+  <tr><th>Durum</th><th>Açıklama</th></tr>
+  <tr><td><span class="badge badge-green">active</span></td><td>Aktif, alıcıya görünür, teklif alınabilir</td></tr>
+  <tr><td><span class="badge badge-gray">inactive</span></td><td>Pasif, alıcıya görünmez (onay bekliyor veya kullanıcı kapattı)</td></tr>
+  <tr><td><span class="badge badge-yellow">closed</span></td><td>Süresi dolmuş ilan</td></tr>
+  <tr><td><span class="badge badge-red">deleted</span></td><td>Soft delete — silinmiş, hiçbir yerde görünmez</td></tr>
+</table>
+
+<h2>5.4 İlan Onay Durumları</h2>
+<table>
+  <tr><th>Onay Durumu</th><th>Açıklama</th></tr>
+  <tr><td><span class="badge badge-yellow">pending</span></td><td>Admin onayı bekleniyor</td></tr>
+  <tr><td><span class="badge badge-green">approved</span></td><td>Admin onayladı</td></tr>
+  <tr><td><span class="badge badge-red">rejected</span></td><td>Admin reddetti — kullanıcı düzenleyip tekrar gönderebilir</td></tr>
+</table>
+
+<h2>5.5 İlan Detay Ekranı</h2>
+<div class="screen-box">
+  <h4>📱 İlan Detay Ekranı</h4>
+  <ul>
+    <li>Fotoğraf galerisi (swipeable)</li>
+    <li>Başlık, açıklama, kategori, durum, bütçe, şehir, teslimat türü</li>
+    <li>İlan sahibi profil bloğu (opsiyonel — isim gizlenebilir)</li>
+    <li>Favori butonu</li>
+    <li>Teklif Ver butonu (sadece giriş yapmış ve ilan sahibi olmayan kullanıcılar)</li>
+    <li>Aktif teklifler listesi (onaylı teklifler)</li>
+    <li>Yorum/Soru bölümü</li>
+    <li>Benzer ilanlar</li>
+  </ul>
+</div>
+
+<h2>5.6 İlan Düzenleme</h2>
+<ul>
+  <li>Sadece ilan sahibi düzenleyebilir</li>
+  <li>active, inactive, closed (süresi dolmuş) durumdaki ilanlar düzenlenebilir</li>
+  <li>Düzenleme sonrası onay tekrar <code>pending</code>'e düşer</li>
+  <li>Süresi dolmuş ilan düzenlenip yeniden gönderilebilir ("Güncelle & Yayınla")</li>
+</ul>
+
+<hr>
+
+<!-- 6. TEKLİFLER -->
+<h1>6. Teklifler Sistemi</h1>
+
+<h2>6.1 Teklif Oluşturma</h2>
+<div class="screen-box">
+  <h4>📱 Teklif Ver Ekranı (Modal / Sayfa)</h4>
+  <table>
+    <tr><th>Alan</th><th>Tip</th><th>Açıklama</th></tr>
+    <tr><td>Ürün Adı</td><td>Text</td><td>Teklif edilen ürünün adı</td></tr>
+    <tr><td>Açıklama</td><td>Textarea</td><td>Ürün hakkında detay</td></tr>
+    <tr><td>Fiyat</td><td>Number</td><td>TL teklif fiyatı</td></tr>
+    <tr><td>Ürün Durumu</td><td>Dropdown</td><td>Sıfır / Sıfır Ayarında / 2. El / İyi / Orta</td></tr>
+    <tr><td>Teslimat Türü</td><td>Radio</td><td>Kargo / Elden Teslim</td></tr>
+    <tr><td>Kargo Bedeli</td><td>Number</td><td>TL kargo ücreti</td></tr>
+    <tr><td>Kargo Desi</td><td>Text</td><td>Ürünün desi bilgisi</td></tr>
+    <tr><td>Adet</td><td>Number</td><td>Kaç adet ürün var</td></tr>
+    <tr><td>Geçerlilik Tarihi</td><td>Date</td><td>Teklifin geçerlilik bitiş tarihi</td></tr>
+    <tr><td>Görseller</td><td>Multi-upload</td><td>Ürün fotoğrafları</td></tr>
+  </table>
+</div>
+
+<h2>6.2 Teklif Onay Akışı</h2>
+<div class="section-box">
+  <span class="flow-step">Teklif Verildi</span>
+  <span class="flow-arrow">→</span>
+  <span class="flow-step">pending + inactive</span>
+  <span class="flow-arrow">→</span>
+  <span class="flow-step">Admin Onaylar</span>
+  <span class="flow-arrow">→</span>
+  <span class="flow-step">approved + active</span>
+  <span class="flow-arrow">→</span>
+  <span class="flow-step">İlan altında görünür</span>
+</div>
+
+<h2>6.3 Teklif Durumları</h2>
+<table>
+  <tr><th>Durum</th><th>Kim Yapabilir</th><th>Açıklama</th></tr>
+  <tr><td><span class="badge badge-yellow">active</span></td><td>—</td><td>Alıcının değerlendirmesinde</td></tr>
+  <tr><td><span class="badge badge-green">accepted</span></td><td>Alıcı</td><td>Teklif kabul edildi → sipariş oluşur</td></tr>
+  <tr><td><span class="badge badge-red">rejected</span></td><td>Alıcı</td><td>Alıcı reddetti</td></tr>
+  <tr><td><span class="badge badge-gray">withdrawn</span></td><td>Satıcı</td><td>Satıcı geri çekti</td></tr>
+  <tr><td><span class="badge badge-yellow">expired</span></td><td>Sistem</td><td>Geçerlilik tarihi geçti — satıcı düzenleyip yeniden gönderebilir</td></tr>
+</table>
+
+<h2>6.4 Teklif Görüntüleme Kuralları</h2>
+<ul>
+  <li>İlan detayında yalnızca <strong>onaylanmış (approved) ve aktif</strong> teklifler, geçerlilik tarihi geçmemiş olanlar gösterilir</li>
+  <li>Süresi geçmiş teklifler otomatik olarak <code>expired</code> durumuna alınır</li>
+  <li>Alıcı teklifleri sepete ekleyebilir veya doğrudan kabul edebilir</li>
+</ul>
+
+<hr>
+
+<!-- 7. SİPARİŞ -->
+<h1>7. Sipariş Sistemi</h1>
+
+<h2>7.1 Sipariş Oluşturma</h2>
+<ul>
+  <li>Alıcı bir teklifi kabul ettiğinde otomatik sipariş oluşur</li>
+  <li>Sipariş: <code>buyer_id</code>, <code>seller_id</code>, <code>listing_id</code>, <code>source_offer_id</code>, <code>status</code> içerir</li>
+</ul>
+
+<h2>7.2 Sipariş Durum Akışı</h2>
+<div class="section-box">
+  <span class="flow-step">pending</span>
+  <span class="flow-arrow">→</span>
+  <span class="flow-step">confirmed</span>
+  <span class="flow-arrow">→</span>
+  <span class="flow-step">preparing</span>
+  <span class="flow-arrow">→</span>
+  <span class="flow-step">shipped</span>
+  <span class="flow-arrow">→</span>
+  <span class="flow-step">delivered</span>
+  <span class="flow-arrow">→</span>
+  <span class="flow-step" style="background:#16a34a;">completed</span>
+  <br><br>
+  Herhangi bir aşamada iptal edilebilir: <span class="flow-step" style="background:#dc2626;">cancelled</span>
+</div>
+
+<h2>7.3 Sipariş Durum Açıklamaları</h2>
+<table>
+  <tr><th>Durum</th><th>Kim Yapabilir</th><th>Açıklama</th></tr>
+  <tr><td><span class="badge badge-yellow">pending</span></td><td>—</td><td>Teklif kabul edildi, onay bekleniyor</td></tr>
+  <tr><td><span class="badge">confirmed</span></td><td>Satıcı / Admin</td><td>Satıcı siparişi onayladı</td></tr>
+  <tr><td><span class="badge">preparing</span></td><td>Satıcı</td><td>Satıcı hazırlık başlattı</td></tr>
+  <tr><td><span class="badge badge-yellow">shipped</span></td><td>Satıcı</td><td>Kargo firması + takip numarası girildi, kargoya verildi</td></tr>
+  <tr><td><span class="badge">delivered</span></td><td>Alıcı</td><td>Alıcı teslim aldığını onayladı</td></tr>
+  <tr><td><span class="badge badge-green">completed</span></td><td>Alıcı / Sistem</td><td>İşlem tamamen tamamlandı → komisyon hesaplanır</td></tr>
+  <tr><td><span class="badge badge-red">cancelled</span></td><td>Alıcı / Satıcı / Admin</td><td>İptal edildi</td></tr>
+</table>
+
+<h2>7.4 Kargo Bilgileri</h2>
+<ul>
+  <li>Kargo firması adı</li>
+  <li>Takip numarası</li>
+  <li>Gönderilen tarih (<code>shipped_at</code>)</li>
+  <li>Teslim tarihi (<code>delivered_at</code>)</li>
+</ul>
+
+<h2>7.5 Sipariş Detay Ekranı</h2>
+<div class="screen-box">
+  <h4>📱 Sipariş Detay Ekranı</h4>
+  <ul>
+    <li>Sipariş no, tarih, durum</li>
+    <li>Ürün bilgileri (teklif detayı)</li>
+    <li>Alıcı ve satıcı bilgileri</li>
+    <li>Toplam tutar (ürün fiyatı + kargo)</li>
+    <li>Kargo bilgileri (takip kodu, firma)</li>
+    <li>Durum geçmiş zaman çizelgesi</li>
+    <li>Duruma göre aksiyon butonları (Onayla / Kargoya Ver / Teslim Aldım / İptal Et)</li>
+    <li>Her değişiklik mail ile bildirilir</li>
+  </ul>
+</div>
+
+<hr>
+
+<!-- 8. KULLANICI PANELİ -->
+<h1>8. Kullanıcı Paneli (Dashboard)</h1>
+
+<div class="screen-box">
+  <h4>📱 Dashboard Ekranı — 4 Sekme</h4>
+  <ol>
+    <li><strong>İlanlarım</strong>: Kullanıcının açtığı tüm ilanlar</li>
+    <li><strong>Tekliflerim</strong>: Kullanıcının verdiği tüm teklifler</li>
+    <li><strong>Gelen Teklifler</strong>: Kullanıcının ilanlarına gelen teklifler</li>
+    <li><strong>Favorilerim</strong>: Favori ilanlar listesi</li>
+  </ol>
+</div>
+
+<h2>8.1 İlanlarım Sekmesi</h2>
+<p>Her ilan kartında gösterilecekler:</p>
+<ul>
+  <li>İlan görseli, başlık, açıklama, şehir, tarih, teklif sayısı</li>
+  <li>Bütçe (min-max)</li>
+  <li>Durum rozeti:
+    <ul>
+      <li><span class="badge badge-green">Aktif</span> — onaylanmış ve aktif</li>
+      <li><span class="badge badge-gray">Pasif</span> — inactive</li>
+      <li><span class="badge badge-yellow">Onay Bekliyor</span> — pending</li>
+      <li><span class="badge badge-red">Reddedildi</span> — rejected (red sebebi gösterilir)</li>
+      <li><span class="badge" style="background:#fef3c7; color:#92400e;">⏰ Süresi Doldu — GG.AA.YYYY</span> — süresi geçmiş</li>
+      <li><span class="badge badge-gray">Kapalı</span> — closed ama expires_at geçmemiş</li>
+    </ul>
+  </li>
+  <li>Aksiyon butonları:
+    <ul>
+      <li><strong>Görüntüle</strong>: İlan detail sayfasına git</li>
+      <li><strong>Düzenle</strong>: Düzenleme formuna git</li>
+      <li><strong>Güncelle &amp; Yayınla</strong> (amber buton): Süresi dolmuş ilanlar için</li>
+      <li><strong>Sil</strong>: İlanı soft delete et</li>
+    </ul>
+  </li>
+</ul>
+
+<h2>8.2 Tekliflerim Sekmesi</h2>
+<p>Her teklif kartında gösterilecekler:</p>
+<ul>
+  <li>Teklif görseli</li>
+  <li>Ürün adı, ilgili ilan başlığı</li>
+  <li>Teklif fiyatı + kargo</li>
+  <li>Teslimat türü, ürün durumu</li>
+  <li>Durum rozeti:
+    <ul>
+      <li><span class="badge badge-yellow">⏳ Bekliyor</span></li>
+      <li><span class="badge badge-green">✅ Kabul Edildi</span></li>
+      <li><span class="badge badge-red">❌ Reddedildi</span></li>
+      <li><span class="badge badge-gray">↩️ Geri Çekildi</span></li>
+      <li><span class="badge" style="background:#fef3c7; color:#92400e;">⏰ Süresi Doldu</span></li>
+      <li><span class="badge badge-yellow">🔍 Onay Bekliyor</span></li>
+    </ul>
+  </li>
+  <li>Aksiyon butonları:
+    <ul>
+      <li><strong>Geri Çek</strong>: active durumdaki teklifler için</li>
+      <li><strong>Düzenle &amp; Yeniden Gönder</strong>: rejected, inactive teklifler için</li>
+      <li><strong>Güncelle &amp; Yeniden Gönder</strong>: expired teklifler için (amber)</li>
+    </ul>
+  </li>
+</ul>
+
+<h2>8.3 Gelen Teklifler Sekmesi</h2>
+<ul>
+  <li>İlanlarıma verilen onaylı tekliflerin listesi</li>
+  <li>Teklif sahibi bilgileri (mağaza linki)</li>
+  <li>Ürün fiyatı, kargo, durum</li>
+  <li>Sepete Ekle butonu</li>
+  <li>Teklifi Kabul Et / Reddet butonları</li>
+</ul>
+
+<hr>
+
+<!-- 9. FAVORİLER -->
+<h1>9. Favoriler</h1>
+<ul>
+  <li>Her ilan kartında <strong>kalp ikonu</strong> ile favori ekleme/çıkarma</li>
+  <li>Favoriler Dashboard > Favorilerim sekmesinde görülür</li>
+  <li>Favori ekleme giriş gerektirmez (misafir favorileri localStorage'da tutulur, login sonra sync edilebilir)</li>
+  <li>Silinen/kapanan ilanların favorileri temizlenir (cleanup endpoint)</li>
+  <li>Her ilan için kaç kişinin favorilere eklediği (<code>favorite_count</code>) gösterilir</li>
+</ul>
+
+<hr>
+
+<!-- 10. BİLDİRİMLER -->
+<h1>10. Bildirimler</h1>
+
+<h2>10.1 Kullanıcı Bildirimleri</h2>
+<table>
+  <tr><th>Bildirim Tipi</th><th>Tetikleyen Olay</th></tr>
+  <tr><td>Yeni teklif alındı</td><td>İlanınıza yeni teklif geldiğinde</td></tr>
+  <tr><td>Teklifiniz onaylandı</td><td>Admin teklifinizi onayladığında</td></tr>
+  <tr><td>Teklifiniz reddedildi</td><td>Admin teklifinizi reddettiğinde</td></tr>
+  <tr><td>Teklifiniz kabul edildi</td><td>Alıcı teklifinizi kabul ettiğinde</td></tr>
+  <tr><td>Siparişiniz güncellendi</td><td>Sipariş her durum değişiminde</td></tr>
+  <tr><td>İlanınız onaylandı</td><td>Admin ilanınızı onayladığında</td></tr>
+  <tr><td>İlanınız reddedildi</td><td>Admin ilanınızı reddettiğinde</td></tr>
+  <tr><td>Yorumunuza yanıt</td><td>İlan sahibi yorumunuza yanıt verdiğinde</td></tr>
+</table>
+
+<h2>10.2 Admin Bildirimleri</h2>
+<ul>
+  <li>Yeni ilan oluşturuldu (onay bekliyor)</li>
+  <li>İlan yeniden gönderildi (düzeltilme sonrası)</li>
+  <li>Yeni teklif verildi (onay bekliyor)</li>
+  <li>Teklif yeniden gönderildi</li>
+</ul>
+
+<h2>10.3 Email Bildirimleri</h2>
+<ul>
+  <li>Tüm önemli olaylar için otomatik mail gönderilir</li>
+  <li>Hoşgeldin maili (kayıt)</li>
+  <li>Email doğrulama</li>
+  <li>Şifre sıfırlama</li>
+  <li>Sipariş durum değişimleri (alıcı ve satıcıya ayrı ayrı)</li>
+  <li>Teklif onay/red bildirimleri</li>
+  <li>İlan onay/red bildirimleri</li>
+</ul>
+
+<hr>
+
+<!-- 11. YORUMLAR -->
+<h1>11. Yorumlar / Sorular Sistemi</h1>
+
+<h2>11.1 Yorum Akışı</h2>
+<div class="section-box">
+  <p>Özel onay iş akışı: Kullanıcı yorum yazar → <strong>gizli</strong> olarak kaydedilir → İlan sahibi yanıtlarsa her iki mesaj görünür hale gelir</p>
+</div>
+
+<table>
+  <tr><th>Alan</th><th>Açıklama</th></tr>
+  <tr><td>İlan ID</td><td>Hangi ilana ait</td></tr>
+  <tr><td>Kullanıcı ID</td><td>Yorumu yapan</td></tr>
+  <tr><td>Yorum metni</td><td>Soru veya yorum</td></tr>
+  <tr><td>Parent comment ID</td><td>Yanıtlar için iç içe yapı</td></tr>
+  <tr><td>is_owner_reply</td><td>İlan sahibinin yanıtı mı?</td></tr>
+  <tr><td>is_visible</td><td>Görünür mü? (İlan sahibi yanıtlayana kadar false)</td></tr>
+</table>
+
+<h2>11.2 İlan Detayında Yorum Bölümü</h2>
+<ul>
+  <li>Sadece giriş yapmış kullanıcılar yorum yapabilir</li>
+  <li>İlan sahibi tüm soruları görebilir (gizli olanlar dahil)</li>
+  <li>İlan sahibi yanıt verdiğinde hem soru hem yanıt herkese görünür</li>
+  <li>Hiyerarşik gösterim (soru → yanıt)</li>
+</ul>
+
+<hr>
+
+<!-- 12. SEPET VE ÖDEME -->
+<h1>12. Sepet ve Ödeme (Checkout)</h1>
+
+<h2>12.1 Sepet Ekranı</h2>
+<div class="screen-box">
+  <h4>📱 Sepet Ekranı</h4>
+  <ul>
+    <li>Sepete eklenen teklifler listesi</li>
+    <li>Her teklif: ürün adı, fiyat, kargo, toplam</li>
+    <li>Teklif silme</li>
+    <li>Süresi dolmuş teklifler otomatik olarak engellenir</li>
+    <li>Ödemeye Geç butonu</li>
+  </ul>
+</div>
+
+<h2>12.2 Checkout / Ödeme Ekranı</h2>
+<div class="screen-box">
+  <h4>📱 Ödeme Ekranı</h4>
+  <strong>Kullanıcı Bilgileri:</strong>
+  <ul>
+    <li>Ad, Soyad, E-posta, Telefon</li>
+    <li>Adres seçimi (adres defterinden veya manuel giriş)</li>
+    <li>Şehir</li>
+  </ul>
+  <strong>Ödeme Bilgileri (Simüle):</strong>
+  <ul>
+    <li>Kart sahibi adı</li>
+    <li>Kart numarası (16 hane)</li>
+    <li>Son kullanma tarihi (MM/YY)</li>
+    <li>CVV</li>
+  </ul>
+  <strong>Komisyon Bakiyesi:</strong>
+  <ul>
+    <li>Kullanıcının komisyon bakiyesi varsa ödemeye sayılır</li>
+  </ul>
+</div>
+
+<div class="info-box"><strong>Not:</strong> Ödeme şu an simüle (gerçek ödeme entegrasyonu yok). Satın al butonuna basıldığında sipariş oluşur.</div>
+
+<hr>
+
+<!-- 13. PROFİL -->
+<h1>13. Profil ve Ayarlar</h1>
+
+<h2>13.1 Profil Ekranı</h2>
+<div class="screen-box">
+  <h4>📱 Profil Ekranı — Sekmeler</h4>
+  <ol>
+    <li><strong>Genel Bilgiler</strong>: Ad, soyad, telefon, şehir, cinsiyet, doğum tarihi, avatar yükleme, e-posta değiştirme</li>
+    <li><strong>Adres Defteri</strong>: Kayıtlı teslimat adresleri yönetimi</li>
+    <li><strong>Satıcı Profili</strong>: Satıcı olarak mağaza bilgileri</li>
+    <li><strong>Komisyon</strong>: Bakiye, işlem geçmişi, para çekme talebi</li>
+  </ol>
+</div>
+
+<h2>13.2 Profil Düzenleme Alanları</h2>
+<table>
+  <tr><th>Alan</th><th>Tip</th></tr>
+  <tr><td>Ad</td><td>Text</td></tr>
+  <tr><td>Soyad</td><td>Text</td></tr>
+  <tr><td>E-posta</td><td>Email (değiştirilince doğrulama gönderilir)</td></tr>
+  <tr><td>Telefon</td><td>Tel</td></tr>
+  <tr><td>Şehir</td><td>Dropdown</td></tr>
+  <tr><td>Cinsiyet</td><td>Radio (Erkek / Kadın / Belirtmek istemiyorum)</td></tr>
+  <tr><td>Doğum Tarihi</td><td>Date</td></tr>
+  <tr><td>Profil Fotoğrafı</td><td>Image upload</td></tr>
+</table>
+
+<hr>
+
+<!-- 14. MAĞAZA PROFİLİ -->
+<h1>14. Mağaza Profili</h1>
+
+<h2>14.1 Satıcı Profil Sekmesi</h2>
+<ul>
+  <li>Mağaza adı</li>
+  <li>Mağaza açıklaması</li>
+  <li>Mağaza logosu/banner yükleme</li>
+  <li>Satıcı kategorileri</li>
+  <li>WhatsApp numarası (alıcı ile iletişim)</li>
+  <li>İnstagram bağlantısı</li>
+</ul>
+
+<h2>14.2 Herkese Açık Mağaza Sayfası (/store/:userId)</h2>
+<div class="screen-box">
+  <h4>📱 Mağaza Ekranı</h4>
+  <ul>
+    <li>Mağaza başlığı ve banner</li>
+    <li>Satıcının tüm aktif teklifleri</li>
+    <li>Satıcı istatistikleri (kaç teklif, kaç tamamlanmış sipariş)</li>
+    <li>Değerlendirmeler / Puanlar</li>
+    <li>İletişim butonu</li>
+  </ul>
+</div>
+
+<hr>
+
+<!-- 15. ADRES DEFTERİ -->
+<h1>15. Adres Defteri</h1>
+<div class="screen-box">
+  <h4>📱 Adres Defteri Ekranı</h4>
+  <strong>Her adres kartında:</strong>
+  <ul>
+    <li>Adres başlığı (örn: "Ev", "İş")</li>
+    <li>Ad Soyad</li>
+    <li>Telefon</li>
+    <li>Adres satırı</li>
+    <li>İlçe, Şehir, Posta Kodu</li>
+    <li>Varsayılan adres seçimi</li>
+    <li>Düzenle / Sil butonları</li>
+  </ul>
+  <strong>Yeni Adres Ekleme formu</strong> (aynı alanlar, modal veya sayfa)
+</div>
+
+<hr>
+
+<!-- 16. GÜVENLİK -->
+<h1>16. Güvenlik Ayarları</h1>
+<div class="screen-box">
+  <h4>📱 Güvenlik Ekranı (/security)</h4>
+  <ul>
+    <li><strong>Şifre Değiştirme</strong>: Mevcut şifre + yeni şifre + onay</li>
+    <li><strong>2FA Authenticator kurulumu</strong>: QR kod göster, secret key, 6 haneli kod doğrulama, yedek kodlar</li>
+    <li><strong>E-posta 2FA</strong>: E-posta ile 2FA aktifleştirme</li>
+    <li><strong>Aktif oturum yönetimi</strong>: Tüm cihazlarda oturumu sonlandırma</li>
+  </ul>
+</div>
+
+<hr>
+
+<!-- 17. KOMİSYON -->
+<h1>17. Komisyon Sistemi</h1>
+
+<h2>17.1 Nasıl Çalışır?</h2>
+<div class="section-box">
+  Sipariş <strong>completed</strong> durumuna geçtiğinde:
+  <ul>
+    <li><strong>Alıcı (ilan sahibi)</strong> → Sipariş tutarı üzerinden <code>buyer_commission_rate</code> kadar komisyon kazanır (varsayılan: %5)</li>
+    <li><strong>Satıcı (teklif sahibi)</strong> → Sipariş tutarı üzerinden <code>seller_commission_rate</code> kadar komisyon kazanır (varsayılan: %5)</li>
+    <li>Kişi kendi ilanı veya teklifinde komisyon kazanamaz</li>
+  </ul>
+</div>
+
+<h2>17.2 Komisyon Ekranı (Profil > Komisyon)</h2>
+<ul>
+  <li>Mevcut bakiye (TL)</li>
+  <li>İşlem geçmişi (kazanılan + çekilen)</li>
+  <li>Para Çekme Talebi butonu</li>
+</ul>
+
+<h2>17.3 Para Çekme Talebi</h2>
+<table>
+  <tr><th>Alan</th><th>Açıklama</th></tr>
+  <tr><td>Tutar</td><td>Min 100 TL, Max 10.000 TL</td></tr>
+  <tr><td>Banka</td><td>Banka adı</td></tr>
+  <tr><td>IBAN</td><td>IBAN numarası</td></tr>
+  <tr><td>Hesap Sahibi</td><td>Ad Soyad</td></tr>
+</table>
+<p>Admin onaylar → <span class="badge badge-green">completed</span> / Reddeder → <span class="badge badge-red">rejected</span></p>
+
+<h2>17.4 Admin Komisyon Ayarları</h2>
+<ul>
+  <li>Alıcı komisyon oranı (buyer_commission_rate)</li>
+  <li>Satıcı komisyon oranı (seller_commission_rate)</li>
+  <li>Minimum çekim tutarı</li>
+  <li>Maksimum çekim tutarı</li>
+</ul>
+
+<hr>
+
+<!-- 18. DESTEK -->
+<h1>18. Destek / İletişim</h1>
+
+<h2>18.1 İletişim Formu (/contact)</h2>
+<div class="screen-box">
+  <h4>📱 İletişim Formu</h4>
+  <table>
+    <tr><th>Alan</th><th>Açıklama</th></tr>
+    <tr><td>Ad Soyad</td><td>Giriş yapmışsa otomatik dolu</td></tr>
+    <tr><td>E-posta</td><td>Giriş yapmışsa otomatik dolu</td></tr>
+    <tr><td>Telefon</td><td>İsteğe bağlı</td></tr>
+    <tr><td>Kategori</td><td>Teknik destek / Hesap / Ödeme / Sipariş / Diğer</td></tr>
+    <tr><td>Konu</td><td>Kısa başlık</td></tr>
+    <tr><td>Mesaj</td><td>Detaylı açıklama</td></tr>
+  </table>
+  <p>Gönderilince: DB'ye kayıt + otomatik teşekkür maili gönderilir</p>
+</div>
+
+<h2>18.2 Destek Sohbet Widget'ı</h2>
+<ul>
+  <li>Tüm sayfalarda sağ altta yüzen chat butonu</li>
+  <li>Giriş yapmadan da erişilebilir</li>
+  <li>İletişim formuyla entegre</li>
+</ul>
+
+<h2>18.3 SSS / Yardım Sayfası (/help)</h2>
+<ul>
+  <li>Sıkça sorulan sorular akordeon listesi</li>
+  <li>Platform kullanımı hakkında yönlendirme</li>
+</ul>
+
+<hr>
+
+<!-- 19. ADMİN PANELİ -->
+<h1>19. Admin Paneli</h1>
+
+<div class="warning-box"><strong>Erişim:</strong> Sadece <code>role = 'admin'</code> kullanıcılar /admin rotalarına erişebilir.</div>
+
+<h2>19.1 Admin Dashboard (/admin)</h2>
+<ul>
+  <li>Toplam kullanıcı sayısı</li>
+  <li>Aktif ilan sayısı</li>
+  <li>Bekleyen onay sayısı (ilanlar + teklifler)</li>
+  <li>Bugünkü sipariş sayısı</li>
+  <li>Toplam komisyon kazanımı</li>
+  <li>Son ilanlar ve teklifler widget'ları</li>
+  <li>Grafik/istatistik kartları</li>
+</ul>
+
+<h2>19.2 İlan Yönetimi (/admin/listings)</h2>
+<table>
+  <tr><th>İşlem</th><th>Açıklama</th></tr>
+  <tr><td>Onay Bekleyenleri Listele</td><td>pending ilanlar filtresi</td></tr>
+  <tr><td>Onayla</td><td>approval_status → approved, status → active</td></tr>
+  <tr><td>Reddet</td><td>Red sebebi girerek reddet → kullanıcıya mail</td></tr>
+  <tr><td>Detay Görüntüle</td><td>İlan tüm detaylarıyla açılır</td></tr>
+  <tr><td>Sil</td><td>Admin soft delete</td></tr>
+  <tr><td>Tüm ilanları filtrele</td><td>Durum, kategori, tarih, kullanıcı bazlı filtre</td></tr>
+</table>
+
+<h2>19.3 Teklif Yönetimi (/admin/offers)</h2>
+<ul>
+  <li>Onay bekleyen teklifleri listeleme</li>
+  <li>Teklif detayını görme (ürün, fiyat, görseller, satıcı)</li>
+  <li>Onaylama veya red sebebiyle reddetme</li>
+  <li>Tüm teklifleri filtreli listeleme</li>
+</ul>
+
+<h2>19.4 Sipariş Yönetimi (/admin/orders)</h2>
+<ul>
+  <li>Tüm siparişleri listeleme (durum filtresi)</li>
+  <li>Sipariş detay ekranı</li>
+  <li>Durum güncelleme (tüm geçişler admin tarafından da yapılabilir)</li>
+  <li>Kargo bilgisi girme</li>
+  <li>İptal etme</li>
+</ul>
+
+<h2>19.5 Kullanıcı Yönetimi (/admin/users)</h2>
+<ul>
+  <li>Tüm kullanıcıları listeleme (arama, filtre)</li>
+  <li>Kullanıcı detayı (profil, ilanlar, teklifler, siparişler)</li>
+  <li>Admin yapma / Admin yetkisi alma</li>
+  <li>Kullanıcı engelleme / aktifleştirme</li>
+  <li>Email doğrulama durumu</li>
+</ul>
+
+<h2>19.6 Komisyon Yönetimi (/admin/commission)</h2>
+<ul>
+  <li>Para çekme taleplerini listeleme</li>
+  <li>Talep detayı (IBAN, tutar, kullanıcı)</li>
+  <li>Onaylama veya red (not ile)</li>
+  <li>Komisyon oranlarını ayarlama (buyer/seller %)</li>
+  <li>Min/Max çekim limitlerini ayarlama</li>
+</ul>
+
+<h2>19.7 Destek Biletleri (/admin/support)</h2>
+<ul>
+  <li>Gelen destek taleplerini listeleme (open/in_progress/resolved/closed)</li>
+  <li>Bilet detayı ve kullanıcı mesajı</li>
+  <li>Admin yanıtı yazma</li>
+  <li>Bilet durumu güncelleme</li>
+  <li>Öncelik ayarlama (low/medium/high/urgent)</li>
+</ul>
+
+<h2>19.8 Satıcı Profilleri (/admin/seller-profiles)</h2>
+<ul>
+  <li>Onaylı / onaysız satıcı profillerini listeleme</li>
+  <li>Satıcı mağaza bilgilerini görüntüleme</li>
+  <li>Profil onaylama veya askıya alma</li>
+</ul>
+
+<hr>
+
+<!-- 20. VERİ MODELLERİ -->
+<h1>20. Veri Modelleri</h1>
+
+<h2>Kullanıcılar (users)</h2>
+<table>
+  <tr><th>Alan</th><th>Tip</th><th>Açıklama</th></tr>
+  <tr><td>id</td><td>UUID</td><td>Benzersiz ID</td></tr>
+  <tr><td>email</td><td>VARCHAR</td><td>E-posta</td></tr>
+  <tr><td>password_hash</td><td>VARCHAR</td><td>Bcrypt hashed şifre</td></tr>
+  <tr><td>firstName</td><td>VARCHAR</td><td>Ad</td></tr>
+  <tr><td>lastName</td><td>VARCHAR</td><td>Soyad</td></tr>
+  <tr><td>city</td><td>VARCHAR</td><td>Şehir</td></tr>
+  <tr><td>phone</td><td>VARCHAR</td><td>Telefon</td></tr>
+  <tr><td>gender</td><td>ENUM</td><td>male/female/prefer_not_to_say</td></tr>
+  <tr><td>birth_date</td><td>DATE</td><td>Doğum tarihi</td></tr>
+  <tr><td>role</td><td>ENUM</td><td>user / admin</td></tr>
+  <tr><td>email_verified</td><td>BOOLEAN</td><td>Email onaylandı mı?</td></tr>
+  <tr><td>avatar_url</td><td>VARCHAR</td><td>Profil fotoğrafı yolu</td></tr>
+</table>
+
+<h2>İlanlar (listings)</h2>
+<table>
+  <tr><th>Alan</th><th>Tip</th><th>Açıklama</th></tr>
+  <tr><td>id</td><td>UUID</td><td>Benzersiz ID</td></tr>
+  <tr><td>buyer_id</td><td>UUID FK</td><td>İlanı açan kullanıcı</td></tr>
+  <tr><td>title</td><td>VARCHAR</td><td>Başlık</td></tr>
+  <tr><td>description</td><td>TEXT</td><td>Açıklama</td></tr>
+  <tr><td>category</td><td>VARCHAR</td><td>Kategori</td></tr>
+  <tr><td>listing_condition</td><td>ENUM</td><td>new/used/like-new/good/fair/any</td></tr>
+  <tr><td>budget_min</td><td>DECIMAL</td><td>Min bütçe</td></tr>
+  <tr><td>budget_max</td><td>DECIMAL</td><td>Max bütçe</td></tr>
+  <tr><td>city</td><td>VARCHAR</td><td>Şehir</td></tr>
+  <tr><td>delivery_type</td><td>ENUM</td><td>shipping/pickup/both</td></tr>
+  <tr><td>images</td><td>JSON</td><td>Görsel URL listesi</td></tr>
+  <tr><td>status</td><td>ENUM</td><td>active/inactive/deleted/closed</td></tr>
+  <tr><td>approval_status</td><td>ENUM</td><td>pending/approved/rejected</td></tr>
+  <tr><td>expires_at</td><td>DATETIME</td><td>Yayın bitiş tarihi</td></tr>
+  <tr><td>view_count</td><td>INT</td><td>Görüntülenme sayısı</td></tr>
+  <tr><td>favorite_count</td><td>INT</td><td>Favoriye eklenme sayısı</td></tr>
+  <tr><td>mask_owner_name</td><td>BOOLEAN</td><td>İsim gizle</td></tr>
+</table>
+
+<h2>Teklifler (offers)</h2>
+<table>
+  <tr><th>Alan</th><th>Tip</th><th>Açıklama</th></tr>
+  <tr><td>id</td><td>UUID</td><td>Benzersiz ID</td></tr>
+  <tr><td>listing_id</td><td>UUID FK</td><td>Hangi ilan</td></tr>
+  <tr><td>seller_id</td><td>UUID FK</td><td>Teklif veren</td></tr>
+  <tr><td>product_name</td><td>VARCHAR</td><td>Ürün adı</td></tr>
+  <tr><td>description</td><td>TEXT</td><td>Açıklama</td></tr>
+  <tr><td>amount</td><td>DECIMAL</td><td>Fiyat</td></tr>
+  <tr><td>quantity</td><td>INT</td><td>Stok adedi</td></tr>
+  <tr><td>delivery_type</td><td>ENUM</td><td>shipping/pickup</td></tr>
+  <tr><td>shipping_cost</td><td>DECIMAL</td><td>Kargo ücreti</td></tr>
+  <tr><td>shipping_desi</td><td>VARCHAR</td><td>Desi</td></tr>
+  <tr><td>images</td><td>JSON</td><td>Görsel listesi</td></tr>
+  <tr><td>status</td><td>ENUM</td><td>active/accepted/rejected/withdrawn/expired</td></tr>
+  <tr><td>approval_status</td><td>ENUM</td><td>pending/approved/rejected</td></tr>
+  <tr><td>valid_until</td><td>DATETIME</td><td>Geçerlilik bitiş</td></tr>
+</table>
+
+<h2>Siparişler (orders)</h2>
+<table>
+  <tr><th>Alan</th><th>Tip</th><th>Açıklama</th></tr>
+  <tr><td>id</td><td>UUID</td><td>Benzersiz ID</td></tr>
+  <tr><td>buyer_id</td><td>UUID FK</td><td>Alıcı</td></tr>
+  <tr><td>seller_id</td><td>UUID FK</td><td>Satıcı</td></tr>
+  <tr><td>listing_id</td><td>UUID FK</td><td>İlan</td></tr>
+  <tr><td>source_offer_id</td><td>UUID FK</td><td>Kaynak teklif</td></tr>
+  <tr><td>status</td><td>ENUM</td><td>pending/confirmed/preparing/shipped/delivered/completed/cancelled</td></tr>
+  <tr><td>carrier_company</td><td>VARCHAR</td><td>Kargo firması</td></tr>
+  <tr><td>tracking_number</td><td>VARCHAR</td><td>Takip no</td></tr>
+  <tr><td>shipped_at</td><td>DATETIME</td><td>Kargoya verilme</td></tr>
+  <tr><td>delivered_at</td><td>DATETIME</td><td>Teslim edilme</td></tr>
+  <tr><td>completed_at</td><td>DATETIME</td><td>Tamamlanma</td></tr>
+</table>
+
+<hr>
+
+<!-- 21. API UÇLARI -->
+<h1>21. API Uç Noktaları</h1>
+
+<h2>Kimlik Doğrulama (/api/auth)</h2>
+<table>
+  <tr><th>Method</th><th>Endpoint</th><th>Açıklama</th></tr>
+  <tr><td>POST</td><td>/register</td><td>Kayıt ol</td></tr>
+  <tr><td>POST</td><td>/login</td><td>Giriş yap</td></tr>
+  <tr><td>GET</td><td>/me</td><td>Mevcut kullanıcı bilgisi</td></tr>
+  <tr><td>PUT</td><td>/profile</td><td>Profil güncelle</td></tr>
+  <tr><td>PUT</td><td>/change-password</td><td>Şifre değiştir</td></tr>
+  <tr><td>POST</td><td>/forgot-password</td><td>Şifre sıfırlama maili</td></tr>
+  <tr><td>POST</td><td>/reset-password</td><td>Şifre sıfırla</td></tr>
+  <tr><td>POST</td><td>/verify-email</td><td>Email doğrula</td></tr>
+  <tr><td>POST</td><td>/login/2fa</td><td>2FA kodu doğrula</td></tr>
+</table>
+
+<h2>İlanlar (/api/listings)</h2>
+<table>
+  <tr><th>Method</th><th>Endpoint</th><th>Açıklama</th></tr>
+  <tr><td>GET</td><td>/active</td><td>Aktif ilanlar (cache'li, filtrelenmiş)</td></tr>
+  <tr><td>GET</td><td>/my</td><td>Benim ilanlarım</td></tr>
+  <tr><td>GET</td><td>/:id</td><td>İlan detayı</td></tr>
+  <tr><td>POST</td><td>/</td><td>İlan oluştur</td></tr>
+  <tr><td>PUT</td><td>/:id</td><td>İlan güncelle</td></tr>
+  <tr><td>DELETE</td><td>/:id</td><td>İlan sil (soft)</td></tr>
+  <tr><td>POST</td><td>/:id/images</td><td>Görsel yükle</td></tr>
+  <tr><td>POST</td><td>/:id/favorite</td><td>Favori toggle</td></tr>
+</table>
+
+<h2>Teklifler (/api/offers)</h2>
+<table>
+  <tr><th>Method</th><th>Endpoint</th><th>Açıklama</th></tr>
+  <tr><td>GET</td><td>/listing/:listingId</td><td>İlana ait teklifler</td></tr>
+  <tr><td>GET</td><td>/my</td><td>Benim tekliflerim</td></tr>
+  <tr><td>GET</td><td>/:id</td><td>Teklif detayı</td></tr>
+  <tr><td>POST</td><td>/</td><td>Teklif oluştur</td></tr>
+  <tr><td>PUT</td><td>/:id</td><td>Teklif güncelle</td></tr>
+  <tr><td>POST</td><td>/:id/withdraw</td><td>Geri çek</td></tr>
+  <tr><td>POST</td><td>/:id/accept</td><td>Kabul et (alıcı)</td></tr>
+</table>
+
+<h2>Siparişler (/api/orders)</h2>
+<table>
+  <tr><th>Method</th><th>Endpoint</th><th>Açıklama</th></tr>
+  <tr><td>GET</td><td>/my</td><td>Benim siparişlerim</td></tr>
+  <tr><td>GET</td><td>/:id</td><td>Sipariş detayı</td></tr>
+  <tr><td>PUT</td><td>/:id/status</td><td>Durum güncelle</td></tr>
+  <tr><td>PUT</td><td>/:id/shipping</td><td>Kargo bilgisi gir</td></tr>
+</table>
+
+<h2>Diğer</h2>
+<table>
+  <tr><th>Prefix</th><th>Açıklama</th></tr>
+  <tr><td>/api/favorites</td><td>Favoriler liste/ekle/sil</td></tr>
+  <tr><td>/api/notifications</td><td>Bildirimler liste/okundu</td></tr>
+  <tr><td>/api/addresses</td><td>Adres defteri CRUD</td></tr>
+  <tr><td>/api/comments</td><td>Yorum oluştur/listele</td></tr>
+  <tr><td>/api/commission</td><td>Bakiye, geçmiş, para çekme talebi</td></tr>
+  <tr><td>/api/cart</td><td>Sepet CRUD + checkout</td></tr>
+  <tr><td>/api/support</td><td>Destek talebi oluştur</td></tr>
+  <tr><td>/api/admin/*</td><td>Admin işlemleri</td></tr>
+</table>
+
+<hr>
+
+<!-- 22. EKRAN LİSTESİ -->
+<h1>22. Tam Ekran Listesi</h1>
+<table>
+  <tr><th>Ekran Adı</th><th>URL</th><th>Açıklama</th></tr>
+  <tr><td>Ana Sayfa</td><td>/</td><td>İlan listesi, arama, filtre</td></tr>
+  <tr><td>İlanlar</td><td>/listings</td><td>Gelişmiş filtreli ilan listesi</td></tr>
+  <tr><td>İlan Detay</td><td>/listing/:id</td><td>İlan detayı, teklifler, yorumlar</td></tr>
+  <tr><td>İlan Oluştur</td><td>/create-listing</td><td>Yeni ilan formu</td></tr>
+  <tr><td>İlan Düzenle</td><td>/edit-listing/:id</td><td>İlan düzenleme formu</td></tr>
+  <tr><td>Panel</td><td>/dashboard</td><td>İlanlarım, Tekliflerim, Gelen Teklifler, Favoriler</td></tr>
+  <tr><td>Profil</td><td>/profile</td><td>Genel bilgiler, adres, satıcı, komisyon</td></tr>
+  <tr><td>Kullanıcı Profili</td><td>/profile/:userId</td><td>Başka kullanıcının profilini görme</td></tr>
+  <tr><td>Mağaza</td><td>/store/:userId</td><td>Satıcı mağaza sayfası</td></tr>
+  <tr><td>Sepet</td><td>/cart</td><td>Sepet içeriği</td></tr>
+  <tr><td>Ödeme</td><td>/checkout</td><td>Ödeme formu</td></tr>
+  <tr><td>Sipariş Detay</td><td>/order/:orderId</td><td>Sipariş durumu ve detayı</td></tr>
+  <tr><td>Bildirimler</td><td>/notifications</td><td>Bildirimler listesi</td></tr>
+  <tr><td>Güvenlik</td><td>/security</td><td>Şifre, 2FA</td></tr>
+  <tr><td>Gelen Kutusu</td><td>/inbox</td><td>Mesajlar</td></tr>
+  <tr><td>Email Doğrulama</td><td>/verify-email</td><td>Email doğrulama landing</td></tr>
+  <tr><td>Email Değişim Doğrulama</td><td>/verify-email-change</td><td>Yeni email doğrulama</td></tr>
+  <tr><td>İletişim</td><td>/contact</td><td>Destek formu</td></tr>
+  <tr><td>Yardım</td><td>/help</td><td>SSS</td></tr>
+  <tr><td>Nasıl Çalışır</td><td>/how-it-works</td><td>Platform açıklaması</td></tr>
+  <tr><td>Kullanım Koşulları</td><td>/terms</td><td>Yasal metin</td></tr>
+  <tr><td>Gizlilik Politikası</td><td>/privacy</td><td>Gizlilik metni</td></tr>
+  <tr><td>Çerez Politikası</td><td>/cookie-policy</td><td>Çerez metni</td></tr>
+  <tr><td>Admin Panel</td><td>/admin</td><td>Admin dashboard</td></tr>
+  <tr><td>Admin İlanlar</td><td>/admin/listings</td><td>İlan onay yönetimi</td></tr>
+  <tr><td>Admin Teklifler</td><td>/admin/offers</td><td>Teklif onay yönetimi</td></tr>
+  <tr><td>Admin Siparişler</td><td>/admin/orders</td><td>Sipariş yönetimi</td></tr>
+  <tr><td>Admin Sipariş Detay</td><td>/admin/orders/:orderId</td><td>Sipariş detay</td></tr>
+  <tr><td>Admin Kullanıcılar</td><td>/admin/users</td><td>Kullanıcı yönetimi</td></tr>
+  <tr><td>Admin Komisyon</td><td>/admin/commission</td><td>Para çekme talepleri, oran ayarı</td></tr>
+  <tr><td>Admin Destek</td><td>/admin/support</td><td>Destek biletleri</td></tr>
+  <tr><td>Admin Satıcı Profilleri</td><td>/admin/seller-profiles</td><td>Satıcı profil yönetimi</td></tr>
+</table>
+
+<hr>
+
+<!-- 23. İŞ AKIŞLARI -->
+<h1>23. Kritik İş Akışları</h1>
+
+<h2>23.1 Alım-Satım Ana Akışı</h2>
+<ol>
+  <li>Alıcı ilan oluşturur (ürün arar)</li>
+  <li>Admin ilanı onaylar</li>
+  <li>Satıcı ilana teklif verir (ürün sunar)</li>
+  <li>Admin teklifi onaylar</li>
+  <li>Teklif ilan altında görünür</li>
+  <li>Alıcı teklifi sepete ekler veya direkt kabul eder</li>
+  <li>Ödeme yapılır (checkout)</li>
+  <li>Sipariş oluşur (pending)</li>
+  <li>Satıcı onaylar (confirmed)</li>
+  <li>Satıcı hazırlar (preparing)</li>
+  <li>Satıcı kargolar (shipped, takip no girer)</li>
+  <li>Alıcı teslim alır (delivered)</li>
+  <li>İşlem tamamlanır (completed)</li>
+  <li>Komisyon her iki tarafa otomatik hesaplanır</li>
+</ol>
+
+<h2>23.2 İlan Süresi Dolunca</h2>
+<ol>
+  <li>İlan <code>expires_at</code> tarihini geçince otomatik <code>closed</code> statüsüne alınır</li>
+  <li>Aktif teklifler de <code>expired</code> durumuna alınır</li>
+  <li>Alıcı panelinde "Süresi Doldu" rozeti + "Güncelle &amp; Yayınla" butonu belirir</li>
+  <li>İlan süresi uzatılarak yeniden onaya gönderilebilir</li>
+</ol>
+
+<h2>23.3 Teklif Reddi Sonrası Düzenleme</h2>
+<ol>
+  <li>Admin teklifi reddeder (sebep yazar)</li>
+  <li>Satıcıya bildirim + mail gider</li>
+  <li>Satıcı panelinde "Reddedildi" rozeti + red sebebi görünür</li>
+  <li>Satıcı "Düzenle &amp; Yeniden Gönder" butonuyla düzenleyebilir</li>
+  <li>Düzenleme sonrası tekrar <code>pending</code> durumuna girer</li>
+</ol>
+
+<h2>23.4 E-posta Değişimi</h2>
+<ol>
+  <li>Kullanıcı yeni email girer</li>
+  <li>Yeni email adresine doğrulama maili gönderilir</li>
+  <li>Eski email aktif olmaya devam eder</li>
+  <li>Kullanıcı yeni emaildeki linke tıklar</li>
+  <li>Email değiştirilir, eski email artık geçersiz</li>
+</ol>
+
+<hr>
+
+<div style="text-align:center; padding: 30px 0; color: #64748b; font-size: 10pt;">
+  <hr>
+  <p>Bu döküman Varmi.com web platformunu tam olarak açıklamaktadır.</p>
+  <p>Mobil uygulama geliştirmede kullanılmak üzere hazırlanmıştır.</p>
+  <p><strong>varmii.com</strong> — Şubat 2026</p>
+</div>
+
+</body>
+</html>

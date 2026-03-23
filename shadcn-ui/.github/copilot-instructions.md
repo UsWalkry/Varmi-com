@@ -1,10 +1,17 @@
-## Copilot için Hızlı Kılavuz (shadcn-ui)
+## DEPRECATION NOTICE
+> **This file contains legacy DataManager (localStorage) patterns that are being replaced by `mysqlAPI`.**
+> **For current patterns, see the main instructions at `/.github/copilot-instructions.md`.**
+> **Use `mysqlAPI` from `src/lib/mysql-api.ts` for all backend API calls.**
+
+## Copilot için Hızlı Kılavuz (shadcn-ui) - LEGACY
 
 - Yığın: Vite + React 19 + TypeScript + Tailwind + shadcn-ui (Radix). Alias `@` → `src`.
 - Giriş akışı: `src/main.tsx` → `App.tsx` (sarılı: `LocalErrorBoundary` + `QueryClientProvider` + `TooltipProvider` + `Toaster`).
 - Yönlendirme: Varsayılan `BrowserRouter`. Codespaces (`*.app.github.dev`) veya `VITE_ROUTER_MODE=hash` → `HashRouter` (bkz. `src/App.tsx`, v7 future bayrakları açık).
 
-### Veri Katmanı — DataManager (`src/lib/mockData.ts`)
+### Veri Katmanı — DataManager (`src/lib/mockData.ts`) — DEPRECATED
+
+> **WARNING: DataManager is legacy. Use `mysqlAPI` for real backend calls.**
 
 - Tüm veri localStorage’da; gerçek backend yok (Supabase bağımlılığı kullanılmıyor).
 - Kapsam: Users, Listings, Offers, Messages, Favorites, Reviews, Sessions/Login Logs, 2FA (TOTP), ThirdPartyOrder.

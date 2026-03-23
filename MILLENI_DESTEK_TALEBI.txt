@@ -1,0 +1,144 @@
+===========================================
+MİLLENİ DESTEK TALEBİ - PTR KAYDI DEĞİŞİKLİĞİ
+===========================================
+
+KONU: PTR (Reverse DNS) Kaydı Değişikliği Talebi - IP: 46.1.54.105
+
+Sayın Milleni Destek Ekibi,
+
+Milleni müşterinizim ve statik IP adresim (46.1.54.105) üzerinde 
+kurumsal mail sunucusu kurulumu gerçekleştirdim.
+
+Mail sunucumun düzgün çalışabilmesi ve Gmail, Outlook gibi büyük e-posta 
+sağlayıcıları tarafından spam olarak işaretlenmemesi için PTR (Reverse DNS) 
+kaydının değiştirilmesi gerekmektedir.
+
+
+TALEP EDİLEN DEĞİŞİKLİK:
+-------------------------
+IP Adresi: 46.1.54.105
+Mevcut PTR Kaydı: 46-1-54-105.milleni.com.tr
+İstenen PTR Kaydı: mail.varmii.com (veya varmii.com)
+Domain: varmii.com
+
+
+TEKNİK BİLGİLER:
+----------------
+- Domain'in A kaydı (varmii.com → 46.1.54.105) aktif
+- Domain'in MX kaydı yapılandırıldı
+- Mail sunucusu (Postfix + Dovecot + OpenDKIM) kurulumu tamamlandı
+- SPF, DKIM ve DMARC kayıtları eklendi
+- SSL sertifikası (Let's Encrypt) aktif
+
+
+SORUN:
+------
+Şu anda mail gönderdiğimde Gmail şu hatayı veriyor:
+"550-5.7.25 [46.1.54.105] The IP address sending this message does not 
+have a PTR record setup, or the forward DNS does not match the reverse DNS."
+
+Reverse DNS sorgusu sonucu:
+$ dig -x 46.1.54.105 +short
+46-1-54-105.milleni.com.tr
+
+
+NEDEN GEREKLİ?
+--------------
+RFC 1912 ve RFC 5321 standartlarına göre, mail sunucularının PTR kaydına 
+sahip olması zorunludur. Aksi takdirde:
+- Gmail, Yahoo, Outlook mailler reddeder veya spam klasörüne atar
+- Mail deliverability oranı %70-80 düşer
+- SPF ve DKIM doğrulamaları başarısız olur
+
+
+TALEBİM:
+--------
+46.1.54.105 IP adresimin PTR kaydını "mail.varmii.com" olarak 
+ayarlayabilir misiniz?
+
+Eğer bu işlem için kurumsal hat/business paket gerekiyorsa, 
+fiyatlandırma ve geçiş süreci hakkında bilgi verirseniz sevinirim.
+
+
+DOSYALAR (İsteğe Bağlı):
+------------------------
+Gerekirse mail sunucusu kurulumumu gösteren belgeler gönderebilirim:
+- OpenDKIM konfigürasyonu
+- Postfix main.cf
+- DNS kayıtları (SPF, DKIM, DMARC)
+- SSL sertifikası
+
+
+İLETİŞİM:
+---------
+Müşteri No: [Müşteri numaranızı buraya yazın]
+Domain: varmii.com
+IP Adresi: 46.1.54.105
+E-posta: [İletişim e-postanız]
+Telefon: [Telefon numaranız]
+
+
+Yardımlarınız için şimdiden teşekkür ederim.
+
+Saygılarımla,
+[Adınız Soyadınız]
+[Şirket Adı - varsa]
+
+
+===========================================
+ALTERNATİF KISA VERSİYON (E-POSTA İÇİN)
+===========================================
+
+Konu: PTR Kaydı Değişikliği Talebi - IP: 46.1.54.105
+
+Merhaba,
+
+Statik IP adresim 46.1.54.105 üzerinde mail sunucusu kurdum. 
+Ancak Gmail/Outlook'a mail gönderirken PTR kaydı hatası alıyorum.
+
+Talep: 
+- IP: 46.1.54.105
+- Mevcut PTR: 46-1-54-105.milleni.com.tr
+- İstenen PTR: mail.varmii.com
+
+Mail sunucusu tamamen kurulu (Postfix, OpenDKIM, SSL) ve forward DNS 
+aktif (varmii.com → 46.1.54.105).
+
+Bu değişikliği yapabilir misiniz? Kurumsal paket gerekiyorsa detay verir misiniz?
+
+Teşekkürler,
+[Adınız]
+Domain: varmii.com
+Tel: [Telefon]
+
+
+===========================================
+MİLLENİ İLETİŞİM BİLGİLERİ
+===========================================
+
+Destek E-posta: destek@milleni.com.tr (veya info@milleni.com.tr)
+Telefon: 0850 222 6453 (Milleni Müşteri Hizmetleri)
+Web: https://www.milleni.com.tr/iletisim
+
+NOT: Müşteri panelinizden de ticket açabilirsiniz.
+
+
+===========================================
+BEKLENEBILECEK CEVAPLAR
+===========================================
+
+1) "Ev hattında PTR değişikliği yapmıyoruz"
+   → Kurumsal/Business paket teklif edecekler (aylık +100-200 TL)
+   → O zaman Gmail SMTP kullanın (önerim)
+
+2) "PTR değişikliği yapabiliriz"
+   → 24-48 saat içinde yapılır
+   → Sonrasında mail sunucunuz çalışır
+
+3) "Ek ücret karşılığında yapabiliriz"
+   → Fiyat sorun değilse kabul edin
+   → Sorunsa Gmail SMTP'ye geçin
+
+4) "Teknik destek ile görüşün"
+   → 2. seviye desteğe yönlendirecekler
+   → Bu metni onlara da gönderin

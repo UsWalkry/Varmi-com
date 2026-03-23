@@ -1,2 +1,26 @@
+# Robots.txt - Varmii.com
+# Kaynak kod ve hassas dosyaları botlardan korur
+
 User-agent: *
+# API endpoint'leri taranmasın
+Disallow: /api/
+# Admin paneli
+Disallow: /admin/
+# Auth sayfaları
+Disallow: /login
+Disallow: /register
+# Hassas dosyalar
+Disallow: /.env
+Disallow: /dist/
+Disallow: /node_modules/
+# Source maps (varsa)
+Disallow: /*.map$
+
+# İzin verilenler
 Allow: /
+Allow: /listings
+Allow: /about
+Allow: /contact
+
+# Sitemap
+Sitemap: https://varmii.com/sitemap.xml

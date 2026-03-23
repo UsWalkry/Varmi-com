@@ -1,0 +1,71 @@
+# ======================================
+# SUNUCUDAN DEPLOYMENT TALIMATLARI
+# ======================================
+
+Sunucuya konsol/fiziksel erişiminiz olduğu için en kolay yol:
+
+1️⃣ WINDOWS'TAN DOSYALARI FTP/PANEL İLE YÜKLE
+------------------------------------------
+Windows Explorer'dan bu dosyaları hosting panel/FTP ile kopyala:
+
+Backend:
+  c:\Users\Burak AYDIN\Desktop\Varmi-com-sql\server\dist\utils\schemaGenerator.js
+  → /root/varmi-com/server/dist/utils/
+
+  c:\Users\Burak AYDIN\Desktop\Varmi-com-sql\server\dist\routes\listings.js
+  → /root/varmi-com/server/dist/routes/
+
+Frontend:
+  c:\Users\Burak AYDIN\Desktop\Varmi-com-sql\shadcn-ui\dist\*
+  → /var/www/varmii.com/public_html/
+
+
+2️⃣ SUNUCUDA DEPLOYMENT TAMAMLA
+------------------------------------------
+Sunucuya giriş yap (konsol/fiziksel):
+  ssh root@192.168.1.116
+  # veya direkt konsol
+
+Komutlar:
+  cd ~/varmi-com/server
+  
+  # Dosyaları kontrol et
+  ls -l dist/utils/schemaGenerator.js
+  ls -l dist/routes/listings.js
+  
+  # PM2 restart
+  pm2 restart varmi-mail-server
+  pm2 logs --lines 20
+  
+  # Test
+  curl https://varmii.com/api/listings/active
+
+
+3️⃣ ALTERNATİF: SUNUCUDAN WİNDOWS'A BAĞLAN
+------------------------------------------
+Windows'ta SSH server varsa, sunucudan çekebiliriz:
+  
+Sunucuda:
+  scp burak@192.168.1.111:"/c/Users/Burak AYDIN/Desktop/Varmi-com-sql/server/dist/utils/schemaGenerator.js" ~/varmi-com/server/dist/utils/
+
+
+4️⃣ SSH KEY KURULUMU (Gelecek için)
+------------------------------------------
+Sunucuda:
+  # Public key authentication aktif mi kontrol et
+  cat /etc/ssh/sshd_config | grep PubkeyAuthentication
+  
+  # Windows public key ekle
+  mkdir -p ~/.ssh
+  chmod 700 ~/.ssh
+  # Windows'tan public key'i kopyalayıp ~/.ssh/authorized_keys'e ekle
+  chmod 600 ~/.ssh/authorized_keys
+
+
+💡 EN HIZLI YÖNTEM
+------------------------------------------
+1. Hosting panel/FileZilla ile dosyaları yükle
+2. Sunucu konsolundan: pm2 restart varmi-mail-server
+3. Test: curl https://varmii.com/api/listings/active
+
+Tamamdır!

@@ -24,8 +24,11 @@ async function sendMail(params: {
   actionUrl?: string;
 }) {
   const { toName, toEmail, subject, message, actionUrl } = params;
+  const startTime = Date.now();
   try {
-    await sendMailViaServer({
+    if (IS_DEV) console.log(`[mail] Sending to ${toEmail}: ${subject}`);
+    
+    const result = await sendMailViaServer({
       to: toEmail,
       subject,
       text: [
@@ -39,18 +42,23 @@ async function sendMail(params: {
       ].join('\n'),
       html: `<p>Merhaba ${toName},</p><p>${message.replace(/\n/g, '<br/>')}</p><p><a href="${actionUrl || appOrigin()}" target="_blank" rel="noopener">Devam et</a></p><p>— Varmı</p>`,
     });
-    if (IS_DEV) toast.success('E-posta gönderildi');
+    
+    const duration = Date.now() - startTime;
+    if (IS_DEV) {
+      console.log(`[mail] Sent in ${duration}ms:`, result);
+      toast.success(`E-posta gönderildi (${duration}ms)`);
+    }
   } catch (e) {
-    console.warn('E-posta gönderimi hata verdi:', e);
+    const duration = Date.now() - startTime;
+    console.warn(`E-posta gönderimi hata verdi (${duration}ms):`, e);
     if (IS_DEV) toast.error('E-posta gönderilemedi: ' + String(e));
   }
 }
 
 export const Mailer = {
   async sendWelcome(user: { name: string; email: string }) {
-    const subject = `Varmı’ya hoş geldiniz, ${user.name}!`;
+    const subject = `Varmı'ya hoş geldiniz, ${user.name}!`;
     const message = [
-      '',
       'Varmı hesabınız başarıyla oluşturuldu. Artık aradığınız ürün/hizmet için ilan açabilir ve gelen teklifleri kolayca yönetebilirsiniz.',
       '',
       'Başlangıç için ipuçları:',
@@ -66,8 +74,6 @@ export const Mailer = {
   async sendListingCreated(user: { name: string; email: string }, listing: { id: string; title: string; category: string; city: string; budgetMax: number }) {
     const subject = `İlanın yayında: ${listing.title}`;
     const message = [
-      `Merhaba ${user.name},`,
-      '',
       'İlanın başarıyla yayınlandı. Kısa süre içinde satıcılardan teklifler gelebilir.',
       '',
       `• Başlık: ${listing.title}`,
@@ -83,8 +89,6 @@ export const Mailer = {
     const subject = `Yeni teklif var: ${listing.title}`;
     const deliveryText = offer.deliveryType === 'shipping' ? 'Kargo' : offer.deliveryType === 'pickup' ? 'Elden Teslim' : '—';
     const message = [
-      `Merhaba ${owner.name},`,
-      '',
       'İlanına yeni bir teklif geldi:',
       `• Satıcı: ${offer.sellerName}`,
       `• Fiyat: ${new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY', maximumFractionDigits: 0 }).format(offer.price)}`,
@@ -99,8 +103,6 @@ export const Mailer = {
     const subject = `Teklifinden satın alma yapıldı: ${listing.title}`;
     const qty = Math.max(1, Number(payload.quantity ?? 1));
     const message = [
-      `Merhaba ${seller.name},`,
-      '',
       'Teklifinden üçüncü bir kullanıcı tarafından satın alma yapıldı.',
       `• Adet: ${qty}`,
       `• Birim Fiyat: ${new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY', maximumFractionDigits: 0 }).format(payload.price)}`,
@@ -115,14 +117,55 @@ export const Mailer = {
     const subject = `Yeni mesajın var - ${sender.name}`;
     const snippet = content.length > 140 ? content.slice(0, 137) + '…' : content;
     const message = [
-      `Merhaba ${recipient.name},`,
-      '',
       `${sender.name} sana bir mesaj gönderdi:`,
       '',
-      `“${snippet}”`,
+      `"${snippet}"`,
       '',
       'Yanıtlamak için ilana/mesajlara gidebilirsin.',
     ].join('\n');
     await sendMail({ toName: recipient.name, toEmail: recipient.email, subject, message, actionUrl: `${appOrigin()}/listing/${listing.id}` });
   },
+
+  async sendEmailVerification(params: { 
+    email: string; 
+    name: string; 
+    verificationCode: string; 
+    purpose: string;
+    newEmail?: string;
+  }) {
+    const { email, name, verificationCode, purpose, newEmail } = params;
+    
+    let subject = 'Email Doğrulama Kodu';
+    let message = '';
+    
+    if (purpose === 'email_change') {
+      subject = 'Email Değişikliği - Doğrulama Kodu';
+      message = [
+        `Email adresini değiştirmek istiyorsun.`,
+        '',
+        `Yeni Email: ${newEmail}`,
+        '',
+        `Doğrulama Kodu: ${verificationCode}`,
+        '',
+        'Bu kodu 10 dakika içinde gir. Güvenliğin için kodu kimseyle paylaşma.',
+        '',
+        'Eğer bu işlemi sen yapmadıysan, bu emaili görmezden gel.',
+      ].join('\n');
+    } else {
+      message = [
+        `Doğrulama kodu: ${verificationCode}`,
+        '',
+        'Bu kodu 10 dakika içinde gir. Güvenliğin için kodu kimseyle paylaşma.',
+      ].join('\n');
+    }
+    
+    await sendMail({ 
+      toName: name, 
+      toEmail: email, 
+      subject, 
+      message 
+    });
+  },
 };
+
+

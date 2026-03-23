@@ -1,3 +1,5 @@
+import 'dart:convert';
+import 'package:image_picker/image_picker.dart';
 import '../models/offer.dart';
 import '../config/api_config.dart';
 import 'api_service.dart';
@@ -37,61 +39,73 @@ class OfferService {
   }
 
   // Create Offer
-  Future<Offer> createOffer(Map<String, dynamic> offerData, List<dynamic> images) async {
+  Future<Offer> createOffer(Map<String, dynamic> offerData, List<XFile> images) async {
     return createOfferWithData(
       listingId: offerData['listing_id'],
-      amount: offerData['amount'],
+      price: (offerData['amount'] ?? offerData['price'] ?? 0).toDouble(),
       productName: offerData['product_name'],
       quantity: offerData['quantity'] ?? 1,
       deliveryType: offerData['delivery_type'],
-      shippingDesi: offerData['shipping_desi'],
-      shippingCost: offerData['shipping_cost'],
+      shippingDesi: offerData['shipping_desi']?.toString(),
+      shippingCost: offerData['shipping_cost'] != null
+          ? (offerData['shipping_cost'] as num).toDouble()
+          : null,
       description: offerData['description'],
-      imagePaths: images.map((e) => e.path as String).toList(),
+      xFiles: images,
     );
   }
 
   Future<Offer> createOfferWithData({
     required String listingId,
-    required double amount,
+    required double price,
     required String productName,
     int quantity = 1,
+    String condition = 'used',
     required String deliveryType,
-    double? shippingDesi,
+    String? shippingDesi,
     double? shippingCost,
+    int? etaDays,
     String? description,
-    List<String>? imagePaths,
+    List<XFile>? xFiles,
     DateTime? validUntil,
   }) async {
-    // First create the offer
+    // Convert images to base64 strings (backend expects base64 in JSON body)
+    List<String> base64Images = [];
+    if (xFiles != null && xFiles.isNotEmpty) {
+      for (final xFile in xFiles) {
+        final bytes = await xFile.readAsBytes();
+        final mimeType = xFile.mimeType ?? 'image/jpeg';
+        base64Images.add('data:$mimeType;base64,${base64Encode(bytes)}');
+      }
+    }
+
     final response = await _api.post(
       ApiConfig.offersEndpoint,
       data: {
         'listing_id': listingId,
-        'amount': amount,
+        'price': price,               // backend uses 'price'
         'product_name': productName,
         'quantity': quantity,
+        'condition': condition,
         'delivery_type': deliveryType,
         if (shippingDesi != null) 'shipping_desi': shippingDesi,
         if (shippingCost != null) 'shipping_cost': shippingCost,
+        if (etaDays != null) 'eta_days': etaDays,
         if (description != null) 'description': description,
         if (validUntil != null) 'valid_until': validUntil.toIso8601String(),
+        if (base64Images.isNotEmpty) 'images': base64Images,
       },
     );
 
-    final offerData = response.data['offer'] ?? response.data;
-    final offer = Offer.fromJson(offerData);
-
-    // Upload images if provided
-    if (imagePaths != null && imagePaths.isNotEmpty) {
-      await uploadOfferImages(offer.id, imagePaths);
-    }
-
-    return offer;
+    final offerData = response.data is Map && response.data['offer'] != null
+        ? response.data['offer']
+        : response.data;
+    return Offer.fromJson(offerData);
   }
 
   // Update Offer
-  Future<Offer> updateOffer(
+  // Server expects camelCase body keys: price, productName, shippingDesi, shippingCost, deliveryType, validUntil
+  Future<void> updateOffer(
     String id, {
     double? amount,
     String? productName,
@@ -101,29 +115,29 @@ class OfferService {
     double? shippingCost,
     String? description,
     DateTime? validUntil,
+    List<String>? images,
   }) async {
-    final response = await _api.put(
+    await _api.put(
       '${ApiConfig.offersEndpoint}/$id',
       data: {
-        if (amount != null) 'amount': amount,
-        if (productName != null) 'product_name': productName,
+        if (amount != null) 'price': amount,           // server reads 'price'
+        if (productName != null) 'productName': productName,  // server reads 'productName'
         if (quantity != null) 'quantity': quantity,
-        if (deliveryType != null) 'delivery_type': deliveryType,
-        if (shippingDesi != null) 'shipping_desi': shippingDesi,
-        if (shippingCost != null) 'shipping_cost': shippingCost,
+        if (deliveryType != null) 'deliveryType': deliveryType, // camelCase
+        if (shippingDesi != null) 'shippingDesi': shippingDesi, // camelCase
+        if (shippingCost != null) 'shippingCost': shippingCost, // camelCase
         if (description != null) 'description': description,
-        if (validUntil != null) 'valid_until': validUntil.toIso8601String(),
+        if (validUntil != null) 'validUntil': validUntil.toIso8601String(), // camelCase
+        if (images != null) 'images': images,
       },
     );
-
-    return Offer.fromJson(response.data['offer'] ?? response.data);
   }
 
-  // Upload Offer Images
-  Future<List<String>> uploadOfferImages(String offerId, List<String> imagePaths) async {
-    final response = await _api.uploadFiles(
+  // Upload Offer Images (web-safe, uses XFile bytes)
+  Future<List<String>> uploadOfferXFiles(String offerId, List<XFile> xFiles) async {
+    final response = await _api.uploadXFiles(
       '${ApiConfig.offersEndpoint}/$offerId/images',
-      imagePaths,
+      xFiles,
       fieldName: 'images',
     );
 
@@ -182,14 +196,18 @@ class OfferService {
 
   // Accept Offer
   Future<void> acceptOffer(String id) async {
-    await _api.post('${ApiConfig.offersEndpoint}/$id/accept');
+    await _api.patch(
+      '${ApiConfig.offersEndpoint}/$id/status',
+      data: {'status': 'accepted'},
+    );
   }
 
   // Reject Offer
   Future<void> rejectOffer(String id, {String? reason}) async {
-    await _api.post(
-      '${ApiConfig.offersEndpoint}/$id/reject',
+    await _api.patch(
+      '${ApiConfig.offersEndpoint}/$id/status',
       data: {
+        'status': 'rejected',
         if (reason != null) 'reason': reason,
       },
     );
@@ -197,7 +215,7 @@ class OfferService {
 
   // Withdraw Offer
   Future<void> withdrawOffer(String id) async {
-    await _api.post('${ApiConfig.offersEndpoint}/$id/withdraw');
+    await _api.patch('${ApiConfig.offersEndpoint}/$id/withdraw');
   }
 
   // Delete Offer

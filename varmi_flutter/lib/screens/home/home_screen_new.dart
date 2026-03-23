@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../utils/app_dialog.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../config/api_config.dart';
@@ -60,7 +61,8 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
         _filteredListings = listings;
         _isLoading = false;
       });
-    } catch (e) {
+    } catch (e, st) {
+      print('❌ _loadListings hatası: $e\n$st');
       setState(() => _isLoading = false);
     }
   }
@@ -243,9 +245,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                               IconButton(
                                 icon: const Icon(Icons.notifications_outlined, color: Colors.white),
                                 onPressed: () {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(content: Text('Bildirimler yakında eklenecek')),
-                                  );
+                                  AppDialog.showInfo(context, 'Bildirimler yakında eklenecek');
                                 },
                               ),
                             ] else

@@ -23,6 +23,9 @@ class Offer {
   final String? sellerName;
   final String? sellerEmail;
   final String? listingTitle;
+  final double? sellerRating;
+  final int? etaDays;
+  final String? condition;
 
   Offer({
     required this.id,
@@ -47,6 +50,9 @@ class Offer {
     this.sellerName,
     this.sellerEmail,
     this.listingTitle,
+    this.sellerRating,
+    this.etaDays,
+    this.condition,
   });
 
   bool get isActive => status == 'active';
@@ -75,8 +81,12 @@ class Offer {
         try {
           final decoded = json['images'] as String;
           if (decoded.startsWith('[')) {
-            imageList = (json['images'] as List).map((e) => e.toString()).toList();
-          } else {
+            final parsed = RegExp(r'"([^"]*)"').allMatches(decoded)
+                .map((m) => m.group(1) ?? '')
+                .where((s) => s.isNotEmpty)
+                .toList();
+            imageList = parsed;
+          } else if (decoded.isNotEmpty) {
             imageList = [decoded];
           }
         } catch (e) {
@@ -105,34 +115,38 @@ class Offer {
     }
 
     return Offer(
-      id: json['id'] as String,
-      listingId: json['listing_id'] as String,
-      sellerId: json['seller_id'] as String,
-      amount: parseDouble(json['amount']) ?? 0.0,
-      status: json['status'] as String? ?? 'active',
-      approvalStatus: json['approval_status'] as String? ?? 'pending',
-      approvedBy: json['approved_by'] as String?,
-      approvedAt: json['approved_at'] != null
-          ? DateTime.parse(json['approved_at'] as String)
+      id: json['id']?.toString() ?? '',
+      listingId: (json['listingId'] ?? json['listing_id'])?.toString() ?? '',
+      sellerId: (json['sellerId'] ?? json['seller_id'])?.toString() ?? '',
+      // Backend 'price' veya 'amount' kullanabilir
+      amount: parseDouble(json['amount'] ?? json['price']) ?? 0.0,
+      status: json['status']?.toString() ?? 'active',
+      approvalStatus: (json['approvalStatus'] ?? json['approval_status'])?.toString() ?? 'pending',
+      approvedBy: (json['approvedBy'] ?? json['approved_by'])?.toString(),
+      approvedAt: (json['approvedAt'] ?? json['approved_at']) != null
+          ? DateTime.tryParse((json['approvedAt'] ?? json['approved_at']).toString())
           : null,
-      rejectionReason: json['rejection_reason'] as String?,
-      productName: json['product_name'] as String,
+      rejectionReason: (json['rejectionReason'] ?? json['rejection_reason'])?.toString(),
+      productName: (json['productName'] ?? json['product_name'])?.toString() ?? '',
       quantity: parseInt(json['quantity']) ?? 1,
       images: imageList,
-      deliveryType: json['delivery_type'] as String,
-      shippingDesi: parseDouble(json['shipping_desi']),
-      shippingCost: parseDouble(json['shipping_cost']),
-      description: json['description'] as String?,
-      validUntil: json['valid_until'] != null
-          ? DateTime.parse(json['valid_until'] as String)
+      deliveryType: (json['deliveryType'] ?? json['delivery_type'])?.toString() ?? 'kargo',
+      shippingDesi: parseDouble(json['shippingDesi'] ?? json['shipping_desi']),
+      shippingCost: parseDouble(json['shippingCost'] ?? json['shipping_cost']),
+      description: json['description']?.toString(),
+      validUntil: (json['validUntil'] ?? json['valid_until']) != null
+          ? DateTime.tryParse((json['validUntil'] ?? json['valid_until']).toString())
           : null,
-      createdAt: DateTime.parse(json['created_at'] as String),
-      updatedAt: json['updated_at'] != null
-          ? DateTime.parse(json['updated_at'] as String)
+      createdAt: DateTime.tryParse((json['createdAt'] ?? json['created_at'])?.toString() ?? '') ?? DateTime.now(),
+      updatedAt: (json['updatedAt'] ?? json['updated_at']) != null
+          ? DateTime.tryParse((json['updatedAt'] ?? json['updated_at']).toString())
           : null,
-      sellerName: json['seller_name'] as String?,
-      sellerEmail: json['seller_email'] as String?,
-      listingTitle: json['listing_title'] as String?,
+      sellerName: (json['sellerName'] ?? json['seller_name'])?.toString(),
+      sellerEmail: (json['sellerEmail'] ?? json['seller_email'])?.toString(),
+      listingTitle: (json['listingTitle'] ?? json['listing_title'])?.toString(),
+      sellerRating: parseDouble(json['sellerRating'] ?? json['seller_rating']),
+      etaDays: parseInt(json['etaDays'] ?? json['eta_days']),
+      condition: (json['condition'] ?? json['offer_condition'])?.toString(),
     );
   }
 

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import '../../utils/app_dialog.dart';
+import '../../utils/formatters.dart';
 import 'package:flutter/services.dart';
-import 'dart:io';
+import 'dart:typed_data';
 import 'package:image_picker/image_picker.dart';
 import '../../services/listing_service.dart';
 
@@ -12,470 +14,703 @@ class CreateListingScreen extends StatefulWidget {
 }
 
 class _CreateListingScreenState extends State<CreateListingScreen> {
-  final _formKey = GlobalKey<FormState>();
   final ListingService _listingService = ListingService();
   final ImagePicker _imagePicker = ImagePicker();
-  
+
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
   final TextEditingController _budgetController = TextEditingController();
-  final TextEditingController _cityController = TextEditingController();
-  
-  String _category = 'Elektronik';
-  String _condition = 'new';
-  String _deliveryType = 'shipping';
-  final List<File> _selectedImages = [];
+
+  int _step = 1;
   bool _isLoading = false;
 
-  final List<String> _categories = [
-    'Elektronik',
-    'Moda & Giyim',
-    'Ev & Yaşam',
-    'Spor & Outdoor',
-    'Kitap & Hobi',
-    'Kozmetik & Kişisel Bakım',
-    'Oyuncak & Bebek',
-    'Otomotiv',
-    'Diğer',
+  String _category = '';
+  String _condition = 'any';      // any | new | used
+  String _deliveryType = 'both';  // both | shipping | pickup
+  String? _city;
+
+  final List<XFile> _selectedImages = [];
+  final List<Uint8List> _imageBytes = [];
+
+  static const List<String> _categories = [
+    'Teknoloji', 'Moda & Giyim', 'Ev & Yaşam', 'Spor & Outdoor',
+    'Kitap & Müzik', 'Sağlık & Güzellik', 'Bebek & Çocuk', 'Otomotiv',
+    'Hobi & Sanat', 'Elektronik & Bilgisayar', 'Cep Telefonu & Aksesuar',
+    'Beyaz Eşya', 'Mobilya & Dekorasyon', 'Bahçe & Yapı Market',
+    'Kozmetik & Kişisel Bakım', 'Süpermarket & Petshop', 'Anne & Bebek',
+    'Oyuncak & Oyun', 'Kırtasiye & Ofis', 'Elektrikli Ev Aletleri',
+    'Ayakkabı & Çanta', 'Aksesuar & Takı', 'Saat & Gözlük',
+    'İç Giyim & Pijama', 'Spor Giyim & Ayakkabı',
+    'Outdoor & Kamp Malzemeleri', 'Bisiklet & Scooter',
+    'Müzik Enstrümanları', 'Film & Dizi', 'Koleksiyon',
+    'El Sanatları & Hobi', 'Sanat & Antika', 'Evcil Hayvan Ürünleri',
+    'Yiyecek & İçecek', 'Vitamin & Takviye', 'Medikal Ürünler',
+    'Oto Aksesuar & Yedek Parça', 'Motor & ATV', 'Diğer',
   ];
+
+  static const List<String> _cities = [
+    'İstanbul', 'Ankara', 'İzmir', 'Bursa', 'Antalya',
+    'Adana', 'Konya', 'Şanlıurfa', 'Gaziantep', 'Kayseri',
+  ];
+
+  // City shown only when pickup or both
+  bool get _cityVisible => _deliveryType == 'pickup' || _deliveryType == 'both';
 
   @override
   void dispose() {
     _titleController.dispose();
     _descriptionController.dispose();
     _budgetController.dispose();
-    _cityController.dispose();
     super.dispose();
   }
 
+  // ── Validation ─────────────────────────────────────────────────────────────
+  String? _validateStep1() {
+    if (_titleController.text.trim().isEmpty) return 'Başlık gereklidir';
+    if (_category.isEmpty) return 'Kategori seçiniz';
+    if (_cityVisible && (_city == null || _city!.isEmpty)) return 'Şehir seçiniz';
+    return null;
+  }
+
+  String? _validateStep2() {
+    final b = double.tryParse(_budgetController.text);
+    if (b == null || b <= 0) return 'Geçerli bir bütçe girin';
+    return null;
+  }
+
+  String? _validateStep3() {
+    if (_selectedImages.isEmpty) return 'En az 1 resim eklemelisiniz';
+    return null;
+  }
+
+  void _nextStep() {
+    String? err;
+    if (_step == 1) err = _validateStep1();
+    if (_step == 2) err = _validateStep2();
+    if (_step == 3) err = _validateStep3();
+    if (err != null) {
+      AppDialog.showWarning(context, err);
+      return;
+    }
+    setState(() => _step++);
+  }
+
+  // ── Images ─────────────────────────────────────────────────────────────────
   Future<void> _pickImages() async {
     try {
-      final List<XFile> images = await _imagePicker.pickMultiImage();
-      
+      final images = await _imagePicker.pickMultiImage();
+      if (images.isEmpty) return;
       if (images.length + _selectedImages.length > 5) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('En fazla 5 resim yükleyebilirsiniz'),
-              backgroundColor: Colors.orange,
-            ),
-          );
+          AppDialog.showWarning(context, 'En fazla 5 resim yükleyebilirsiniz');
         }
         return;
       }
-
+      final bytes = await Future.wait(images.map((x) => x.readAsBytes()));
       setState(() {
-        _selectedImages.addAll(images.map((xFile) => File(xFile.path)));
+        _selectedImages.addAll(images);
+        _imageBytes.addAll(bytes);
       });
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Resim seçme hatası: ${e.toString()}'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        AppDialog.showError(context, 'Resim hatası: $e');
       }
     }
   }
 
-  void _removeImage(int index) {
-    setState(() {
-      _selectedImages.removeAt(index);
-    });
-  }
+  void _removeImage(int i) => setState(() {
+        _selectedImages.removeAt(i);
+        _imageBytes.removeAt(i);
+      });
 
-  Future<void> _submitListing() async {
-    if (!_formKey.currentState!.validate()) {
-      return;
-    }
-
-    if (_selectedImages.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('En az 1 resim eklemelisiniz'),
-          backgroundColor: Colors.orange,
-        ),
-      );
-      return;
-    }
-
-    setState(() {
-      _isLoading = true;
-    });
-
+  // ── Submit ─────────────────────────────────────────────────────────────────
+  Future<void> _submit() async {
+    setState(() => _isLoading = true);
     try {
-      final listingData = {
-        'title': _titleController.text,
-        'description': _descriptionController.text,
-        'category': _category,
-        'listing_condition': _condition,
-        'budget_max': double.parse(_budgetController.text),
-        'city': _cityController.text,
-        'delivery_type': _deliveryType,
-      };
+      final rawTitle = _titleController.text.trim();
+      final titleWithSuffix =
+          rawTitle.endsWith('Var mı?') ? rawTitle : '$rawTitle Var mı?';
 
-      await _listingService.createListing(
-        title: listingData['title'] as String,
-        category: listingData['category'] as String,
-        listingCondition: listingData['listing_condition'] as String,
-        budgetMax: listingData['budget_max'] as double,
-        city: listingData['city'] as String?,
-        deliveryType: listingData['delivery_type'] as String,
-        description: listingData['description'] as String?,
-        imagePaths: _selectedImages.map((f) => f.path).toList(),
+      await _listingService.createListingWithXFiles(
+        title: titleWithSuffix,
+        category: _category,
+        listingCondition: _condition,
+        budgetMax: double.parse(_budgetController.text),
+        city: _cityVisible ? _city : null,
+        deliveryType: _deliveryType,
+        description: _descriptionController.text.trim().isNotEmpty
+            ? _descriptionController.text.trim()
+            : null,
+        xFiles: _selectedImages.isNotEmpty ? _selectedImages : null,
       );
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('İlanınız başarıyla oluşturuldu ve onay bekliyor'),
-            backgroundColor: Colors.green,
-          ),
-        );
-        Navigator.pop(context, true);
-      }
+      if (mounted) _showSuccessDialog();
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Hata: ${e.toString()}'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        AppDialog.showError(context, 'Hata: $e');
       }
     } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
+  void _showSuccessDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => AlertDialog(
+        icon: const Icon(Icons.access_time, size: 48, color: Colors.amber),
+        title: const Text('İlanınız Onay Bekliyor', textAlign: TextAlign.center),
+        content: Column(mainAxisSize: MainAxisSize.min, children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.amber.shade50,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.amber.shade200),
+            ),
+            child: const Text(
+              '⏳ İlanınız başarıyla oluşturuldu!\n\nYönetici incelemesinden geçtikten sonra yayına alınacaktır.',
+              style: TextStyle(fontSize: 13),
+              textAlign: TextAlign.center,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.blue.shade50,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.blue.shade200),
+            ),
+            child: const Text(
+              '• Yönetici ekibimiz ilanınızı en kısa sürede inceleyecektir\n'
+              '• Onaylandığında e-posta bildirimi gönderilecektir\n'
+              '• İlanlarım bölümünden takip edebilirsiniz',
+              style: TextStyle(fontSize: 12),
+            ),
+          ),
+        ]),
+        actions: [
+          FilledButton(
+            onPressed: () {
+              Navigator.pop(context);
+              Navigator.pop(context, true);
+            },
+            child: const Text('Anladım'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Build ──────────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Yeni İlan Oluştur'),
+        title: Text('İlan Ver - Adım $_step/4'),
+        elevation: 0,
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(4),
+          child: LinearProgressIndicator(
+            value: _step / 4,
+            backgroundColor: Colors.grey.shade200,
+          ),
+        ),
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    // Başlık
-                    TextFormField(
-                      controller: _titleController,
-                      decoration: const InputDecoration(
-                        labelText: 'İlan Başlığı',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.title),
-                        hintText: 'Ne arıyorsunuz?',
-                      ),
-                      maxLength: 100,
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Başlık gereklidir';
-                        }
-                        if (value.length < 10) {
-                          return 'Başlık en az 10 karakter olmalıdır';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Kategori
-                    DropdownButtonFormField<String>(
-                      value: _category,
-                      decoration: const InputDecoration(
-                        labelText: 'Kategori',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.category),
-                      ),
-                      items: _categories.map((category) {
-                        return DropdownMenuItem(
-                          value: category,
-                          child: Text(category),
-                        );
-                      }).toList(),
-                      onChanged: (value) {
-                        setState(() {
-                          _category = value!;
-                        });
-                      },
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Bütçe
-                    TextFormField(
-                      controller: _budgetController,
-                      decoration: const InputDecoration(
-                        labelText: 'Maksimum Bütçe (₺)',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.attach_money),
-                      ),
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                      inputFormatters: [
-                        FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}')),
-                      ],
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Bütçe gereklidir';
-                        }
-                        final budget = double.tryParse(value);
-                        if (budget == null || budget <= 0) {
-                          return 'Geçerli bir bütçe girin';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Şehir
-                    TextFormField(
-                      controller: _cityController,
-                      decoration: const InputDecoration(
-                        labelText: 'Şehir',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.location_city),
-                      ),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Şehir gereklidir';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Ürün Durumu
-                    DropdownButtonFormField<String>(
-                      value: _condition,
-                      decoration: const InputDecoration(
-                        labelText: 'Ürün Durumu',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.info),
-                      ),
-                      items: const [
-                        DropdownMenuItem(
-                          value: 'new',
-                          child: Text('Yeni'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'like_new',
-                          child: Text('Sıfır Gibi'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'good',
-                          child: Text('İyi'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'fair',
-                          child: Text('Orta'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'any',
-                          child: Text('Farketmez'),
-                        ),
-                      ],
-                      onChanged: (value) {
-                        setState(() {
-                          _condition = value!;
-                        });
-                      },
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Teslimat Tipi
-                    DropdownButtonFormField<String>(
-                      value: _deliveryType,
-                      decoration: const InputDecoration(
-                        labelText: 'Teslimat Tipi',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.local_shipping),
-                      ),
-                      items: const [
-                        DropdownMenuItem(
-                          value: 'shipping',
-                          child: Text('Kargo'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'hand_delivery',
-                          child: Text('Elden Teslim'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'both',
-                          child: Text('Her İkisi'),
-                        ),
-                      ],
-                      onChanged: (value) {
-                        setState(() {
-                          _deliveryType = value!;
-                        });
-                      },
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Açıklama
-                    TextFormField(
-                      controller: _descriptionController,
-                      decoration: const InputDecoration(
-                        labelText: 'Açıklama',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.description),
-                        hintText: 'Aradığınız ürünü detaylı olarak açıklayın',
-                      ),
-                      maxLines: 5,
-                      maxLength: 500,
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Açıklama gereklidir';
-                        }
-                        if (value.length < 20) {
-                          return 'Açıklama en az 20 karakter olmalıdır';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Resim Seçimi
-                    Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                const Text(
-                                  'Referans Resimleri',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                TextButton.icon(
-                                  onPressed: _selectedImages.length < 5 ? _pickImages : null,
-                                  icon: const Icon(Icons.add_photo_alternate),
-                                  label: const Text('Ekle'),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              '${_selectedImages.length}/5 resim (Minimum 1)',
-                              style: TextStyle(color: Colors.grey[600]),
-                            ),
-                            const SizedBox(height: 16),
-                            if (_selectedImages.isNotEmpty)
-                              SizedBox(
-                                height: 120,
-                                child: ListView.builder(
-                                  scrollDirection: Axis.horizontal,
-                                  itemCount: _selectedImages.length,
-                                  itemBuilder: (context, index) {
-                                    return Stack(
-                                      children: [
-                                        Container(
-                                          margin: const EdgeInsets.only(right: 8),
-                                          width: 120,
-                                          height: 120,
-                                          decoration: BoxDecoration(
-                                            borderRadius: BorderRadius.circular(8),
-                                            image: DecorationImage(
-                                              image: FileImage(_selectedImages[index]),
-                                              fit: BoxFit.cover,
-                                            ),
-                                          ),
-                                        ),
-                                        Positioned(
-                                          top: 4,
-                                          right: 12,
-                                          child: GestureDetector(
-                                            onTap: () => _removeImage(index),
-                                            child: Container(
-                                              padding: const EdgeInsets.all(4),
-                                              decoration: const BoxDecoration(
-                                                color: Colors.red,
-                                                shape: BoxShape.circle,
-                                              ),
-                                              child: const Icon(
-                                                Icons.close,
-                                                size: 16,
-                                                color: Colors.white,
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    );
-                                  },
-                                ),
-                              )
-                            else
-                              Container(
-                                height: 100,
-                                decoration: BoxDecoration(
-                                  border: Border.all(color: Colors.grey),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: const Center(
-                                  child: Text('Henüz resim seçilmedi'),
-                                ),
-                              ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-
-                    // Uyarı Mesajı
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.blue.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Colors.blue),
-                      ),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: const [
-                          Icon(Icons.info, color: Colors.blue, size: 20),
-                          SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              'İlanınız yayınlanmadan önce admin onayından geçecektir. Onay süreci genellikle 24 saat içinde tamamlanır.',
-                              style: TextStyle(fontSize: 12),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Gönder Butonu
-                    ElevatedButton(
-                      onPressed: _submitListing,
-                      style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                      ),
-                      child: const Text(
-                        'İlanı Oluştur',
-                        style: TextStyle(fontSize: 16),
-                      ),
-                    ),
-                  ],
+              padding: const EdgeInsets.fromLTRB(16, 20, 16, 100),
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 250),
+                child: KeyedSubtree(
+                  key: ValueKey(_step),
+                  child: _buildStep(),
                 ),
               ),
             ),
+      bottomNavigationBar: _buildBottomNav(),
+    );
+  }
+
+  Widget _buildStep() {
+    switch (_step) {
+      case 1: return _buildStep1();
+      case 2: return _buildStep2();
+      case 3: return _buildStep3();
+      case 4: return _buildStep4();
+      default: return const SizedBox.shrink();
+    }
+  }
+
+  // ── Step 1: Temel Bilgiler ─────────────────────────────────────────────────
+  Widget _buildStep1() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // Başlık
+        TextField(
+          controller: _titleController,
+          maxLength: 100,
+          onChanged: (_) => setState(() {}),
+          decoration: const InputDecoration(
+            labelText: 'Ne arıyorsunuz? *',
+            hintText: 'Örn: iPhone 15 Pro Max',
+            border: OutlineInputBorder(),
+            contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.only(bottom: 14),
+          child: Text(
+            'Başlığınızın sonuna otomatik "Var mı?" eklenecektir',
+            style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
+          ),
+        ),
+
+        // Kategori
+        DropdownButtonFormField<String>(
+          value: _category.isEmpty ? null : _category,
+          decoration: const InputDecoration(
+            labelText: 'Kategori *',
+            border: OutlineInputBorder(),
+            contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+          ),
+          hint: const Text('Kategori seçin'),
+          items: _categories
+              .map((c) => DropdownMenuItem(value: c, child: Text(c)))
+              .toList(),
+          onChanged: (v) => setState(() => _category = v ?? ''),
+        ),
+        const SizedBox(height: 18),
+
+        // Teslimat Tercihi — inline radio row
+        Text('Teslimat Tercihi *',
+            style: TextStyle(
+                color: Colors.grey.shade700,
+                fontSize: 13,
+                fontWeight: FontWeight.w500)),
+        const SizedBox(height: 4),
+        Row(
+          children: [
+            _radioItem(label: 'Fark Etmez', value: 'both'),
+            _radioItem(label: 'Kargo', value: 'shipping'),
+            _radioItem(label: 'Elden Teslim', value: 'pickup'),
+          ],
+        ),
+        const SizedBox(height: 14),
+
+        // Şehir — shown only when _cityVisible
+        AnimatedCrossFade(
+          firstChild: DropdownButtonFormField<String>(
+            value: _city,
+            decoration: const InputDecoration(
+              labelText: 'Şehir *',
+              border: OutlineInputBorder(),
+              contentPadding:
+                  EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+            ),
+            hint: const Text('Şehir seçin'),
+            items: _cities
+                .map((c) => DropdownMenuItem(value: c, child: Text(c)))
+                .toList(),
+            onChanged: (v) => setState(() => _city = v),
+          ),
+          secondChild: const SizedBox.shrink(),
+          crossFadeState: _cityVisible
+              ? CrossFadeState.showFirst
+              : CrossFadeState.showSecond,
+          duration: const Duration(milliseconds: 200),
+        ),
+      ],
+    );
+  }
+
+  /// Single radio option tile
+  Widget _radioItem({required String label, required String value}) {
+    final selected = _deliveryType == value;
+    return Expanded(
+      child: InkWell(
+        borderRadius: BorderRadius.circular(6),
+        onTap: () {
+          setState(() {
+            _deliveryType = value;
+            if (value == 'shipping') _city = null;
+          });
+        },
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Radio<String>(
+              value: value,
+              groupValue: _deliveryType,
+              onChanged: (v) {
+                if (v == null) return;
+                setState(() {
+                  _deliveryType = v;
+                  if (v == 'shipping') _city = null;
+                });
+              },
+              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              visualDensity: VisualDensity.compact,
+            ),
+            Flexible(
+              child: Text(
+                label,
+                style: TextStyle(
+                    fontSize: 13,
+                    fontWeight:
+                        selected ? FontWeight.w600 : FontWeight.normal),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  //  Step 2: Detaylar 
+  Widget _buildStep2() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // Açıklama
+        TextField(
+          controller: _descriptionController,
+          maxLines: 4,
+          decoration: const InputDecoration(
+            labelText: 'Açıklama',
+            hintText: 'Aradığınız ürün hakkında detayları yazın...',
+            border: OutlineInputBorder(),
+            contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+          ),
+        ),
+        const SizedBox(height: 14),
+
+        // Bütçe
+        TextField(
+          controller: _budgetController,
+          onChanged: (_) => setState(() {}),
+          decoration: const InputDecoration(
+            labelText: 'Maksimum Bütçe (₺) *',
+            hintText: '0',
+            border: OutlineInputBorder(),
+            contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+          ),
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          inputFormatters: [
+            FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}')),
+          ],
+        ),
+        const SizedBox(height: 18),
+
+        // Ürün Durumu
+        Text('Ürün Durumu',
+            style: TextStyle(
+                color: Colors.grey.shade700,
+                fontSize: 13,
+                fontWeight: FontWeight.w500)),
+        const SizedBox(height: 4),
+        Row(
+          children: [
+            _conditionItem(label: 'Fark Etmez', value: 'any'),
+            _conditionItem(label: 'Sıfır', value: 'new'),
+            _conditionItem(label: 'İkinci El', value: 'used'),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _conditionItem({required String label, required String value}) {
+    final selected = _condition == value;
+    return Expanded(
+      child: InkWell(
+        borderRadius: BorderRadius.circular(6),
+        onTap: () => setState(() => _condition = value),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Radio<String>(
+              value: value,
+              groupValue: _condition,
+              onChanged: (v) {
+                if (v != null) setState(() => _condition = v);
+              },
+              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              visualDensity: VisualDensity.compact,
+            ),
+            Flexible(
+              child: Text(
+                label,
+                style: TextStyle(
+                    fontSize: 13,
+                    fontWeight:
+                        selected ? FontWeight.w600 : FontWeight.normal),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ── Step 3: Resimler ───────────────────────────────────────────────────────
+  Widget _buildStep3() {
+    final count = _selectedImages.length;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Ürün Resimleri * (En az 1, en fazla 5)',
+            style: TextStyle(
+                color: Colors.grey.shade700,
+                fontSize: 13,
+                fontWeight: FontWeight.w500)),
+        const SizedBox(height: 12),
+
+        GestureDetector(
+          onTap: count < 5 ? _pickImages : null,
+          child: Container(
+            height: 110,
+            decoration: BoxDecoration(
+              border: Border.all(
+                color: count < 5
+                    ? Colors.grey.shade400
+                    : Colors.grey.shade200,
+                width: 1.5,
+              ),
+              borderRadius: BorderRadius.circular(8),
+              color: Colors.grey.shade50,
+            ),
+            child: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.add_photo_alternate,
+                      size: 36,
+                      color: count < 5
+                          ? Colors.grey.shade400
+                          : Colors.grey.shade300),
+                  const SizedBox(height: 6),
+                  Text(
+                    count >= 5
+                        ? 'Maksimum 5 resim yüklendi'
+                        : 'Resim yüklemek için tıklayın',
+                    style: TextStyle(
+                        fontSize: 13,
+                        color: count < 5
+                            ? Colors.grey.shade600
+                            : Colors.grey.shade400),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+
+        if (count > 0)
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 3,
+              crossAxisSpacing: 8,
+              mainAxisSpacing: 8,
+            ),
+            itemCount: count,
+            itemBuilder: (context, i) => Stack(
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: Container(
+                    color: Colors.grey.shade200,
+                    width: double.infinity,
+                    height: double.infinity,
+                    child: i < _imageBytes.length
+                        ? Image.memory(_imageBytes[i], fit: BoxFit.cover)
+                        : const SizedBox.shrink(),
+                  ),
+                ),
+                Positioned(
+                  top: 4,
+                  right: 4,
+                  child: GestureDetector(
+                    onTap: () => _removeImage(i),
+                    child: Container(
+                      padding: const EdgeInsets.all(3),
+                      decoration: const BoxDecoration(
+                          color: Colors.red, shape: BoxShape.circle),
+                      child: const Icon(Icons.close,
+                          size: 13, color: Colors.white),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          )
+        else
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            child: Center(
+              child: Text(
+                'Henüz resim yüklemediniz. En az 1 resim yüklemeniz gerekmektedir.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.grey.shade500, fontSize: 12),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  // ── Step 4: Özet ───────────────────────────────────────────────────────────
+  Widget _buildStep4() {
+    final budget = double.tryParse(_budgetController.text) ?? 0;
+    final condLabel = _condition == 'any'
+        ? 'Fark Etmez'
+        : _condition == 'new'
+            ? 'Sıfır'
+            : 'İkinci El';
+    final delivLabel = _deliveryType == 'both'
+        ? 'Fark Etmez'
+        : _deliveryType == 'shipping'
+            ? 'Kargo'
+            : 'Elden Teslim';
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: Colors.blue.shade50,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.blue.shade200),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('İlan Özeti',
+                  style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      color: Colors.blue.shade900,
+                      fontSize: 14)),
+              const SizedBox(height: 10),
+              _summaryRow('Başlık',
+                  '${_titleController.text.trim()} Var mı?'),
+              _summaryRow('Kategori', _category),
+              if (_cityVisible && _city != null)
+                _summaryRow('Şehir', _city!),
+              _summaryRow('Bütçe', formatPriceShort(budget)),
+              _summaryRow('Durum', condLabel),
+              _summaryRow('Teslimat', delivLabel),
+              _summaryRow('Resim', '${_selectedImages.length} adet'),
+            ],
+          ),
+        ),
+        if (_descriptionController.text.trim().isNotEmpty) ...[
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: Colors.blue.shade50,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.blue.shade200),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Açıklama',
+                    style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        color: Colors.blue.shade900,
+                        fontSize: 14)),
+                const SizedBox(height: 8),
+                Text(_descriptionController.text.trim(),
+                    style: const TextStyle(fontSize: 13)),
+              ],
+            ),
+          ),
+        ],
+        const SizedBox(height: 12),
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: Colors.amber.shade50,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.amber.shade200),
+          ),
+          child: const Text(
+            'ℹ️ İlanınız admin onayından sonra yayına alınacaktır.',
+            style: TextStyle(fontSize: 12, color: Colors.black87),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _summaryRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 3),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label,
+              style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
+          Flexible(
+            child: Text(value,
+                textAlign: TextAlign.end,
+                style: const TextStyle(
+                    fontWeight: FontWeight.w500, fontSize: 13)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Bottom nav ─────────────────────────────────────────────────────────────
+  Widget _buildBottomNav() {
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+        child: Row(
+          children: [
+            if (_step > 1) ...[
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: () => setState(() => _step--),
+                  style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 14)),
+                  child: const Text('Geri'),
+                ),
+              ),
+              const SizedBox(width: 12),
+            ],
+            Expanded(
+              child: _step < 4
+                  ? FilledButton(
+                      onPressed: _nextStep,
+                      style: FilledButton.styleFrom(
+                          padding:
+                              const EdgeInsets.symmetric(vertical: 14)),
+                      child: const Text('İleri'),
+                    )
+                  : FilledButton(
+                      onPressed: _isLoading ? null : _submit,
+                      style: FilledButton.styleFrom(
+                          backgroundColor: Colors.green,
+                          padding:
+                              const EdgeInsets.symmetric(vertical: 14)),
+                      child: const Text('İlan Ver'),
+                    ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

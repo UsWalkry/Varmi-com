@@ -6,9 +6,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { DataManager, cities } from '@/lib/mockData';
-import { supabaseAuthAvailable, signInWithSupabase, signUpWithSupabase } from '@/lib/auth';
+import { supabaseAuthAvailable, signInWithSupabase } from '@/lib/auth';
+import { supabase } from '@/lib/supabase';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
+import { sendCustomEmailVerification, enforceEmailVerification } from '@/lib/customEmailVerification';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -21,7 +23,6 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }: AuthModalP
     identifier: '',
     password: ''
   });
-  const [twoFA, setTwoFA] = useState<{ required: boolean; userId: string | null; code: string }>({ required: false, userId: null, code: '' });
 
   const [registerData, setRegisterData] = useState({
     name: '',
@@ -34,128 +35,206 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }: AuthModalP
 
   const [isLoading, setIsLoading] = useState(false);
 
+  // LOGIN HANDLER - Custom email verification ile
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
     try {
-      // Supabase Auth varsa onu dene, yoksa DataManager akışı
       if (supabaseAuthAvailable()) {
-        try {
-          await signInWithSupabase({ identifier: loginData.identifier, password: loginData.password || '123456' });
-          toast.success('Hoş geldiniz!');
-          onAuthSuccess();
-          onClose();
-          setLoginData({ identifier: '', password: '' });
-          setTwoFA({ required: false, userId: null, code: '' });
-          return;
-        } catch (e) {
-          // Supabase başarısızsa DataManager’a düşelim
+        // Supabase ile giriş yap
+        await signInWithSupabase({ 
+          identifier: loginData.identifier, 
+          password: loginData.password 
+        });
+        
+        // Supabase session'ını al
+        const { data: { user } } = await supabase.auth.getUser();
+        
+        if (user) {
+          // CUSTOM EMAIL VERIFICATION KONTROLÜ
+          const verificationResult = await enforceEmailVerification(user.id);
+          
+          if (!verificationResult.verified) {
+            toast.error(verificationResult.message);
+            return;
+          }
         }
-      }
-      const res = DataManager.startLogin(loginData.identifier, loginData.password || '123456');
-      if (!res) {
-        toast.error('E-posta/telefon veya şifre hatalı');
-      } else if (res.status === 'ok') {
+        
         toast.success('Hoş geldiniz!');
         onAuthSuccess();
         onClose();
         setLoginData({ identifier: '', password: '' });
-        setTwoFA({ required: false, userId: null, code: '' });
-      } else if (res.status === '2fa') {
-        setTwoFA({ required: true, userId: res.userId, code: '' });
-        toast.message('Doğrulama gerekli', { description: 'Authenticator uygulamanızdaki 6 haneli kodu girin.' });
+        
+      } else {
+        // Fallback to local storage
+        const user = DataManager.loginUser(loginData.identifier, loginData.password);
+        if (!user) {
+          toast.error('E-posta/telefon veya şifre hatalı');
+        } else {
+          toast.success('Hoş geldiniz!');
+          onAuthSuccess();
+          onClose();
+          setLoginData({ identifier: '', password: '' });
+        }
       }
     } catch (error) {
       console.error('Login error:', error);
-      toast.error('Giriş yapılırken bir hata oluştu');
+      toast.error(error instanceof Error ? error.message : 'Giriş yapılırken bir hata oluştu');
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleVerify2FA = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!twoFA.userId) return;
-    setIsLoading(true);
-    try {
-  const user = await DataManager.verifyAuthenticatorCode(twoFA.userId, twoFA.code);
-      if (user) {
-        toast.success(`Hoş geldiniz, ${user.name}!`);
-        onAuthSuccess();
-        onClose();
-        setLoginData({ identifier: '', password: '' });
-        setTwoFA({ required: false, userId: null, code: '' });
-      } else {
-        toast.error('Doğrulama kodu hatalı veya süresi doldu');
-      }
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
+  // REGISTER HANDLER - Custom email verification ile
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validation
+    if (!registerData.name.trim()) {
+      toast.error('Ad Soyad zorunludur');
+      return;
+    }
+    
+    const emailRegex = /^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$/;
+    if (!emailRegex.test(registerData.email)) {
+      toast.error('Geçerli bir e-posta adresi girin');
+      return;
+    }
+    
+    if (registerData.password.length < 8) {
+      toast.error('Şifre en az 8 karakter olmalıdır');
+      return;
+    }
+    
+    if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(registerData.password)) {
+      toast.error('Şifre büyük harf, küçük harf ve rakam içermelidir');
+      return;
+    }
+    
+    if (registerData.password !== registerData.confirmPassword) {
+      toast.error('Şifreler eşleşmiyor');
+      return;
+    }
+    
+    if (!registerData.phone || registerData.phone.length < 10) {
+      toast.error('Telefon numarası en az 10 haneli olmalıdır');
+      return;
+    }
+    
+    if (!registerData.city) {
+      toast.error('Şehir seçimi zorunludur');
+      return;
+    }
+
     setIsLoading(true);
 
     try {
-  // Validation
-      if (registerData.password !== registerData.confirmPassword) {
-        toast.error('Şifreler eşleşmiyor');
-        setIsLoading(false);
-        return;
-      }
-
-      if (!registerData.name || !registerData.email || !registerData.city) {
-        toast.error('Lütfen tüm alanları doldurun');
-        setIsLoading(false);
-        return;
-      }
-
-      // Telefonu normalize et (+90 sabit, sadece rakam, 10 hane)
-      const digits = (registerData.phone || '').replace(/\D/g, '').replace(/^90/, '').slice(0, 10);
-      const normalizedPhone = digits ? `+90${digits}` : '';
-
-  let user: ReturnType<typeof DataManager.getCurrentUser> | null = null;
       if (supabaseAuthAvailable()) {
-        try {
-          await signUpWithSupabase({ name: registerData.name, email: registerData.email, password: registerData.password, city: registerData.city, phone: normalizedPhone });
-          // Local CURRENT_USER, signUp helper içinde garanti altına alınıyor
-          user = DataManager.getCurrentUser();
-        } catch (e) {
-          // Supabase başarısızsa local kayda düşelim
+        // 🔥 CUSTOM EMAIL VERIFICATION SYSTEM
+        console.log('[AuthModal] Starting custom signup process');
+        
+        // 1. Supabase'e kayıt ol (Supabase email sistemini by-pass et)
+        const { data, error } = await supabase.auth.signUp({
+          email: registerData.email,
+          password: registerData.password,
+          options: {
+            data: {
+              name: registerData.name,
+              city: registerData.city,
+              phone: registerData.phone
+            }
+          }
+        });
+        
+        if (error) {
+          if (error.message.includes('already registered')) {
+            throw new Error('Bu email adresi zaten kayıtlı');
+          }
+          throw new Error(error.message);
         }
-      }
-      if (!user) {
-        user = DataManager.registerUser({
+        
+        if (!data.user) {
+          throw new Error('Kullanıcı oluşturulamadı');
+        }
+        
+        console.log('[AuthModal] User created in Supabase:', data.user.id);
+        
+        // 2. ZORLA LOGOUT - Supabase auto-login'i engelle
+        if (data.session) {
+          console.log('[AuthModal] Forcing logout to prevent auto-login');
+          await supabase.auth.signOut();
+        }
+        
+        // 3. Users tablosuna kullanıcı bilgilerini ekle
+        const { error: insertError } = await supabase
+          .from('users')
+          .insert({
+            id: data.user.id,
+            email: registerData.email,
+            name: registerData.name,
+            city: registerData.city,
+            phone: registerData.phone,
+            email_verified: false,
+            created_at: new Date().toISOString()
+          });
+        
+        if (insertError) {
+          console.error('[AuthModal] User insert error:', insertError);
+          // Bu hata kritik değil, devam et
+        }
+        
+        // 4. CUSTOM EMAIL VERIFICATION GÖNDER
+        console.log('[AuthModal] Sending custom email verification');
+        
+        const verificationResult = await sendCustomEmailVerification(
+          data.user.id,
+          registerData.email,
+          registerData.name
+        );
+        
+        if (!verificationResult.success) {
+          throw new Error('Email doğrulama gönderilirken hata: ' + verificationResult.message);
+        }
+        
+        // 5. Başarı - Verification sayfasına yönlendir
+        toast.success('Kayıt başarılı! Email adresinize doğrulama linki gönderildi.');
+        onClose();
+        
+        // Verification sayfasına yönlendir
+        const url = `/verify-email?email=${encodeURIComponent(registerData.email)}`;
+        window.location.href = url;
+        
+        // Form'u temizle
+        setRegisterData({ 
+          name: '', email: '', password: '', confirmPassword: '', city: '', phone: '' 
+        });
+        
+      } else {
+        // Fallback to local storage
+        const user = DataManager.registerUser({
           name: registerData.name,
           email: registerData.email,
           password: registerData.password,
           city: registerData.city,
-          phone: normalizedPhone
+          phone: registerData.phone
         });
-      }
-
-      if (user) {
-        toast.success('Hesabınız başarıyla oluşturuldu!');
-        onAuthSuccess();
-        onClose();
         
-        // Reset form
-        setRegisterData({
-          name: '',
-          email: '',
-          password: '',
-          confirmPassword: '',
-          city: '',
-          phone: ''
-        });
-      } else {
-        toast.error('Bu e-posta veya telefon zaten kullanımda');
+        if (user) {
+          toast.success('Kayıt başarılı! Hoş geldiniz!');
+          onAuthSuccess();
+          onClose();
+          setRegisterData({ 
+            name: '', email: '', password: '', confirmPassword: '', city: '', phone: '' 
+          });
+        } else {
+          toast.error('Bu e-posta adresi zaten kayıtlı');
+        }
       }
     } catch (error) {
-      console.error('Register error:', error);
-      toast.error('Kayıt olurken bir hata oluştu');
+      console.error('[AuthModal] Register error:', error);
+      const message = error instanceof Error ? error.message : 'Kayıt işlemi başarısız';
+      toast.error(message);
     } finally {
       setIsLoading(false);
     }
@@ -167,77 +246,60 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }: AuthModalP
         <DialogHeader>
           <DialogTitle>Giriş Yap / Kayıt Ol</DialogTitle>
         </DialogHeader>
-
         <Tabs defaultValue="login" className="w-full">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="login">Giriş Yap</TabsTrigger>
             <TabsTrigger value="register">Kayıt Ol</TabsTrigger>
           </TabsList>
-
+          
+          {/* LOGIN TAB */}
           <TabsContent value="login">
             <Card>
               <CardHeader>
-                <CardTitle>Hesabınıza Giriş Yapın</CardTitle>
+                <CardTitle>Giriş Yap</CardTitle>
               </CardHeader>
               <CardContent>
-                <form onSubmit={twoFA.required ? handleVerify2FA : handleLogin} className="space-y-4">
+                <form onSubmit={handleLogin} className="space-y-4">
                   <div>
-                    <Label htmlFor="identifier">E-posta veya Cep No</Label>
+                    <Label htmlFor="login-identifier">E-posta</Label>
                     <Input
-                      id="identifier"
-                      type="text"
+                      id="login-identifier"
+                      type="email"
                       value={loginData.identifier}
-                      onChange={(e) => setLoginData(prev => ({ ...prev, identifier: e.target.value }))}
-                      placeholder="ornek@email.com ya da 5xx xxx xx xx"
-                      disabled={twoFA.required}
+                      onChange={(e) => {
+                        const emailValue = e.target.value.toLowerCase().trim();
+                        setLoginData(prev => ({ ...prev, identifier: emailValue }));
+                      }}
+                      placeholder="ornek@email.com"
+                      required
+                    />
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="login-password">Şifre</Label>
+                    <Input
+                      id="login-password"
+                      type="password"
+                      value={loginData.password}
+                      onChange={(e) => setLoginData(prev => ({ ...prev, password: e.target.value }))}
+                      placeholder="Şifreniz"
                       required
                     />
                   </div>
 
-                  
-                  
-                  <div>
-                    <Label htmlFor="password">Şifre</Label>
-                    <Input
-                      id="password"
-                      type="password"
-                      value={loginData.password}
-                      onChange={(e) => setLoginData(prev => ({ ...prev, password: e.target.value }))}
-                      placeholder="Şifrenizi girin"
-                      disabled={twoFA.required}
-                    />
-                    
-                  </div>
-
-                  {twoFA.required && (
-                    <div>
-                      <Label htmlFor="twofa-code">Authenticator Kodu</Label>
-                      <Input
-                        id="twofa-code"
-                        type="text"
-                        inputMode="numeric"
-                        pattern="[0-9]*"
-                        maxLength={6}
-                        value={twoFA.code}
-                        onChange={(e) => setTwoFA(s => ({ ...s, code: e.target.value.replace(/\D/g, '').slice(0, 6) }))}
-                        placeholder="6 haneli kod"
-                        required
-                      />
-                    </div>
-                  )}
-
                   <Button type="submit" className="w-full" disabled={isLoading}>
-                    {isLoading ? (twoFA.required ? 'Doğrulanıyor...' : 'Giriş yapılıyor...') : (twoFA.required ? 'Kodu Doğrula' : 'Giriş Yap')}
+                    {isLoading ? 'Giriş yapılıyor...' : 'Giriş Yap'}
                   </Button>
                 </form>
               </CardContent>
             </Card>
           </TabsContent>
-
+          
+          {/* REGISTER TAB */}
           <TabsContent value="register">
             <Card>
               <CardHeader>
-                <CardTitle>Yeni Hesap Oluştur</CardTitle>
+                <CardTitle>Kayıt Ol</CardTitle>
               </CardHeader>
               <CardContent>
                 <form onSubmit={handleRegister} className="space-y-4">
@@ -245,10 +307,13 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }: AuthModalP
                     <Label htmlFor="register-name">Ad Soyad</Label>
                     <Input
                       id="register-name"
-                      type="text"
                       value={registerData.name}
-                      onChange={(e) => setRegisterData(prev => ({ ...prev, name: e.target.value }))}
-                      placeholder="Adınız ve soyadınız"
+                      onChange={(e) => {
+                        const nameValue = e.target.value.replace(/[^a-zA-ZçğıöşüÇĞIİÖŞÜ\s]/g, '');
+                        setRegisterData(prev => ({ ...prev, name: nameValue }));
+                      }}
+                      placeholder="Adınız Soyadınız"
+                      maxLength={50}
                       required
                     />
                   </div>
@@ -259,7 +324,10 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }: AuthModalP
                       id="register-email"
                       type="email"
                       value={registerData.email}
-                      onChange={(e) => setRegisterData(prev => ({ ...prev, email: e.target.value }))}
+                      onChange={(e) => {
+                        const emailValue = e.target.value.toLowerCase().trim();
+                        setRegisterData(prev => ({ ...prev, email: emailValue }));
+                      }}
                       placeholder="ornek@email.com"
                       required
                     />
@@ -267,15 +335,12 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }: AuthModalP
 
                   <div>
                     <Label htmlFor="register-city">Şehir</Label>
-                    <Select 
-                      value={registerData.city} 
-                      onValueChange={(value) => setRegisterData(prev => ({ ...prev, city: value }))}
-                    >
+                    <Select value={registerData.city} onValueChange={(value) => setRegisterData(prev => ({ ...prev, city: value }))}>
                       <SelectTrigger>
                         <SelectValue placeholder="Şehir seçin" />
                       </SelectTrigger>
                       <SelectContent>
-                        {cities.map(city => (
+                        {cities.map((city) => (
                           <SelectItem key={city} value={city}>{city}</SelectItem>
                         ))}
                       </SelectContent>
@@ -284,26 +349,19 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }: AuthModalP
 
                   <div>
                     <Label htmlFor="register-phone">Telefon</Label>
-                    <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground select-none">+90</span>
-                      <Input
-                        id="register-phone"
-                        type="tel"
-                        inputMode="numeric"
-                        pattern="[0-9]*"
-                        className="pl-12"
-                        placeholder="5xx xxx xx xx"
-                        value={(registerData.phone || '').replace(/^\+?90/, '').replace(/\D/g, '').slice(0, 10)}
-                        onChange={(e)=>{
-                          const digits = e.target.value.replace(/\D/g, '').slice(0, 10);
-                          setRegisterData(prev => ({ ...prev, phone: digits ? `+90${digits}` : '' }));
-                        }}
-                        required
-                      />
-                    </div>
+                    <Input
+                      id="register-phone"
+                      type="tel"
+                      value={registerData.phone}
+                      onChange={(e) => {
+                        const numericValue = e.target.value.replace(/\D/g, '');
+                        setRegisterData(prev => ({ ...prev, phone: numericValue }));
+                      }}
+                      placeholder="05XXXXXXXXX"
+                      maxLength={11}
+                      required
+                    />
                   </div>
-
-                  {/* Hesap türü (Alıcı/Satıcı) kaldırıldı */}
 
                   <div>
                     <Label htmlFor="register-password">Şifre</Label>
@@ -312,7 +370,8 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }: AuthModalP
                       type="password"
                       value={registerData.password}
                       onChange={(e) => setRegisterData(prev => ({ ...prev, password: e.target.value }))}
-                      placeholder="En az 6 karakter"
+                      placeholder="En az 8 karakter, büyük/küçük harf ve rakam"
+                      minLength={8}
                       required
                     />
                   </div>
@@ -330,7 +389,7 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }: AuthModalP
                   </div>
 
                   <Button type="submit" className="w-full" disabled={isLoading}>
-                    {isLoading ? 'Hesap oluşturuluyor...' : 'Hesap Oluştur'}
+                    {isLoading ? 'Kayıt yapılıyor...' : 'Kayıt Ol'}
                   </Button>
                 </form>
               </CardContent>

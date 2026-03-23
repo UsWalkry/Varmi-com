@@ -5,6 +5,7 @@ import { query } from '../database.js';
 import { sendListingApprovedNotification, sendListingRejectedNotification, sendOfferNotification, sendOfferApprovedNotification, sendOfferRejectedNotification, sendSellerProfileApprovedEmail, sendSellerProfileRejectedEmail } from '../services/emailService.js';
 import { v4 as uuidv4 } from 'uuid';
 import { redisCache, CacheKeys } from '../utils/redisCache.js';
+import { sendPushNotification } from '../services/fcmService.js';
 
 const router = Router();
 
@@ -1338,7 +1339,7 @@ router.post('/listings/approve/:id', authenticateToken, adminOnly, async (req: a
     setImmediate(async () => {
       try {
         const userResult = await query(
-          'SELECT email, firstName FROM users WHERE id = ?',
+          'SELECT email, firstName, fcm_token FROM users WHERE id = ?',
           [listing.buyer_id]
         ) as any[];
 
@@ -1367,6 +1368,16 @@ router.post('/listings/approve/:id', authenticateToken, adminOnly, async (req: a
           ]
         );
         console.log('🔔 Uygulama içi onay bildirimi oluşturuldu:', notifId);
+
+        // FCM push bildirimi
+        if (userResult.length > 0 && userResult[0].fcm_token) {
+          await sendPushNotification(
+            userResult[0].fcm_token,
+            'İlanınız Onaylandı 🎉',
+            `"${listing.title}" ilanınız onaylandı ve artık yayında!`,
+            { type: 'listing_approved', listing_id: String(listingId) }
+          );
+        }
       } catch (emailError) {
         console.error('❌ Email send error:', emailError);
       }
@@ -1455,7 +1466,7 @@ router.post('/listings/reject/:id', authenticateToken, adminOnly, async (req: an
     setImmediate(async () => {
       try {
         const userResult = await query(
-          'SELECT email, firstName FROM users WHERE id = ?',
+          'SELECT email, firstName, fcm_token FROM users WHERE id = ?',
           [listing.buyer_id]
         ) as any[];
 
@@ -1485,6 +1496,16 @@ router.post('/listings/reject/:id', authenticateToken, adminOnly, async (req: an
           ]
         );
         console.log('🔔 Uygulama içi red bildirimi oluşturuldu:', notifId);
+
+        // FCM push bildirimi
+        if (userResult.length > 0 && userResult[0].fcm_token) {
+          await sendPushNotification(
+            userResult[0].fcm_token,
+            'İlan Yayına Alınamadı',
+            `"${listing.title}" ilanınız reddedildi. Sebep: ${reason}`,
+            { type: 'listing_rejected', listing_id: String(listingId) }
+          );
+        }
       } catch (emailError) {
         console.error('❌ Email send error:', emailError);
       }
@@ -2334,6 +2355,32 @@ router.post('/offers/:offerId/approve', authenticateToken, adminOnly, async (req
             ]
           );
           console.log('🔔 Yeni teklif bildirimi oluşturuldu (alıcı):', buyerNotifId);
+
+          // FCM push bildirimleri — sadece ilgili kullanıcının fcm_token'ını çek
+          const fcmRows = await query(
+            'SELECT id, fcm_token FROM users WHERE id IN (?, ?)',
+            [detail.seller_id, detail.buyer_id]
+          ) as any[];
+          const fcmMap: Record<string, string> = {};
+          for (const row of fcmRows) {
+            if (row.fcm_token) fcmMap[row.id] = row.fcm_token;
+          }
+          if (fcmMap[detail.seller_id]) {
+            await sendPushNotification(
+              fcmMap[detail.seller_id],
+              'Teklifiniz Onaylandı 🎉',
+              `"${detail.title}" ilanına verdiğiniz teklif onaylandı ve yayında!`,
+              { type: 'offer_approved', listing_id: String(detail.listing_id), offer_id: String(offerId) }
+            );
+          }
+          if (fcmMap[detail.buyer_id]) {
+            await sendPushNotification(
+              fcmMap[detail.buyer_id],
+              'Yeni Bir Teklif Var! 📦',
+              `"${detail.title}" ilanınıza yeni bir teklif onaylandı.`,
+              { type: 'new_offer', listing_id: String(detail.listing_id), offer_id: String(offerId) }
+            );
+          }
         }
       } catch (err) {
         console.error('📧 Teklif bildirimleri gönderilemedi:', err);
@@ -2465,6 +2512,20 @@ router.post('/offers/:offerId/reject', authenticateToken, adminOnly, async (req:
             ]
           );
           console.log('🔔 Teklif red bildirimi oluşturuldu:', rejectNotifId);
+
+          // FCM push bildirimi
+          const fcmRows = await query(
+            'SELECT fcm_token FROM users WHERE id = ?',
+            [detail.seller_id]
+          ) as any[];
+          if (fcmRows.length > 0 && fcmRows[0].fcm_token) {
+            await sendPushNotification(
+              fcmRows[0].fcm_token,
+              'Teklifiniz Reddedildi',
+              `"${detail.title}" ilanına verdiğiniz teklif reddedildi.`,
+              { type: 'offer_rejected', listing_id: String(detail.listing_id), offer_id: String(offerId) }
+            );
+          }
         }
       } catch (err) {
         console.error('📧 Teklif red bildirimi gönderilemedi:', err);

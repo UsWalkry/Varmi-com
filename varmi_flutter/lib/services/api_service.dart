@@ -1,5 +1,9 @@
+import 'dart:io';
 import 'package:dio/dio.dart';
+import 'package:dio/io.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:http_parser/http_parser.dart';
+import 'package:image_picker/image_picker.dart';
 import '../config/api_config.dart';
 
 class ApiService {
@@ -20,11 +24,23 @@ class ApiService {
       ),
     );
 
+    // Emulator/debug modda self-signed SSL sertifikasını kabul et
+    if (ApiConfig.isEmulator || !ApiConfig.isProduction) {
+      (_dio.httpClientAdapter as IOHttpClientAdapter).createHttpClient = () {
+        final client = HttpClient();
+        client.badCertificateCallback = (cert, host, port) => true;
+        return client;
+      };
+    }
+
     // Interceptor for logging and token handling
     _dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) async {
-          // Add auth token if available
+          // Token yoksa storage'dan yükle (örn: sayfa yenilenmesinde)
+          if (_authToken == null) {
+            _authToken = await _storage.read(key: ApiConfig.tokenKey);
+          }
           if (_authToken != null) {
             options.headers['Authorization'] = 'Bearer $_authToken';
           }
@@ -218,6 +234,62 @@ class ApiService {
             'Content-Type': 'multipart/form-data',
           },
         ),
+      );
+    } on DioException catch (e) {
+      throw _handleError(e);
+    }
+  }
+
+  // Dosya adından MediaType belirler
+  MediaType _mediaTypeFromFilename(String filename) {
+    final ext = filename.split('.').last.toLowerCase();
+    switch (ext) {
+      case 'jpg':
+      case 'jpeg':
+        return MediaType('image', 'jpeg');
+      case 'png':
+        return MediaType('image', 'png');
+      case 'webp':
+        return MediaType('image', 'webp');
+      default:
+        return MediaType('image', 'jpeg');
+    }
+  }
+
+  // Multiple File Upload (Web-safe, uses XFile bytes)
+  Future<Response> uploadXFiles(
+    String path,
+    List<XFile> xFiles, {
+    String fieldName = 'images',
+    ProgressCallback? onSendProgress,
+  }) async {
+    try {
+      final formData = FormData();
+      for (final xFile in xFiles) {
+        final bytes = await xFile.readAsBytes();
+        // MIME tipini belirle — multer backendde MIME type kontrolü yapıyor
+        MediaType contentType;
+        final mimeStr = xFile.mimeType;
+        if (mimeStr != null && mimeStr.contains('/')) {
+          final parts = mimeStr.split('/');
+          contentType = MediaType(parts[0], parts[1]);
+        } else {
+          contentType = _mediaTypeFromFilename(xFile.name);
+        }
+        formData.files.add(MapEntry(
+          fieldName,
+          MultipartFile.fromBytes(
+            bytes,
+            filename: xFile.name,
+            contentType: contentType,
+          ),
+        ));
+      }
+
+      return await _dio.post(
+        path,
+        data: formData,
+        onSendProgress: onSendProgress,
       );
     } on DioException catch (e) {
       throw _handleError(e);

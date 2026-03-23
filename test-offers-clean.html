@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Offers API Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .test-result {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+        }
+        .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover { background: #0056b3; }
+        .offer-card {
+            border: 1px solid #ddd;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 4px;
+            background: #f9f9f9;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Offers API Test</h1>
+        
+        <button onclick="testServerConnection()">Test Server Connection</button>
+        <button onclick="testOffersAPI()">Test Offers API</button>
+        <button onclick="testDatabaseDirect()">Test Database Direct</button>
+        <button onclick="clearResults()">Clear Results</button>
+        
+        <div id="results"></div>
+    </div>
+
+    <script>
+        function addResult(message, type = 'info') {
+            const results = document.getElementById('results');
+            const div = document.createElement('div');
+            div.className = 'test-result ' + type;
+            div.innerHTML = message;
+            results.appendChild(div);
+        }
+
+        function clearResults() {
+            document.getElementById('results').innerHTML = '';
+        }
+
+        async function testServerConnection() {
+            addResult('🔍 Testing server connection...', 'info');
+            
+            try {
+                const response = await fetch('http://localhost:8787/health');
+                if (response.ok) {
+                    const data = await response.text();
+                    addResult('✅ Server is running: ' + data, 'success');
+                } else {
+                    addResult('❌ Server responded with status: ' + response.status, 'error');
+                }
+            } catch (error) {
+                addResult('❌ Server connection failed: ' + error.message, 'error');
+                addResult('💡 Make sure server is running on port 8787', 'info');
+            }
+        }
+
+        async function testOffersAPI() {
+            addResult('🔍 Testing offers API...', 'info');
+            
+            const listingId = 'ba5dad8c-fd01-4c75-b4d3-1ce210c8f583';
+            
+            try {
+                const response = await fetch('http://localhost:8787/api/offers/listing/' + listingId);
+                
+                addResult('📊 API Response Status: ' + response.status, 'info');
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    addResult('✅ API Response: ' + JSON.stringify(data, null, 2), 'success');
+                    
+                    if (data.success && data.offers && Array.isArray(data.offers)) {
+                        addResult('📋 Found ' + data.offers.length + ' offers', 'success');
+                        
+                        data.offers.forEach((offer, index) => {
+                            const offerHtml = 
+                                '<div class="offer-card">' +
+                                    '<h4>Offer ' + (index + 1) + '</h4>' +
+                                    '<p><strong>ID:</strong> ' + offer.id + '</p>' +
+                                    '<p><strong>Seller:</strong> ' + offer.seller_name + '</p>' +
+                                    '<p><strong>Price:</strong> ₺' + offer.price + '</p>' +
+                                    '<p><strong>Status:</strong> ' + offer.status + '</p>' +
+                                    '<p><strong>Rating Count:</strong> ' + offer.seller_rating_count + '</p>' +
+                                    '<p><strong>Email Verified:</strong> ' + offer.seller_email_verified + '</p>' +
+                                '</div>';
+                            addResult(offerHtml, 'success');
+                        });
+                    } else {
+                        addResult('❌ No offers in response or invalid format', 'error');
+                    }
+                } else {
+                    const errorData = await response.text();
+                    addResult('❌ API Error: ' + errorData, 'error');
+                }
+            } catch (error) {
+                addResult('❌ API request failed: ' + error.message, 'error');
+            }
+        }
+
+        async function testDatabaseDirect() {
+            addResult('🔍 Testing database connection via health endpoint...', 'info');
+            
+            try {
+                const response = await fetch('http://localhost:8787/api/setup/test-db');
+                if (response.ok) {
+                    const data = await response.json();
+                    addResult('✅ Database test: ' + JSON.stringify(data, null, 2), 'success');
+                } else {
+                    addResult('❌ Database test failed: ' + response.status, 'error');
+                }
+            } catch (error) {
+                addResult('❌ Database test error: ' + error.message, 'error');
+            }
+        }
+
+        // Auto test on page load
+        window.onload = function() {
+            addResult('🚀 Page loaded. Ready for testing!', 'info');
+            addResult('💡 Server should be running on http://localhost:8787', 'info');
+            addResult('💡 Test listing ID: ba5dad8c-fd01-4c75-b4d3-1ce210c8f583', 'info');
+        };
+    </script>
+</body>
+</html>

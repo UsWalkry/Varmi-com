@@ -1,0 +1,137 @@
+===========================================
+PROPAGASYON BEKLERKEN YAPILACAKLAR
+===========================================
+
+Durum: Nameserver değişikliği yapıldı, propagasyon bekleniyor (4-6 saat)
+
+
+===========================================
+1. MX KAYITLARI HAZIRLANABİLİR
+===========================================
+
+Zoho onayladıktan sonra eklenecek MX kayıtları:
+
+Zone dosyası: /etc/bind/db.varmii.com
+
+Değiştirilecek satır:
+@       IN      MX      0       varmii.com.
+
+Yeni satırlar:
+@       IN      MX      10      mx.zoho.com.
+@       IN      MX      20      mx2.zoho.com.
+@       IN      MX      50      mx3.zoho.com.
+
+
+===========================================
+2. SPF KAYDINI GÜNCELLEYEBİLİRİZ
+===========================================
+
+Mevcut:
+@       IN      TXT     "v=spf1 include:_spf.cenuta.com -all"
+
+Yeni (Zoho için):
+@       IN      TXT     "v=spf1 include:zoho.com ~all"
+
+
+===========================================
+3. PROPAGASYON KONTROLÜ
+===========================================
+
+Online Araçlar:
+https://dnschecker.org/#NS/varmii.com
+https://www.whatsmydns.net/#NS/varmii.com
+
+Komut:
+dig @8.8.8.8 varmii.com NS +short
+
+
+Beklenen Sonuç:
+ns1.varmii.com.
+ns2.varmii.com.
+
+
+===========================================
+4. ZOHO KULLANICI PLANLAMA
+===========================================
+
+Oluşturulacak Mailboxlar:
+
+Backend için:
+- noreply@varmii.com (SMTP için)
+
+Çalışanlar için:
+- info@varmii.com
+- destek@varmii.com
+- sales@varmii.com
+- [diğer çalışanlar...]
+
+
+===========================================
+5. BACKEND .ENV HAZIRLIĞI
+===========================================
+
+Zoho kurulumu tamamlanınca kullanılacak:
+
+SMTP_HOST=smtp.zoho.com
+SMTP_PORT=465
+SMTP_SECURE=true
+SMTP_USER=noreply@varmii.com
+SMTP_PASS=[Zoho'dan alacağınız şifre]
+SMTP_FROM=noreply@varmii.com
+
+
+===========================================
+PROPAGASYON SONRASI İŞLEMLER
+===========================================
+
+1. Nameserver'lar yayıldığında (ns1/ns2.varmii.com görününce):
+   ✓ Zoho'da "TXT Kaydını Doğrula" butonu çalışacak
+   ✓ Otomatik doğrulama başarılı olacak
+
+2. Zoho MX kayıtlarını isteyecek:
+   ✓ Zone dosyasını güncelle (yukarıdaki MX kayıtları)
+   ✓ Serial artır (2026020702)
+   ✓ sudo rndc reload varmii.com
+
+3. Zoho SPF kaydı isteyecek:
+   ✓ SPF'i güncelle (yukarıdaki)
+   ✓ Serial artır (2026020703)
+   ✓ sudo rndc reload varmii.com
+
+4. Zoho onay verince:
+   ✓ Kullanıcıları oluştur (noreply@, info@, destek@)
+   ✓ Şifreleri not al
+
+5. Backend entegrasyonu:
+   ✓ .env'yi güncelle (SMTP ayarları)
+   ✓ pm2 restart varmi-mail-server
+   ✓ Test maili gönder
+
+
+===========================================
+KONTROL ZAMANI (4-6 SAAT SONRA)
+===========================================
+
+Komut:
+ssh burak@192.168.1.116 "dig @8.8.8.8 varmii.com NS +short"
+
+Beklenen:
+ns1.varmii.com.
+ns2.varmii.com.
+
+Bu görününce Zoho'ya dön ve "TXT Kaydını Doğrula" butonuna bas!
+
+
+===========================================
+ÖZET
+===========================================
+
+✅ BIND9 kuruldu
+✅ Zone dosyası hazır
+✅ Zoho TXT kaydı eklendi
+✅ Nameserver değişikliği yapıldı (cenuta destek)
+⏳ Propagasyon bekleniyor (4-6 saat)
+⏹️ Sonraki adım: MX kayıtları (propagasyon sonrası)
+
+
+Şimdilik yapacak bir şey yok. 4-6 saat sonra tekrar kontrol edin!

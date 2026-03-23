@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../utils/app_dialog.dart';
 import 'package:provider/provider.dart';
 import '../../providers/cart_provider.dart';
 import '../../models/address.dart';
@@ -61,7 +62,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           addressId: _selectedAddress?.id,
         );
       }
-      cart.clear();
+      cart.clearCart();
       if (mounted) {
         showDialog(
           context: context,
@@ -97,12 +98,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Hata: ${e.toString().replaceAll('Exception: ', '')}'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        AppDialog.showError(context, AppDialog.cleanError(e));
       }
     } finally {
       setState(() => _isPlacingOrder = false);

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../utils/formatters.dart';
 import '../../models/order.dart';
 import '../../services/order_service.dart';
 import '../../providers/auth_provider.dart';
@@ -186,17 +187,17 @@ class _OrdersScreenState extends State<OrdersScreen> with SingleTickerProviderSt
               ],
               if (order.orderAmount != null) ...[
                 _buildInfoRow(
-                  icon: Icons.attach_money,
+                  icon: Icons.currency_lira,
                   label: 'Tutar',
-                  value: '₺${order.orderAmount!.toStringAsFixed(2)}',
+                  value: formatPriceShort(order.orderAmount!),
                 ),
               ],
               _buildInfoRow(
                 icon: Icons.person,
                 label: isBuyer ? 'Satıcı' : 'Alıcı',
                 value: isBuyer
-                    ? (order.sellerName ?? 'Bilinmiyor')
-                    : (order.buyerName ?? 'Bilinmiyor'),
+                    ? maskName(order.sellerName)
+                    : maskName(order.buyerName),
               ),
               _buildInfoRow(
                 icon: Icons.calendar_today,

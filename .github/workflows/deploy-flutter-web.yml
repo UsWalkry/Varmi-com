@@ -50,7 +50,7 @@ jobs:
           local-dir: varmi_flutter/build/web/
           server-dir: /public_html/mobil/
           # Sadece mobil/ klasörüne yazılır, site bozulmaz
-          danger-clean-slate: false
+          dangerous-clean-slate: false
           exclude: |
             **/.git*
             **/.git*/**

@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import '../models/user.dart';
 import '../services/auth_service.dart';
 import '../services/api_service.dart';
+import '../services/fcm_service.dart';
 
 class AuthProvider with ChangeNotifier {
   final AuthService _authService = AuthService();
@@ -46,6 +47,8 @@ class AuthProvider with ChangeNotifier {
       _isAuthenticated = true;
       _error = null;
       print('✅ User loaded: ${_user?.email}');
+      // Send FCM token to server (fire-and-forget, do not block UI)
+      _uploadFcmToken();
     } catch (e) {
       print('❌ Load user error: $e');
       _user = null;
@@ -54,6 +57,21 @@ class AuthProvider with ChangeNotifier {
       await _apiService.clearToken();
     }
     notifyListeners();
+  }
+
+  Future<void> _uploadFcmToken() async {
+    try {
+      final token = FcmService().fcmToken;
+      if (token == null) return;
+      await _apiService.post(
+        '/api/auth/fcm-token',
+        data: {'fcm_token': token},
+      );
+      print('📱 FCM token sent to server');
+    } catch (e) {
+      // Non-critical — don't surface to user
+      print('⚠️ Could not send FCM token: $e');
+    }
   }
 
   Future<bool> login({

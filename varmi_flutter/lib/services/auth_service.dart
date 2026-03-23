@@ -79,14 +79,14 @@ class AuthService {
     final response = await _api.put(
       '${ApiConfig.authEndpoint}/profile',
       data: {
-        if (firstName != null) 'firstName': firstName,
-        if (lastName != null) 'lastName': lastName,
+        'firstName': firstName,
+        'lastName': lastName,
         if (phone != null) 'phone': phone,
-        if (city != null) 'city': city,
-        if (gender != null) 'gender': gender,
+        'city': city,
+        'gender': gender,
         if (birthDate != null) 'birthDate': birthDate.toIso8601String(),
-        if (addressLine1 != null) 'addressLine1': addressLine1,
-        if (district != null) 'district': district,
+        'addressLine1': addressLine1,
+        'district': district,
         if (postalCode != null) 'postalCode': postalCode,
       },
     );

@@ -1,0 +1,14 @@
+app.use('/api/auth', authLimiter, authRoutes);
+app.use('/api/listings', listingsLimiter, listingsRoutes);
+app.use('/api/offers', offerCreateLimiter, offersRoutes);
+app.use('/api/favorites', generalLimiter, favoritesRoutes);
+app.use('/api/notifications', generalLimiter, notificationRoutes);
+app.use('/api/orders', generalLimiter, ordersRoutes);
+app.use('/api/setup', generalLimiter, setupRoutes);
+app.use('/api/users', generalLimiter, usersRoutes);
+app.use('/api/admin', adminLimiter, adminRoutes);
+app.use('/api/addresses', generalLimiter, addressesRoutes);
+app.use('/api/comments', commentLimiter, commentsRoutes);
+app.use('/api/commission', generalLimiter, commissionRoutes);
+app.use('/api/support', generalLimiter, supportRoutes);
+app.use('/api/seller-profile', generalLimiter, sellerProfileRoutes);

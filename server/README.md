@@ -4,7 +4,7 @@ Küçük bir Express + Nodemailer servisi. Frontend `/shadcn-ui` projesi, bu sun
 
 ## Ortam değişkenleri
 
-- SMTP_HOST: SMTP sunucu adresi (örn: smtp.yourprovider.com)
+- SMTP_HOST: SMTP sunucu adresi (örn: mail.varmii.com)
 - SMTP_PORT: 465 (TLS/SMTPS için)
 - SMTP_SECURE: true (465 için true olmalı)
 - SMTP_USER: noreply@varmi.com

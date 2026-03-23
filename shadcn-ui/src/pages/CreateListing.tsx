@@ -9,18 +9,19 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ArrowLeft, Plus, LogOut } from 'lucide-react';
-import { DataManager, categories, cities } from '@/lib/mockData';
+import { categories, cities } from '@/lib/uiUtils';
 import { applyWatermarkToDataUrl } from '@/lib/watermark';
-import AuthModal from '@/components/AuthModal';
+import AuthModal from '@/components/AuthModal-mysql';
 import Stepper from '@/components/ui/stepper';
 import { toast } from 'sonner';
-import { createListing as sbCreateListing, supabaseEnabled, ensureCurrentUserId } from '@/lib/api';
+import { useAuth } from '@/hooks/use-auth-mysql';
+import { mysqlAPI } from '@/lib/mysql-api';
 
 export default function CreateListing() {
   const navigate = useNavigate();
+  const { user: currentUser } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
-  const [currentUser, setCurrentUser] = useState(DataManager.getCurrentUser());
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   // Form durumu: tek state üzerinde tutulur; adımlar arasında paylaşılır
@@ -120,6 +121,7 @@ export default function CreateListing() {
           try {
             const inserted = await sbCreateListing({
               buyer_id: selfId,
+              buyer_name: currentUser.name,
               title: withSuffix,
               description: formData.description,
               category: formData.category,
@@ -131,69 +133,20 @@ export default function CreateListing() {
               offers_purchasable: true,
               status: 'active',
               expires_at: expiresAt,
-              images
+              images,
+              mask_owner_name: formData.maskOwnerName,
+              exact_product_only: formData.exactProductOnly
             });
             newListing = { id: inserted.id };
           } catch (e) {
-            if (import.meta.env.DEV) console.debug('[CreateListing] Supabase kayıt hatası, local fallback.', e);
-            newListing = DataManager.addListing({
-              buyerId: currentUser.id,
-              buyerName: currentUser.name,
-              title: withSuffix,
-              description: formData.description,
-              category: formData.category,
-              budgetMax: parseInt(formData.budgetMax),
-              condition: formData.condition as 'new' | 'used' | 'any',
-              city: formData.city,
-              deliveryType: formData.deliveryType as 'shipping' | 'pickup' | 'both',
-              exactProductOnly: formData.exactProductOnly,
-              maskOwnerName: formData.maskOwnerName,
-              offersPublic: true,
-              offersPurchasable: true,
-              status: 'active',
-              expiresAt,
-              images
-            });
+            console.error('[CreateListing] Supabase kayıt hatası:', e);
+            throw new Error('İlan kaydedilemedi. Lütfen tekrar deneyin.');
           }
         } else {
-          newListing = DataManager.addListing({
-            buyerId: currentUser.id,
-            buyerName: currentUser.name,
-            title: withSuffix,
-            description: formData.description,
-            category: formData.category,
-            budgetMax: parseInt(formData.budgetMax),
-            condition: formData.condition as 'new' | 'used' | 'any',
-            city: formData.city,
-            deliveryType: formData.deliveryType as 'shipping' | 'pickup' | 'both',
-            exactProductOnly: formData.exactProductOnly,
-            maskOwnerName: formData.maskOwnerName,
-            offersPublic: true,
-            offersPurchasable: true,
-            status: 'active',
-            expiresAt,
-            images
-          });
+          throw new Error('Supabase bağlantısı kurulamadı.');
         }
       } else {
-        newListing = DataManager.addListing({
-        buyerId: currentUser.id,
-        buyerName: currentUser.name,
-        title: withSuffix,
-        description: formData.description,
-        category: formData.category,
-        budgetMax: parseInt(formData.budgetMax),
-        condition: formData.condition as 'new' | 'used' | 'any',
-        city: formData.city,
-        deliveryType: formData.deliveryType as 'shipping' | 'pickup' | 'both',
-        exactProductOnly: formData.exactProductOnly,
-        maskOwnerName: formData.maskOwnerName,
-        offersPublic: true,
-        offersPurchasable: true,
-        status: 'active',
-        expiresAt,
-        images
-        });
+        throw new Error('İlan oluşturmak için giriş yapmalısınız.');
       }
       toast.success('İlanınız başarıyla oluşturuldu!');
       navigate(`/listing/${newListing.id}`);
@@ -291,12 +244,13 @@ export default function CreateListing() {
     setImages(prev => prev.filter((_, i) => i !== idx));
   };
 
-  const handleAuthSuccess = () => {
-    setCurrentUser(DataManager.getCurrentUser());
+  const handleAuthSuccess = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    setCurrentUser(user);
   };
 
-  const handleLogout = () => {
-    DataManager.logoutUser();
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
     setCurrentUser(null);
     navigate('/');
   };
@@ -309,7 +263,11 @@ export default function CreateListing() {
   // Önizleme için durum etiketleri
   const conditionLabels: Record<string, string> = {
     new: 'Sıfır',
+    like_new: 'Sıfır Gibi',
     used: '2. El',
+    good: 'İyi',
+    fair: 'Orta',
+    poor: 'Kötü',
     any: 'Farketmez'
   };
   const deliveryTypeLabels: Record<string, string> = {
@@ -476,14 +434,7 @@ export default function CreateListing() {
                   <Input id="budgetMax" type="number" placeholder="5000" value={formData.budgetMax} onChange={(e) => handleInputChange('budgetMax', e.target.value)} />
                 </div>
 
-                <div className="space-y-3">
-                  <Label>Ürün Durumu</Label>
-                  <RadioGroup value={formData.condition} onValueChange={(value) => handleInputChange('condition', value)}>
-                    <div className="flex items-center space-x-2"><RadioGroupItem value="new" id="new" /><Label htmlFor="new">Sıfır</Label></div>
-                    <div className="flex items-center space-x-2"><RadioGroupItem value="used" id="used" /><Label htmlFor="used">2. El</Label></div>
-                    <div className="flex items-center space-x-2"><RadioGroupItem value="any" id="any" /><Label htmlFor="any">Farketmez</Label></div>
-                  </RadioGroup>
-                </div>
+
 
                 <div className="space-y-3">
                   <Label>Teslimat Tercihi</Label>

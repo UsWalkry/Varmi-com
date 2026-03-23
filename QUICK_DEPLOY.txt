@@ -1,0 +1,23 @@
+# ======================================
+# DEPLOY KOMUTLARI - SUNUCU YENİDEN BAŞLADIKTAN SONRA
+# ======================================
+
+# 1. Backend schema generator
+scp "c:\Users\Burak AYDIN\Desktop\Varmi-com-sql\server\dist\utils\schemaGenerator.js" root@192.168.1.116:~/varmi-com/server/dist/utils/
+
+# 2. Backend listings.js
+scp "c:\Users\Burak AYDIN\Desktop\Varmi-com-sql\server\dist\routes\listings.js" root@192.168.1.116:~/varmi-com/server/dist/routes/
+
+# 3. Frontend (tüm dist klasörü)
+scp -r "c:\Users\Burak AYDIN\Desktop\Varmi-com-sql\shadcn-ui\dist\*" root@192.168.1.116:/var/www/varmii.com/public_html/
+
+# 4. SSH ile bağlan ve restart
+ssh root@192.168.1.116
+
+# Sunucuda:
+cd ~/varmi-com/server
+pm2 restart varmi-mail-server
+pm2 logs --lines 20
+
+# 5. Test
+curl https://varmii.com/api/listings/active

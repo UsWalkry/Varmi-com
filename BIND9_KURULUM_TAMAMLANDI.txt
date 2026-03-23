@@ -1,0 +1,164 @@
+===========================================
+BIND9 KURULUMU TAMAMLANDI ✅
+===========================================
+
+DNS Sunucunuz: 46.1.54.105
+Nameservers:
+- ns1.varmii.com (46.1.54.105)
+- ns2.varmii.com (46.1.54.105)
+
+Zone Dosyası: /etc/bind/db.varmii.com
+Servis Durumu: ✅ Aktif (running)
+
+
+===========================================
+ŞİMDİ YAPMANIZ GEREKEN - KRİTİK!
+===========================================
+
+Domain sağlayıcınızda (cenuta.com) nameserver'ları değiştirmeniz ŞART!
+
+1. cenuta.com'a giriş yapın
+2. Domain Yönetimi → varmii.com
+3. Nameserver ayarları bölümüne gidin
+4. Mevcut nameserver'ları silin:
+   ❌ ns72.tr.dnsowner.com
+   ❌ ns73.tr.dnsowner.com
+
+5. Yeni nameserver'ları ekleyin:
+   ✅ ns1.varmii.com
+   ✅ ns2.varmii.com
+
+6. Kaydet
+
+
+⏱️ PROPAGASYON SÜRESİ:
+Nameserver değişikliği 2-48 saat sürebilir (genelde 4-6 saat).
+
+
+===========================================
+PROPAGASYON SONRASI
+===========================================
+
+Nameserver değişikliği yayıldığında:
+1. Zoho Mail TXT kaydını otomatik görecek
+2. "TXT Kaydını Doğrula" butonu başarılı olacak
+3. Sonraki adım MX kayıtları olacak
+
+
+===========================================
+KONTROL KOMUTLARI
+===========================================
+
+Lokal DNS (sunucu):
+dig @localhost varmii.com A +short
+dig @localhost varmii.com TXT +short
+
+Public DNS (propagasyon kontrolü):
+dig @8.8.8.8 varmii.com NS +short
+→ Henüz: ns72.tr.dnsowner.com, ns73.tr.dnsowner.com
+→ Sonra: ns1.varmii.com, ns2.varmii.com
+
+Nameserver propagasyon kontrolü:
+https://dnschecker.org/#NS/varmii.com
+
+
+===========================================
+ZOHO MAIL SONRAKI ADIMLAR
+===========================================
+
+1. Nameserver'ları değiştir (ŞUAN)
+2. 4-6 saat bekle (propagasyon)
+3. Zoho'da "TXT Kaydını Doğrula" (otomatik çalışacak)
+4. MX kayıtlarını ekle (zone dosyasına):
+   @  IN  MX  10  mx.zoho.com.
+   @  IN  MX  20  mx2.zoho.com.
+   @  IN  MX  50  mx3.zoho.com.
+5. SPF kaydını güncelle:
+   v=spf1 include:zoho.com ~all
+6. Zone serial'ı artır (2026020702)
+7. sudo rndc reload
+8. Çalışan mailboxları oluştur
+
+
+===========================================
+ZONE DOSYASI GÜNCELLEMELERİ
+===========================================
+
+MX kayıtları için (Zoho onay verince):
+
+Şu satırı:
+@       IN      MX      0       varmii.com.
+
+Şununla değiştir:
+@       IN      MX      10      mx.zoho.com.
+@       IN      MX      20      mx2.zoho.com.
+@       IN      MX      50      mx3.zoho.com.
+
+SPF kaydını güncelle:
+Şu satırı:
+@       IN      TXT     "v=spf1 include:_spf.cenuta.com -all"
+
+Şununla değiştir:
+@       IN      TXT     "v=spf1 include:zoho.com ~all"
+
+Serial'ı artır:
+2026020701 → 2026020702
+
+Reload:
+sudo rndc reload varmii.com
+
+
+===========================================
+BACKEND İÇİN (Zoho kurulumu tamamlanınca)
+===========================================
+
+1. Zoho'da noreply@varmii.com kullanıcısı oluştur
+2. Backend .env:
+
+SMTP_HOST=smtp.zoho.com
+SMTP_PORT=465
+SMTP_SECURE=true
+SMTP_USER=noreply@varmii.com
+SMTP_PASS=zoho-password
+SMTP_FROM=noreply@varmii.com
+
+3. Backend restart:
+pm2 restart varmi-mail-server
+
+
+===========================================
+ÖNEMLI NOTLAR
+===========================================
+
+⚠️ Nameserver değişikliği KESİNTİ yapmaz!
+   - Site çalışmaya devam eder
+   - Mevcut DNS kayıtları korunur
+   - Geçiş yumuşaktır
+
+⚠️ Propagasyon boyunca:
+   - Bazı DNS sorgular eski nameserver'lara gider
+   - Bazıları yeni nameserver'lara gider
+   - Bu normaldir, sabır!
+
+✅ Propagasyon tamamlandığında:
+   - Tüm DNS kontrolü sizde olacak
+   - Zoho Mail çalışacak
+   - PTR sorunu çözülmüş olmayacak (ama Zoho kendi sunucularını kullanacağı için sorun olmayacak)
+
+
+===========================================
+SONRAKI AŞAMALAR
+===========================================
+
+1. ✅ BIND9 kuruldu
+2. ✅ Zone dosyası oluşturuldu
+3. ✅ Zoho TXT kaydı eklendi
+4. ⏳ Nameserver değişikliği (ŞİMDİ SİZ)
+5. ⏳ Propagasyon bekleme (4-6 saat)
+6. ⏳ Zoho doğrulama
+7. ⏳ MX kayıtları güncelleme
+8. ⏳ Zoho kullanıcıları oluşturma
+9. ⏳ Backend entegrasyonu
+
+
+Nameserver'ları değiştirdiniz mi? Cenuta.com paneline girin ve ns1.varmii.com, ns2.varmii.com olarak ayarlayın!

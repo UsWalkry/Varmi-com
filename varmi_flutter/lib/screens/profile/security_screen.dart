@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../utils/app_dialog.dart';
 import '../../services/api_service.dart';
 import '../../config/api_config.dart';
 
@@ -39,24 +40,14 @@ class _SecurityScreenState extends State<SecurityScreen> {
         },
       );
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Şifreniz başarıyla güncellendi'),
-            backgroundColor: Colors.green,
-          ),
-        );
+        AppDialog.showSuccess(context, 'Şifreniz başarıyla güncellendi');
         _currentPasswordController.clear();
         _newPasswordController.clear();
         _confirmPasswordController.clear();
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Hata: ${e.toString().replaceAll('Exception: ', '')}'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        AppDialog.showError(context, AppDialog.cleanError(e));
       }
     } finally {
       setState(() => _isLoading = false);

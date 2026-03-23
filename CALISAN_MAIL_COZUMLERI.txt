@@ -1,0 +1,426 @@
+===========================================
+ÇALIŞAN MAİL ADRESLERİ - KAPSAMLI ÇÖZÜM
+===========================================
+
+DURUM ANALİZİ:
+--------------
+✅ Backend otomatik mailler: noreply@varmii.com (Gmail SMTP - çözüldü)
+❓ Çalışan mailboxları: info@, destek@, sales@, ad.soyad@ (ÇÖZÜM GEREKİYOR)
+
+
+İHTİYAÇLAR:
+-----------
+✉️ Mailbox'lar (her çalışan için)
+📥 IMAP/POP3 (mail okuma)
+📤 SMTP (mail gönderme)
+📱 Mobil app desteği
+💻 Webmail arayüzü
+📆 Takvim/Rehber (opsiyonel)
+
+
+===========================================
+SEÇENEK 1: GOOGLE WORKSPACE (ÖNERİLEN)
+===========================================
+
+Fiyat: $6/kullanıcı/ay (~180 TL/kullanıcı/ay)
+
+Paketler:
+---------
+Business Starter: $6/user/ay
+- 30 GB depolama/user
+- Gmail, Drive, Meet, Calendar
+- Custom email (@varmii.com)
+
+Business Standard: $12/user/ay
+- 2 TB depolama/user
+- Advanced Meet features
+
+Business Plus: $18/user/ay
+- 5 TB depolama/user
+- Enhanced security
+
+
+ÖRNEKLİK FİYATLANDIRMA:
+-----------------------
+3 çalışan: $18/ay = ~540 TL/ay
+5 çalışan: $30/ay = ~900 TL/ay
+10 çalışan: $60/ay = ~1,800 TL/ay
+
+
+ARTILAR:
+--------
+✅ Tanıdık Gmail arayüzü
+✅ Güçlü spam koruması
+✅ Mobil app mükemmel
+✅ Google Drive, Docs, Sheets dahil
+✅ Shared Calendar
+✅ Video conferencing (Meet)
+✅ 99.9% uptime garantisi
+✅ Kolay yönetim paneli
+✅ Admin kontrolü (çalışan ekleme/çıkarma)
+✅ 2FA/SSO desteği
+
+
+EKSİLER:
+--------
+⚠️ Aylık ücret (kullanıcı başına)
+⚠️ Minimum 1 kullanıcı gerekli
+
+
+KURULUM:
+--------
+1. workspace.google.com → Kayıt ol
+2. Domain doğrula (TXT record)
+3. MX kayıtlarını değiştir (Google'ın sunucularına yönlendir)
+4. Kullanıcıları ekle (info@, destek@, sales@)
+5. 15 dakika → Çalışır!
+
+
+MAIL ADRESİ ÖRNEKLERİ:
+----------------------
+info@varmii.com
+destek@varmii.com
+sales@varmii.com
+burak@varmii.com
+ahmet.yilmaz@varmii.com
+
+
+Link: https://workspace.google.com/pricing
+
+
+===========================================
+SEÇENEK 2: ZOHO MAIL (UCUZ ALTERNATİF)
+===========================================
+
+Fiyat: ₹60/user/ay (~25 TL/kullanıcı/ay) 🔥
+
+Paketler:
+---------
+Mail Lite: ₹60/user/ay (~25 TL)
+- 5 GB mail
+- 5 GB docs
+- Webmail + IMAP/POP3/SMTP
+
+Mail Premium: ₹150/user/ay (~60 TL)
+- 50 GB mail
+- 5 GB docs
+- eDiscovery, Archival
+
+Workplace: ₹180/user/ay (~72 TL)
+- Mail + Writer + Sheet + Show
+- Google Workspace alternatifi
+
+
+ÖRNEKLİK FİYATLANDIRMA:
+-----------------------
+3 çalışan: ₹180/ay = ~75 TL/ay 🔥
+5 çalışan: ₹300/ay = ~125 TL/ay
+10 çalışan: ₹600/ay = ~250 TL/ay
+
+
+ARTILAR:
+--------
+✅ ÇOK UCUZ (Google'dan 7x ucuz!)
+✅ Türkiye ofisi var
+✅ Güçlü özellikler
+✅ Mobil app iyi
+✅ Ad-free
+✅ GDPR compliant
+✅ Stream (Slack benzeri) dahil
+✅ Takvim, Rehber, Notes dahil
+✅ Alias desteği (sınırsız)
+
+
+EKSİLER:
+--------
+⚠️ Gmail kadar popüler değil
+⚠️ Drive/Docs entegrasyonu daha zayıf
+⚠️ UI biraz eski moda
+
+
+KURULUM:
+--------
+1. zoho.com/mail → Kayıt ol
+2. Domain doğrula (TXT record)
+3. MX kayıtlarını değiştir
+4. Kullanıcıları ekle
+5. 15 dakika → Çalışır!
+
+
+ÜCRETSİZ PLAN:
+--------------
+✅ 5 kullanıcıya kadar ÜCRETSIZ (Lite plan)
+✅ Reklamsız
+✅ 5 GB/user
+
+Sınırlamalar:
+- Mobil app yok (web only)
+- POP3 yok (sadece IMAP)
+- Single domain
+
+
+Link: https://www.zoho.com/mail/zohomail-pricing.html
+
+
+===========================================
+SEÇENEK 3: MICROSOFT 365 (OUTLOOK)
+===========================================
+
+Fiyat: $6/user/ay (~180 TL/kullanıcı/ay)
+
+Paketler:
+---------
+Business Basic: $6/user/ay
+- Outlook, Word, Excel (web only)
+- 1 TB OneDrive
+- Teams
+
+Business Standard: $12.50/user/ay
+- Desktop apps dahil
+- Teams advanced
+
+
+ÖRNEKLİK FİYATLANDIRMA:
+-----------------------
+3 çalışan: $18/ay = ~540 TL/ay
+5 çalışan: $30/ay = ~900 TL/ay
+
+
+ARTILAR:
+--------
+✅ Outlook desktop app
+✅ Office 365 dahil (Word, Excel, PowerPoint)
+✅ OneDrive 1 TB
+✅ Teams (video konferans)
+✅ SharePoint
+✅ Windows entegrasyonu
+
+
+EKSİLER:
+--------
+⚠️ Mac/Linux kullanıcıları için daha az uygun
+⚠️ Fiyat Google ile aynı
+
+
+Link: https://www.microsoft.com/microsoft-365/business
+
+
+===========================================
+SEÇENEK 4: PROTONMAIL BUSINESS
+===========================================
+
+Fiyat: €9.99/user/ay (~360 TL/kullanıcı/ay)
+
+Özellikler:
+-----------
+✅ End-to-end encryption (güvenlik odaklı)
+✅ İsviçre veri gizliliği kanunları
+✅ Custom domain
+✅ 15 GB storage/user
+✅ Takvim, Drive dahil
+
+
+ARTILAR:
+--------
+✅ Maksimum gizlilik
+✅ Şifreleme (default)
+✅ No ads, no tracking
+
+
+EKSİLER:
+--------
+⚠️ Pahalı
+⚠️ Normal mail istemcileri (Outlook, Thunderbird) ile sınırlı uyum
+⚠️ Öğrenme eğrisi var
+
+
+Link: https://proton.me/business
+
+
+===========================================
+SEÇENEK 5: CPANEL MAİL (HOSTİNG ÜZERİNDE)
+===========================================
+
+Fiyat: ÜCRETSİZ (hosting paketinizde dahil olabilir)
+
+Nasıl Çalışır:
+--------------
+- Hosting sağlayıcınız (Turhost, Natro, vs.) cPanel verir
+- cPanel → Email Accounts → Yeni hesap oluştur
+- Sınırsız mail adresi
+
+
+ARTILAR:
+--------
+✅ Ücretsiz (hosting dahilinde)
+✅ Sınırsız mailbox
+✅ Webmail (Roundcube, Horde)
+
+
+EKSİLER:
+--------
+❌ Spam koruması zayıf
+❌ Webmail arayüzü eski
+❌ Mobil app yok (manuel IMAP kurulumu)
+❌ Deliverability düşük (IP reputation kötü olabilir)
+❌ Yedekleme siz yapmalısınız
+
+
+Ne Zaman Kullanılır:
+--------------------
+✅ Çok düşük hacimli mail ihtiyacı
+✅ Internal iletişim (dışarıya mail atmayacaksanız)
+❌ Production/customer-facing mailler için önerilmez
+
+
+===========================================
+SEÇENEK 6: SELF-HOSTED (KENDİ SUNUCUNUZDA)
+===========================================
+
+Yazılımlar:
+-----------
+- iRedMail (açık kaynak, ücretsiz)
+- Mail-in-a-Box (basit kurulum)
+- Zimbra (kurumsal)
+- Mailcow (Docker tabanlı)
+
+
+Maliyet: $0 (sadece sunucu)
+
+
+ARTILAR:
+--------
+✅ Ücretsiz
+✅ Tam kontrol
+✅ Sınırsız mailbox
+
+
+EKSİLER:
+--------
+❌ PTR KAYDI SORUNU (Gmail/Outlook reddeder!)
+❌ Spam filtresi kendiniz yapmalısınız
+❌ Yedekleme kendiniz yapmalısınız
+❌ Güvenlik güncellemeleri kendiniz
+❌ Downtime riski
+❌ Teknik bilgi gerekli
+
+
+SONUÇ SİZİN İÇİN:
+-----------------
+❌ ÖNERİLMEZ çünkü:
+- Milleni PTR kaydı değiştirmeyecek
+- Gmail/Outlook'a mail gönderilemeyecek
+- Çalışanlar müşterilerden mail alamayacak
+
+
+===========================================
+HİBRİT ÇÖZÜM (ÖNERİLEN)
+===========================================
+
+✅ Backend Otomatik Mailler:
+   → Gmail SMTP (ücretsiz)
+   → SMTP_FROM: noreply@varmii.com
+
+✅ Çalışan Mailboxları:
+   → Zoho Mail (5 kullanıcıya kadar ÜCRETSİZ!)
+   → info@varmii.com
+   → destek@varmii.com
+   → sales@varmii.com
+   → burak@varmii.com
+
+
+TOPLAM MALİYET:
+---------------
+Backend (Gmail SMTP): $0
+Çalışan Mailler (Zoho Free): $0
+
+→ 5 çalışana kadar TAMAMEN ÜCRETSİZ! 🎉
+
+
+KURULUM:
+--------
+1. Backend için Gmail SMTP (zaten hazırız)
+2. Çalışan mailler için Zoho Mail Free plan
+3. SPF kaydı: v=spf1 include:_spf.google.com include:zoho.com ~all
+4. MX kayıtları: Zoho'nun sunucularına yönlendir
+
+
+===========================================
+KARŞILAŞTIRMA TABLOSU
+===========================================
+
+                    Fiyat/User   Ücretsiz  Önerilen Kullanım
+Google Workspace    ~180 TL/ay   ❌        Büyük ekipler, entegrasyon
+Zoho Mail           ~25 TL/ay    ✅ (5 user) Küçük-orta ekipler ⭐
+Microsoft 365       ~180 TL/ay   ❌        Windows ortamı
+ProtonMail          ~360 TL/ay   ❌        Gizlilik önemli
+cPanel Mail         Ücretsiz     ✅        Internal mail only
+Self-hosted         Sunucu       ✅        ❌ PTR sorunu!
+
+
+===========================================
+ÖNERİM - SİZİN İÇİN
+===========================================
+
+🎯 5 ÇALIŞANA KADAR:
+   → Zoho Mail ÜCRETSIZ PLAN ⭐
+   → Backend için Gmail SMTP
+   → Toplam maliyet: $0/ay
+
+📈 5+ ÇALIŞAN:
+   → Zoho Mail Lite (₹60/user = ~25 TL/ay) ⭐ EN UCUZ
+   → Veya Google Workspace ($6/user) daha güçlü
+
+💰 BUDGET SINIRSIZ:
+   → Google Workspace ($6/user)
+   → En iyi kullanıcı deneyimi
+
+
+===========================================
+ZOHO MAİL ÜCRETSİZ KURULUM ADIMLAR
+===========================================
+
+1. https://www.zoho.com/mail/ → "SIGN UP FOR FREE"
+
+2. Domain ekle: varmii.com
+
+3. TXT Record Doğrulama:
+   Type: TXT
+   Name: zb12345678 (Zoho verecek)
+   Value: zoho-verification=xxxxxxx
+
+4. MX Kayıtları Ekle (domain sağlayıcınızda):
+   Priority  Host          Points to
+   10        @             mx.zoho.com
+   20        @             mx2.zoho.com
+   50        @             mx3.zoho.com
+
+5. SPF Kaydı Güncelle:
+   Type: TXT
+   Name: @
+   Value: v=spf1 include:_spf.google.com include:zoho.com ~all
+
+6. Kullanıcıları Ekle:
+   - info@varmii.com
+   - destek@varmii.com
+   - sales@varmii.com
+   - vb.
+
+7. Mobil App İndir (Premium gerekli) veya IMAP ayarları:
+   IMAP: imap.zoho.com:993 (SSL)
+   SMTP: smtp.zoho.com:465 (SSL)
+
+8. Webmail: mail.zoho.com
+
+
+===========================================
+HEMEN BAŞLAYALIM MI?
+===========================================
+
+Şimdi ne yapalım?
+
+A) Gmail SMTP kuralım (backend için) - 2 dakika
+B) Zoho Mail ücretsiz kuralım (çalışanlar için) - 15 dakika
+C) Her ikisini de kuralım (hibrit çözüm) - 20 dakika ⭐
+
+Hangisini istersiniz?

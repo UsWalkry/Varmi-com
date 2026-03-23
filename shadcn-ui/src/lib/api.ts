@@ -18,11 +18,18 @@ export {
   notifyUser,
   mapListingRowToUi,
   fetchListingsUi,
+  fetchActiveListingsUi,
+  fetchMyListingsUi,
   fetchListingById,
   mapOfferRowToUi,
   fetchOffersUi,
   supabaseEnabled,
   ensureCurrentUserId,
+  addToFavorites,
+  removeFromFavorites,
+  getUserFavorites,
+  isFavorite,
+  getFavoriteListings,
 } from './sbApi';
 
 export type { UiListing, UiOffer } from './sbApi';

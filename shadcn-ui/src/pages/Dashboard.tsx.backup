@@ -1,0 +1,1909 @@
+﻿import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
+import { useAuth } from '../hooks/use-auth-mysql';
+import { mysqlAPI } from '../lib/mysql-api';
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { Heart, Package, TrendingUp, MessageCircle, MapPin, XCircle, Calendar, DollarSign, ImageIcon, ShoppingBag, Truck, Play, Clock, CreditCard, User, CheckCircle, Eye } from 'lucide-react';
+import { toast } from 'sonner';
+import FavoriteButton from '../components/FavoriteButton';
+import Header from '../components/Header';
+import OrderStatusBadge from '@/components/ui/OrderStatusBadge';
+import ShippingFormModal from '@/components/ui/ShippingFormModal';
+import { formatPrice, formatPriceShort } from '@/utils/formatPrice';
+
+interface Listing {
+  id: number;
+  title: string;
+  description: string;
+  city: string;
+  location?: string;
+  condition: string;
+  budgetMax: number;
+  budgetMin: number;
+  price?: number;
+  category: string;
+  subcategory: string;
+  createdAt: string;
+  soldQuantity?: number;
+  status: string;
+  images?: string;
+  offerCount?: number;
+  deliveryType?: string;
+}
+
+interface Offer {
+  id: number;
+  listingId: number;
+  userId: number;
+  price: number;
+  message: string;
+  status: string;
+  createdAt: string;
+  productName?: string;
+  condition?: string;
+  shippingCost?: number;
+  images?: string;
+}
+
+interface User {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  city?: string;
+  phone?: string;
+  gender?: string;
+  addressLine1?: string;
+  district?: string;
+  postalCode?: string;
+  createdAt?: string;
+}
+
+export default function Dashboard() {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const [myListings, setMyListings] = useState<Listing[]>([]);
+  const [myOffers, setMyOffers] = useState<Offer[]>([]);
+  const [incomingOffers, setIncomingOffers] = useState<Offer[]>([]);
+  const [favoriteListings, setFavoriteListings] = useState<Listing[]>([]);
+  const [orders, setOrders] = useState<any[]>([]);
+  const [sales, setSales] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedSale, setSelectedSale] = useState<any>(null);
+  const [showStatusModal, setShowStatusModal] = useState(false);
+  const [showShippingModal, setShowShippingModal] = useState(false);
+  const [statusForm, setStatusForm] = useState({
+    status: '',
+    trackingNumber: '',
+    carrier: '',
+  });
+  const [activeTab, setActiveTab] = useState('listings');
+
+  useEffect(() => {
+    if (user) {
+      loadDashboardData();
+    }
+  }, [user]);
+
+  // Helper function to ensure array response
+  const ensureArray = (data: any): any[] => {
+    if (Array.isArray(data)) return data;
+    if (data && typeof data === 'object' && Array.isArray(data.data)) return data.data;
+    if (data && typeof data === 'object' && Array.isArray(data.listings)) return data.listings;
+    if (data && typeof data === 'object' && Array.isArray(data.offers)) return data.offers;
+    if (data && typeof data === 'object' && Array.isArray(data.favorites)) return data.favorites;
+    return [];
+  };
+
+  const handleStatusUpdate = async (orderId: string, data: { status: string; trackingNumber?: string; carrier?: string; estimatedDelivery?: string }) => {
+    try {
+      console.log('?? Updating order status:', { orderId, data });
+      await mysqlAPI.updateOrderStatus(orderId, data);
+      toast.success('sipariş durumu güncellendi');
+      setShowStatusModal(false);
+      // Refresh sales data
+      loadDashboardData();
+    } catch (error) {
+      console.error('? Status update error:', error);
+      toast.error('Durum güncellenirken hata oluştu');
+    }
+  };
+
+  // İşlemi BaŞlat handler
+  const handleStartProcessing = async (orderId: string) => {
+    try {
+      console.log('?? Starting order processing:', orderId);
+      const result = await mysqlAPI.startOrderProcessing(orderId);
+      
+      if (result.success) {
+        toast.success('Sipari� i�leme al�nd�');
+        // Add a small delay to ensure database transaction is committed
+        setTimeout(() => {
+          loadDashboardData(); // Refresh data
+        }, 500);
+      } else {
+        toast.error(result.error || '��lem ba�lat�l�rken hata olu�tu');
+      }
+    } catch (error) {
+      console.error('? Start processing error:', error);
+      toast.error('��lem ba�lat�l�rken bir hata olu�tu');
+    }
+  };
+
+  // Kargo bilgileri eklendi sonras� handler
+  const handleShippingAdded = () => {
+    setShowShippingModal(false);
+    setSelectedSale(null);
+    loadDashboardData(); // Refresh data
+  };
+
+  // Teslim Ald�m handler (for buyers)
+  const handleMarkAsDelivered = async (orderId: string) => {
+    try {
+      console.log('?? Marking order as delivered:', orderId);
+      const result = await mysqlAPI.markOrderAsDelivered(orderId);
+      
+      if (result.success) {
+        toast.success('Sipari� teslim al�nd� olarak i�aretlendi');
+        loadDashboardData(); // Refresh data
+      } else {
+        toast.error(result.error || '��lem tamamlan�rken hata olu�tu');
+      }
+    } catch (error) {
+      console.error('? Mark as delivered error:', error);
+      toast.error('��lem tamamlan�rken bir hata olu�tu');
+    }
+  };
+
+  const loadDashboardData = async () => {
+    try {
+      setLoading(true);
+      console.log('?? Dashboard data loading started...');
+      
+      // Debug current user
+      console.log('?? Current user token:', localStorage.getItem('auth_token'));
+      console.log('?? Current user data:', localStorage.getItem('user'));
+      
+      // TEMPORARY: Transfer sample orders to current user
+      try {
+        console.log('?? Transferring sample orders...');
+        const transferResponse = await fetch('/api/orders/transfer-sample-orders', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        const transferResult = await transferResponse.json();
+        console.log('? Transfer result:', transferResult);
+      } catch (transferError) {
+        console.warn('?? Transfer failed:', transferError);
+      }
+      
+      // Get current user info
+      try {
+        const userResponse = await mysqlAPI.getCurrentUser();
+        console.log('?? Current user from API:', userResponse);
+      } catch (userError) {
+        console.warn('?? User info failed:', userError);
+      }
+      
+      // Clean up orphaned favorites first
+      try {
+        await mysqlAPI.cleanupFavorites();
+        console.log('?? Orphaned favorites cleaned up');
+      } catch (cleanupError) {
+        console.warn('?? Favorites cleanup failed:', cleanupError);
+      }
+      
+      const promises = [
+        mysqlAPI.getMyListings().catch((error) => { 
+          console.error('? getMyListings failed:', error);
+          return [];
+        }),
+        mysqlAPI.getMyOffers(),
+        mysqlAPI.getIncomingOffers().catch((error) => {
+          console.error('? getIncomingOffers failed:', error);
+          // Temporary mock data that matches SQL data
+          return [{
+            id: '321f7746-ff0c-45d1-bb45-6e8d9b4c08fb',
+            listing_id: '23f3551b-1d99-4e6e-96a7-dd2213f5e51d',
+            seller_id: '2053cf75-c11d-4d9f-a9f7-781ec179d785',
+            seller_name: 'usame binladin',
+            seller_rating: 5.0,
+            price: 2200.00,
+            quantity: 1,
+            sold_quantity: 0,
+            product_name: 'sadsad',
+            condition: 'new',
+            images: '["/uploads/images/321f7746-ff0c-45d1-bb45-6e8d9b4c08fb.jpg"]',
+            delivery_type: 'shipping',
+            shipping_desi: '6-10',
+            shipping_cost: 99.99,
+            eta_days: 3,
+            status: 'active',
+            valid_until: '2025-11-01T00:00:00',
+            message: null,
+            description: 'asddsad',
+            created_at: '2025-10-07T16:02:04',
+            updated_at: '2025-10-07T16:02:04',
+            listing: {
+              title: 'test Var mı?',
+              description: 'test',
+              category: 'Teknoloji',
+              budget_max: 2586.00,
+              condition: 'any',
+              location: '�zmir',
+              delivery_type: 'both',
+              status: 'active',
+              offers_public: true
+            }
+          }];
+        }),
+        mysqlAPI.getFavorites().catch(() => []),
+        mysqlAPI.getOrders().catch((error) => {
+          console.error('? getOrders failed:', error);
+          console.error('? getOrders error details:', {
+            message: error.message,
+            stack: error.stack,
+            name: error.name
+          });
+          return { success: false, orders: [], error: error.message };
+        }),
+        mysqlAPI.getSales().catch((error) => {
+          console.error('? getSales failed:', error);
+          return [];
+        })
+      ];
+
+      const [listings, offers, incoming, favorites, ordersResponse, salesResponse] = await Promise.allSettled(promises);
+      
+      console.log('?? Raw responses:', { listings, offers, incoming, favorites, ordersResponse, salesResponse });
+      
+      // Extract data from response objects that have .data property
+      const extractData = (response: any) => {
+        if (response.status === 'fulfilled') {
+          const value = response.value;
+          // Check for different possible data structures
+          return value?.data || value?.orders || value?.listings || value?.offers || value || [];
+        }
+        return [];
+      };
+      
+      setMyListings(ensureArray(extractData(listings)));
+      setMyOffers(ensureArray(extractData(offers)));
+      setIncomingOffers(ensureArray(extractData(incoming)));
+      setFavoriteListings(ensureArray(extractData(favorites)));
+      
+      // Orders'� ayr� debug et
+      console.log('?? Orders Response Raw:', ordersResponse);
+      
+      // Orders i�in �zel extract
+      let ordersData = [];
+      if (ordersResponse.status === 'fulfilled') {
+        const ordersValue = ordersResponse.value;
+        console.log('?? Orders Response Value:', ordersValue);
+        
+        if (ordersValue?.success && ordersValue?.orders) {
+          ordersData = ordersValue.orders;
+        } else if (Array.isArray(ordersValue)) {
+          ordersData = ordersValue;
+        } else {
+          ordersData = extractData(ordersResponse);
+        }
+      }
+      
+      console.log('?? Orders Extracted Data:', ordersData);
+      console.log('?? Orders Response Status:', ordersResponse.status);
+      console.log('?? First order items (if any):', ordersData[0]?.items);
+      setOrders(ensureArray(ordersData));
+      
+      // Sales i�in de ayn� i�lemi yap
+      let salesData = [];
+      if (salesResponse.status === 'fulfilled') {
+        const salesValue = salesResponse.value;
+        console.log('?? Sales Response Value:', salesValue);
+        console.log('?? First sale items (if any):', salesValue?.sales?.[0]?.items);
+        
+        if (salesValue?.success && salesValue?.sales) {
+          salesData = salesValue.sales;
+        } else if (Array.isArray(salesValue)) {
+          salesData = salesValue;
+        } else {
+          salesData = extractData(salesResponse);
+        }
+      }
+      
+      console.log('?? Sales Extracted Data:', salesData);
+      setSales(ensureArray(salesData));
+      
+      console.log('? Dashboard data loaded successfully');
+    } catch (error) {
+      console.error('? Dashboard data y�klenirken hata:', error);
+      toast.error('Veriler y�klenirken bir hata olu�tu');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleFavoriteChange = useCallback((listingId: string, isFavorite: boolean) => {
+    if (isFavorite) {
+      // Favorilere eklendi - favoriler listesini yeniden y�kle
+      mysqlAPI.getFavorites().then(data => {
+        setFavoriteListings(ensureArray(data));
+      }).catch(console.error);
+    } else {
+      // Favorilerden ��kar�ld� - listeden kald�r
+      setFavoriteListings(prev => prev.filter(listing => 
+        ((listing as any).listing_id || listing.id).toString() !== listingId
+      ));
+    }
+  }, []);
+
+  const getTimeAgo = (dateString: string) => {
+    if (!dateString) {
+      console.log('? Invalid date calculation for:', dateString);
+      return 'Bilinmiyor';
+    }
+    
+    console.log('?? Date string received:', dateString);
+    const date = new Date(dateString);
+    
+    if (isNaN(date.getTime())) {
+      console.log('? Invalid date:', dateString);
+      return 'Ge�ersiz tarih';
+    }
+    
+    console.log('?? Parsed date:', date);
+    const now = new Date();
+    const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60));
+    console.log('?? Diff in minutes:', diffInMinutes);
+    
+    if (isNaN(diffInMinutes)) {
+      console.warn('? Invalid date calculation for:', dateString);
+      return 'Tarih bilinmiyor';
+    }
+    
+    if (diffInMinutes < 60) {
+      return `${diffInMinutes} dakika �nce`;
+    } else if (diffInMinutes < 1440) {
+      return `${Math.floor(diffInMinutes / 60)} saat �nce`;
+    } else {
+      return `${Math.floor(diffInMinutes / 1440)} g�n �nce`;
+    }
+  };
+
+  const getDeliveryTypeText = (deliveryType: string) => {
+    const deliveryMap: { [key: string]: string } = {
+      'shipping': 'Kargo',
+      'pickup': 'Elden Teslim',
+      'both': 'Kargo/Elden'
+    };
+    return deliveryMap[deliveryType] || deliveryType;
+  };
+
+  const getConditionText = (condition: string) => {
+    const conditionMap: { [key: string]: string } = {
+      'new': 'S�f�r',
+      'like-new': 'S�f�r Ayar�nda',
+      'used': '2. El',
+      'good': '�yi',
+      'fair': 'Orta',
+      'poor': 'K�t�',
+      'any': 'Kargo/Elden'
+    };
+    return conditionMap[condition] || condition;
+  };
+
+  const getDeliveryText = (deliveryType: string) => {
+    switch (deliveryType) {
+      case 'shipping': return 'Kargo';
+      case 'pickup': return 'Elden Teslim';
+      case 'both': return 'Kargo/Elden';
+      default: return deliveryType;
+    }
+  };
+
+  const getStatusText = (status: string) => {
+    const statusMap: { [key: string]: string } = {
+      'active': 'Aktif',
+      'sold': 'Satıldı',
+      'inactive': 'Pasif',
+      'pending': 'Beklemede'
+    };
+    return statusMap[status] || status;
+  };
+
+  const handleDeleteListing = async (listingId: number) => {
+    if (!confirm('Bu ilan� silmek istedi�inizden emin misiniz?')) {
+      return;
+    }
+
+    try {
+      await mysqlAPI.deleteListing(listingId.toString());
+      setMyListings(prev => prev.filter(listing => listing.id !== listingId));
+      toast.success('�lan ba�ar�yla silindi');
+    } catch (error) {
+      console.error('�lan silinirken hata:', error);
+      toast.error('�lan silinirken bir hata olu�tu');
+    }
+  };
+
+  const handleWithdrawOffer = async (offerId: number) => {
+    try {
+      await mysqlAPI.withdrawOffer(offerId);
+      setMyOffers(prev => prev.map(offer => 
+        offer.id === offerId ? { ...offer, status: 'withdrawn' } : offer
+      ));
+      toast.success('Teklif geri �ekildi');
+    } catch (error) {
+      console.error('Teklif geri �ekilirken hata:', error);
+      toast.error('Teklif geri �ekilirken bir hata olu�tu');
+    }
+  };
+
+  const handleOfferAction = async (offerId: number, action: 'accept' | 'reject') => {
+    try {
+      await mysqlAPI.respondToOffer(offerId.toString(), action);
+      setIncomingOffers(prev => prev.map(offer => 
+        offer.id === offerId ? { ...offer, status: action === 'accept' ? 'accepted' : 'rejected' } : offer
+      ));
+      toast.success(action === 'accept' ? 'Teklif kabul edildi' : 'Teklif reddedildi');
+    } catch (error) {
+      console.error('Teklif cevaplan�rken hata:', error);
+      toast.error('Teklif cevaplan�rken bir hata olu�tu');
+    }
+  };
+
+  const getImageUrl = (imagePath: string | null | undefined): string => {
+    if (!imagePath) return '/placeholder-image.jpg';
+    
+    // If it's already a full HTTP URL, extract the path part
+    if (imagePath.startsWith('http://localhost:8787')) {
+      imagePath = imagePath.replace('http://localhost:8787', '');
+    }
+    
+    // If it's any other HTTP URL, return as is
+    if (imagePath.startsWith('http')) return imagePath;
+    
+    // If it starts with /uploads/, return as is (Vite proxy will handle)
+    if (imagePath.startsWith('/uploads/')) {
+      return imagePath;
+    }
+    
+    // If it's just a filename, try both /uploads/ and /uploads/images/
+    if (imagePath.includes('.')) {
+      // Check if it's a direct filename (has extension)
+      return `/uploads/${imagePath}`;
+    }
+    
+    // Default fallback
+    return `/uploads/images/${imagePath}`;
+  };
+
+  const parseImages = (imagesString: string | null | undefined | any[]): string[] => {
+    if (!imagesString) return [];
+    
+    // If it's already an array, return it
+    if (Array.isArray(imagesString)) {
+      return imagesString.filter(img => typeof img === 'string' && img.trim());
+    }
+    
+    // If it's not a string, try to stringify and parse
+    if (typeof imagesString !== 'string') {
+      try {
+        imagesString = JSON.stringify(imagesString);
+      } catch {
+        return [];
+      }
+    }
+    
+    try {
+      if (imagesString.startsWith('[')) {
+        return JSON.parse(imagesString);
+      }
+      return imagesString.split(',').map(img => img.trim()).filter(Boolean);
+    } catch {
+      return imagesString.split(',').map(img => img.trim()).filter(Boolean);
+    }
+  };
+
+  if (!user) {
+    return (
+      <>
+        <Header />
+        <div className="container mx-auto px-4 py-8 text-center">
+          <h1 className="text-2xl font-bold mb-4">Giri� Gerekli</h1>
+          <p className="text-gray-600 mb-4">Dashboard'u g�r�nt�lemek i�in giri� yapman�z gerekiyor.</p>
+          <Button onClick={() => navigate('/login')}>Giri� Yap</Button>
+        </div>
+      </>
+    );
+  }
+
+  if (loading) {
+    return (
+      <>
+        <Header />
+        <div className="container mx-auto px-4 py-8">
+          <div className="text-center">Y�kleniyor...</div>
+        </div>
+      </>
+    );
+  }
+
+  return (
+    <>
+      <Header />
+      <div className="container mx-auto px-2 md:px-4 py-4 md:py-8">
+        <div className="mb-4 md:mb-8">
+          <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">Panelim</h1>
+          <p className="text-sm md:text-base text-gray-600">Ho� geldin, {user.firstName}!</p>
+        </div>
+
+      <div className="space-y-6">
+        <Tabs defaultValue="listings" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-2 md:grid-cols-6 gap-1">
+            <TabsTrigger value="listings" className="text-xs md:text-sm">�lanlar�m ({myListings.length})</TabsTrigger>
+            <TabsTrigger value="offers" className="text-xs md:text-sm">Tekliflerim ({myOffers.length})</TabsTrigger>
+            <TabsTrigger value="incoming" className="text-xs md:text-sm">Gelen Teklifler ({incomingOffers.length})</TabsTrigger>
+            <TabsTrigger value="orders" className="text-xs md:text-sm">Ald�klar�m ({orders.length})</TabsTrigger>
+            <TabsTrigger value="sales" className="text-xs md:text-sm">Satt�klar�m ({sales.length})</TabsTrigger>
+            <TabsTrigger value="favorites" className="text-xs md:text-sm">Favorilerim ({favoriteListings.length})</TabsTrigger>
+          </TabsList>
+
+          {/* My Listings Tab */}
+          <TabsContent value="listings" className="space-y-4">
+            <div className="flex justify-between items-center">
+              <h2 className="text-xl font-semibold">İlanlarım</h2>
+              <Button onClick={() => navigate('/create-listing')}>
+                Yeni İlan Oluştur
+              </Button>
+            </div>
+            
+            {myListings.length === 0 ? (
+              <Card>
+                <CardContent className="flex flex-col items-center justify-center py-16">
+                  <Package className="h-12 w-12 text-muted-foreground mb-4" />
+                  <p className="text-lg font-medium text-muted-foreground mb-2">Henüz ilanın yok</p>
+                  <p className="text-sm text-muted-foreground mb-4">İlk ilanını oluştur ve satışa başla!</p>
+                  <Button onClick={() => navigate('/create-listing')}>
+                    İlan Oluştur
+                  </Button>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="grid gap-6">
+                {myListings.filter(listing => listing && listing.id).map((listing) => {
+                  console.log('?? Listing debug:', listing); // Ge�ici debug
+                  const images = parseImages(listing.images);
+                  const mainImage = images.length > 0 ? getImageUrl(images[0]) : '/placeholder-image.jpg';
+                  
+                  return (
+                    <Card key={listing.id} className="hover:shadow-lg transition-all duration-200 border-l-4 border-l-blue-500">
+                      <CardContent className="p-3 md:p-6">
+                        <div className="flex flex-col gap-4">
+                          {/* �lan G�rseli - Mobilde �stte */}
+                          <div className="flex-shrink-0 md:hidden">
+                            <div className="w-full h-48 rounded-lg overflow-hidden bg-gray-100 border">
+                              {images.length > 0 ? (
+                                <img 
+                                  src={mainImage}
+                                  alt={listing.title}
+                                  className="w-full h-full object-cover"
+                                  onLoad={() => console.log('? Image loaded:', mainImage)}
+                                  onError={(e) => {
+                                    console.log('? Image failed to load:', mainImage);
+                                    const target = e.target as HTMLImageElement;
+                                    target.src = '/placeholder-image.jpg';
+                                  }}
+                                />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center">
+                                  <ImageIcon className="h-8 w-8 text-gray-400" />
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                          
+                          <div className="flex flex-col md:flex-row gap-4 md:gap-6">
+                          {/* �lan G�rseli - Desktop'ta sol tarafta */}
+                          <div className="flex-shrink-0 hidden md:block">
+                            <div className="w-32 h-32 rounded-lg overflow-hidden bg-gray-100 border">
+                              {images.length > 0 ? (
+                                <img 
+                                  src={mainImage}
+                                  alt={listing.title}
+                                  className="w-full h-full object-cover"
+                                  onLoad={() => console.log('? Image loaded:', mainImage)}
+                                  onError={(e) => {
+                                    console.log('? Image failed to load:', mainImage);
+                                    const target = e.target as HTMLImageElement;
+                                    target.src = '/placeholder-image.jpg';
+                                  }}
+                                />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center">
+                                  <ImageIcon className="h-8 w-8 text-gray-400" />
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* �lan Detaylar� */}
+                          <div className="flex-1 space-y-3">
+                            <div>
+                              <h3 className="font-bold text-xl text-gray-900 mb-1">
+                                {listing.title || '�lan ba�l���'}
+                              </h3>
+                              <p className="text-gray-600 text-sm line-clamp-2">
+                                {listing.description || 'A��klama bulunmuyor'}
+                              </p>
+                            </div>
+
+                            <div className="flex flex-wrap items-center gap-4 text-sm">
+                              <div className="flex items-center text-gray-600">
+                                <MapPin className="h-4 w-4 mr-1" />
+                                <span>{listing.city || '�ehir belirtilmedi'}</span>
+                              </div>
+                              <div className="flex items-center text-gray-600">
+                                <Calendar className="h-4 w-4 mr-1" />
+                                <span>{getTimeAgo(listing.createdAt)}</span>
+                              </div>
+                              {(listing.deliveryType || listing.condition) && (
+                                <div className="flex items-center text-gray-600">
+                                  <Package className="h-4 w-4 mr-1" />
+                                  <span>
+                                    {listing.deliveryType 
+                                      ? getDeliveryText(listing.deliveryType)
+                                      : getConditionText(listing.condition)
+                                    }
+                                  </span>
+                                </div>
+                              )}
+                              {listing.offerCount !== undefined && (
+                                <div className="flex items-center text-gray-600">
+                                  <TrendingUp className="h-4 w-4 mr-1" />
+                                  <span>{listing.offerCount} teklif</span>
+                                </div>
+                              )}
+                            </div>
+
+                            <div className="flex items-center justify-between">
+                              <div className="space-y-1">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-2xl font-bold text-green-600">
+                                    {formatPriceShort((listing as any).budget_max || (listing as any).budgetMax || 0)}
+                                  </span>
+                                  {((listing as any).budget_min || (listing as any).budgetMin) && ((listing as any).budget_min || (listing as any).budgetMin) !== ((listing as any).budget_max || (listing as any).budgetMax) && (
+                                    <span className="text-sm text-gray-500">
+                                      - {formatPriceShort((listing as any).budget_min || (listing as any).budgetMin)}
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="flex items-center gap-4">
+                                  <Badge variant="outline">
+                                    {getStatusText(listing.status || 'active')}
+                                  </Badge>
+                                  {listing.soldQuantity && listing.soldQuantity > 0 && (
+                                    <span className="text-xs text-green-600 font-medium">
+                                      {listing.soldQuantity} sat�ld�
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+
+                              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:space-x-2 sm:gap-0">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => navigate(`/listing/${listing.id}`)}
+                                  className="w-full sm:w-auto text-xs"
+                                >
+                                  G�r�nt�le
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => navigate(`/edit-listing/${listing.id}`)}
+                                  className="w-full sm:w-auto text-xs"
+                                >
+                                  D�zenle
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="destructive"
+                                  onClick={() => handleDeleteListing(listing.id)}
+                                  className="w-full sm:w-auto text-xs"
+                                >
+                                  Sil
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            )}
+          </TabsContent>
+
+          {/* My Offers Tab */}
+          <TabsContent value="offers" className="space-y-4">
+            <h2 className="text-xl font-semibold">Tekliflerim</h2>
+            
+            {myOffers.length === 0 ? (
+              <Card>
+                <CardContent className="flex flex-col items-center justify-center py-16">
+                  <TrendingUp className="h-12 w-12 text-muted-foreground mb-4" />
+                  <p className="text-lg font-medium text-muted-foreground mb-2">Hen�z teklifin yok</p>
+                  <p className="text-sm text-muted-foreground">Be�endi�in �r�nlere teklif ver!</p>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="grid gap-6">
+                {myOffers.filter(offer => offer && offer.id).map((offer) => {
+                  // Type assertion for extended offer data from backend
+                  const extendedOffer = offer as any;
+                  
+                  console.log('?? Offer debug:', {
+                    offerId: offer.id,
+                    images: offer.images,
+                    productName: offer.productName,
+                    listingImages: extendedOffer.listing_images,
+                    listing: extendedOffer.listing,
+                    rawOffer: offer
+                  });
+                  
+                  // Teklif i�in g�rsel �nce kendi g�rseli, yoksa ilan g�rseli
+                  let offerImage = null;
+                  if (offer.images) {
+                    const offerImages = parseImages(offer.images);
+                    console.log('?? Parsed offer images:', offerImages);
+                    offerImage = offerImages.length > 0 ? offerImages[0] : null;
+                  }
+                  
+                  // E�er teklif g�rseli yoksa, ilan g�rselini kullan
+                  if (!offerImage && extendedOffer.listing_images) {
+                    const listingImages = parseImages(extendedOffer.listing_images);
+                    console.log('?? Parsed listing images:', listingImages);
+                    offerImage = listingImages.length > 0 ? listingImages[0] : null;
+                  }
+                  
+                  // E�er listing objesi i�inde images varsa onu da dene
+                  if (!offerImage && extendedOffer.listing?.images) {
+                    const listingImages = parseImages(extendedOffer.listing.images);
+                    console.log('?? Parsed listing.images:', listingImages);
+                    offerImage = listingImages.length > 0 ? listingImages[0] : null;
+                  }
+                  
+                  const mainImage = offerImage ? getImageUrl(offerImage) : '/placeholder-image.jpg';
+                  
+                  console.log('??? Final image processing:', {
+                    offerImage,
+                    mainImage,
+                    finalSrc: mainImage
+                  });
+                  
+                  return (
+                    <Card key={offer.id} className="hover:shadow-lg transition-all duration-200 border-l-4 border-l-orange-500">
+                      <CardContent className="p-3 md:p-6">
+                        <div className="flex flex-col gap-4">
+                          {/* Teklif G�rseli - Mobilde �stte */}
+                          <div className="flex-shrink-0 md:hidden">
+                            <div className="w-full h-48 rounded-lg overflow-hidden bg-gray-100 border">
+                              <img 
+                                src={mainImage}
+                                alt={offer.productName || 'Teklif'}
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  const target = e.target as HTMLImageElement;
+                                  target.src = '/placeholder-image.jpg';
+                                }}
+                              />
+                            </div>
+                          </div>
+                          
+                          <div className="flex flex-col md:flex-row gap-4 md:gap-6">
+                          {/* Teklif G�rseli - Desktop'ta sol tarafta */}
+                          <div className="flex-shrink-0 hidden md:block">
+                            <div className="w-32 h-32 rounded-lg overflow-hidden bg-gray-100 border">
+                              <img 
+                                src={mainImage}
+                                alt={offer.productName || 'Teklif'}
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  const target = e.target as HTMLImageElement;
+                                  target.src = '/placeholder-image.jpg';
+                                }}
+                              />
+                            </div>
+                          </div>
+
+                          {/* Teklif Detaylar� */}
+                          <div className="flex-1 space-y-4">
+                            <div>
+                              <h3 className="font-bold text-xl text-gray-900 mb-1">
+                                {extendedOffer.product_name || offer.productName || '�r�n ad�'}
+                              </h3>
+                              <p className="text-gray-600 text-sm mb-2">
+                                <strong>�lan:</strong> {extendedOffer.listing?.title || extendedOffer.listing_title || 'Ba�l�k bulunamad�'}
+                              </p>
+                              <p className="text-gray-600 text-sm line-clamp-2">
+                                {offer.message || 'Teklif mesaj� bulunmuyor'}
+                              </p>
+                            </div>
+
+                            {/* �lan A��klamas� */}
+                            {extendedOffer.listing?.description && (
+                              <div className="bg-gray-50 p-3 rounded-lg">
+                                <h4 className="font-medium text-gray-900 mb-1">�lan A��klamas�:</h4>
+                                <p className="text-sm text-gray-600 line-clamp-3">
+                                  {extendedOffer.listing.description}
+                                </p>
+                              </div>
+                            )}
+
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                              <div className="flex items-center text-gray-600">
+                                <Calendar className="h-4 w-4 mr-1" />
+                                <span>{getTimeAgo(extendedOffer.created_at || offer.createdAt)}</span>
+                              </div>
+                              
+                              {(offer.condition || extendedOffer.listing?.condition) && (
+                                <div className="flex items-center text-gray-600">
+                                  <Package className="h-4 w-4 mr-1" />
+                                  <span>{getConditionText(offer.condition || extendedOffer.listing?.condition)}</span>
+                                </div>
+                              )}
+
+                              {/* Stok Miktar� */}
+                              {extendedOffer.stock_quantity && (
+                                <div className="flex items-center text-gray-600">
+                                  <span className="text-xs mr-1">??</span>
+                                  <span>Stok: {extendedOffer.stock_quantity}</span>
+                                </div>
+                              )}
+
+                              {/* Ge�erlilik S�resi */}
+                              {extendedOffer.valid_until && (
+                                <div className="flex items-center text-gray-600">
+                                  <span className="text-xs mr-1">?</span>
+                                  <span>Biti�: {new Date(extendedOffer.valid_until).toLocaleDateString('tr-TR')}</span>
+                                </div>
+                              )}
+
+                              {/* �lan Lokasyonu */}
+                              {extendedOffer.listing?.location && (
+                                <div className="flex items-center text-gray-600">
+                                  <MapPin className="h-4 w-4 mr-1" />
+                                  <span>{extendedOffer.listing.location}</span>
+                                </div>
+                              )}
+
+                              {/* Teslimat T�r� */}
+                              {extendedOffer.listing?.delivery_type && (
+                                <div className="flex items-center text-gray-600">
+                                  <span className="text-xs mr-1">??</span>
+                                  <span>{getDeliveryTypeText(extendedOffer.listing.delivery_type)}</span>
+                                </div>
+                              )}
+
+                              {/* �lan B�t�esi */}
+                              {extendedOffer.listing?.budget_max && (
+                                <div className="flex items-center text-gray-600">
+                                  <Package className="h-4 w-4 mr-1" />
+                                  <span>B�t�e: {formatPriceShort(extendedOffer.listing.budget_max)}</span>
+                                </div>
+                              )}
+
+                              {/* �lan Durumu */}
+                              {extendedOffer.listing?.status && (
+                                <div className="flex items-center text-gray-600">
+                                  <span className="text-xs mr-1">??</span>
+                                  <span>�lan: {extendedOffer.listing.status === 'active' ? 'Aktif' : 'Pasif'}</span>
+                                </div>
+                              )}
+                            </div>
+
+                            <div className="flex items-center justify-between">
+                              <div className="space-y-1">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-2xl font-bold text-green-600">
+                                    {formatPriceShort(offer.price || 0)}
+                                  </span>
+                                  {(offer.shippingCost || 0) > 0 && (
+                                    <span className="text-sm text-gray-500 bg-gray-100 px-2 py-1 rounded">
+                                      + {formatPriceShort(offer.shippingCost || 0)} kargo
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="flex items-center gap-4">
+                                  <Badge variant="outline" className={
+                                    offer.status === 'active' ? 'border-yellow-500 text-yellow-700 bg-yellow-50' :
+                                    offer.status === 'accepted' ? 'border-green-500 text-green-700 bg-green-50' :
+                                    offer.status === 'rejected' ? 'border-red-500 text-red-700 bg-red-50' :
+                                    offer.status === 'withdrawn' ? 'border-gray-500 text-gray-700 bg-gray-50' : 
+                                    'border-yellow-500 text-yellow-700 bg-yellow-50'
+                                  }>
+                                    {offer.status === 'active' && '? Bekliyor'}
+                                    {offer.status === 'accepted' && '? Kabul Edildi'}
+                                    {offer.status === 'rejected' && '? Reddedildi'}
+                                    {offer.status === 'withdrawn' && '?? Geri �ekildi'}
+                                  </Badge>
+                                </div>
+                              </div>
+
+                              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:space-x-2 sm:gap-0">
+                                {offer.status === 'active' && (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="text-red-600 border-red-200 hover:bg-red-50 w-full sm:w-auto text-xs"
+                                    onClick={() => handleWithdrawOffer(offer.id)}
+                                  >
+                                    <XCircle className="h-4 w-4 mr-1" />
+                                    Geri �ek
+                                  </Button>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            )}
+          </TabsContent>
+
+          {/* Incoming Offers Tab */}
+          <TabsContent value="incoming" className="space-y-4">
+            <h2 className="text-xl font-semibold">İlanlarıma Gelen Teklifler</h2>
+            
+            {incomingOffers.length === 0 ? (
+              <Card>
+                <CardContent className="flex flex-col items-center justify-center py-16">
+                  <MessageCircle className="h-12 w-12 text-muted-foreground mb-4" />
+                  <p className="text-lg font-medium text-muted-foreground mb-2">Hen�z teklif almad�n</p>
+                  <p className="text-sm text-muted-foreground">�lanlar�n i�in teklif bekleyen yok.</p>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="grid gap-6">
+                {incomingOffers.filter(offer => offer && offer.id).map((offer) => {
+                  // Type assertion for extended offer data from backend
+                  const extendedOffer = offer as any;
+                  
+                  console.log('?? Incoming Offer debug:', {
+                    offerId: offer.id,
+                    images: offer.images,
+                    productName: offer.productName || extendedOffer.product_name,
+                    rawOffer: offer
+                  });
+                  
+                  // Teklif i�in g�rsel �nce kendi g�rseli, yoksa ilan g�rseli
+                  let offerImage = null;
+                  if (offer.images) {
+                    const offerImages = parseImages(offer.images);
+                    console.log('?? Parsed incoming offer images:', offerImages);
+                    offerImage = offerImages.length > 0 ? offerImages[0] : null;
+                  }
+                  
+                  // Eğer teklif görseli yoksa, ilan görselini kullan (gelen tekliflerde listing bilgisi olabilir)
+                  if (!offerImage && extendedOffer.listing?.images) {
+                    const listingImages = parseImages(extendedOffer.listing.images);
+                    console.log('?? Parsed incoming listing images:', listingImages);
+                    offerImage = listingImages.length > 0 ? listingImages[0] : null;
+                  }
+                  
+                  const mainImage = offerImage ? getImageUrl(offerImage) : '/placeholder-image.jpg';
+                  
+                  console.log('??? Final incoming image processing:', {
+                    offerImage,
+                    mainImage,
+                    finalSrc: mainImage
+                  });
+                  
+                  return (
+                    <Card key={offer.id} className="hover:shadow-lg transition-all duration-200 border-l-4 border-l-green-500">
+                      <CardContent className="p-6">
+                        <div className="flex flex-col md:flex-row gap-6">
+                          {/* Teklif G�rseli */}
+                          <div className="flex-shrink-0">
+                            <div className="w-32 h-32 rounded-lg overflow-hidden bg-gray-100 border">
+                              <img 
+                                src={mainImage}
+                                alt={offer.productName || extendedOffer.product_name || 'Teklif'}
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  const target = e.target as HTMLImageElement;
+                                  target.src = '/placeholder-image.jpg';
+                                }}
+                              />
+                            </div>
+                          </div>
+
+                          {/* Teklif Detaylar� */}
+                          <div className="flex-1 space-y-4">
+                            <div>
+                              <h3 className="font-bold text-xl text-gray-900 mb-1">
+                                {extendedOffer.product_name || offer.productName || '�r�n ad�'}
+                              </h3>
+                              <p className="text-gray-600 text-sm mb-2">
+                                <strong>�lan:</strong> {extendedOffer.listing?.title || '�lan ba�l���'}
+                              </p>
+                              <p className="text-gray-600 text-sm mb-2">
+                                <strong>Teklif Veren:</strong> 
+                                {extendedOffer.seller_id ? (
+                                  <Link 
+                                    to={`/profile/${extendedOffer.seller_id}`}
+                                    className="text-blue-600 hover:text-blue-800 hover:underline cursor-pointer ml-1"
+                                  >
+                                    {extendedOffer.seller_name || 'Bilinmiyor'}
+                                  </Link>
+                                ) : (
+                                  <span className="ml-1">{extendedOffer.seller_name || 'Bilinmiyor'}</span>
+                                )}
+                              </p>
+                              <p className="text-gray-600 text-sm line-clamp-2">
+                                {offer.message || extendedOffer.description || 'Teklif mesaj� bulunmuyor'}
+                              </p>
+                            </div>
+
+                            {/* �lan A��klamas� */}
+                            {extendedOffer.listing?.description && (
+                              <div className="bg-gray-50 p-3 rounded-lg">
+                                <h4 className="font-medium text-gray-900 mb-1">�lan A��klamas�:</h4>
+                                <p className="text-sm text-gray-600 line-clamp-3">
+                                  {extendedOffer.listing.description}
+                                </p>
+                              </div>
+                            )}
+
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                              <div className="flex items-center text-gray-600">
+                                <Calendar className="h-4 w-4 mr-1" />
+                                <span>{getTimeAgo(extendedOffer.created_at || offer.createdAt)}</span>
+                              </div>
+                              
+                              {(offer.condition || extendedOffer.offer_condition) && (
+                                <div className="flex items-center text-gray-600">
+                                  <Package className="h-4 w-4 mr-1" />
+                                  <span>{getConditionText(offer.condition || extendedOffer.offer_condition)}</span>
+                                </div>
+                              )}
+
+                              {/* Miktar */}
+                              {extendedOffer.quantity && (
+                                <div className="flex items-center text-gray-600">
+                                  <span className="text-xs mr-1">??</span>
+                                  <span>Miktar: {extendedOffer.quantity}</span>
+                                </div>
+                              )}
+
+                              {/* Ge�erlilik S�resi */}
+                              {extendedOffer.valid_until && (
+                                <div className="flex items-center text-gray-600">
+                                  <span className="text-xs mr-1">?</span>
+                                  <span>Biti�: {new Date(extendedOffer.valid_until).toLocaleDateString('tr-TR')}</span>
+                                </div>
+                              )}
+
+                              {/* �lan Lokasyonu */}
+                              {extendedOffer.listing?.location && (
+                                <div className="flex items-center text-gray-600">
+                                  <MapPin className="h-4 w-4 mr-1" />
+                                  <span>{extendedOffer.listing.location}</span>
+                                </div>
+                              )}
+
+                              {/* Teslimat T�r� */}
+                              {extendedOffer.delivery_type && (
+                                <div className="flex items-center text-gray-600">
+                                  <span className="text-xs mr-1">??</span>
+                                  <span>{getDeliveryTypeText(extendedOffer.delivery_type)}</span>
+                                </div>
+                              )}
+
+                              {/* Kargo Bilgisi */}
+                              {extendedOffer.shipping_cost && extendedOffer.shipping_cost > 0 && (
+                                <div className="flex items-center text-gray-600">
+                                  <span className="text-xs mr-1">??</span>
+                                  <span>Kargo: {formatPriceShort(extendedOffer.shipping_cost)}</span>
+                                </div>
+                              )}
+
+                              {/* ETA Days */}
+                              {extendedOffer.eta_days && (
+                                <div className="flex items-center text-gray-600">
+                                  <span className="text-xs mr-1">??</span>
+                                  <span>Teslimat: {extendedOffer.eta_days} g�n</span>
+                                </div>
+                              )}
+                            </div>
+
+                            <div className="flex items-center justify-between">
+                              <div className="space-y-1">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-2xl font-bold text-green-600">
+                                    {formatPriceShort(offer.price || extendedOffer.price || 0)}
+                                  </span>
+                                  {(offer.shippingCost || extendedOffer.shipping_cost || 0) > 0 && (
+                                    <span className="text-sm text-gray-500 bg-gray-100 px-2 py-1 rounded">
+                                      + {formatPriceShort(offer.shippingCost || extendedOffer.shipping_cost || 0)} kargo
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="flex items-center gap-4">
+                                  <Badge variant="outline" className={
+                                    offer.status === 'active' ? 'border-blue-500 text-blue-700 bg-blue-50' :
+                                    offer.status === 'accepted' ? 'border-green-500 text-green-700 bg-green-50' :
+                                    offer.status === 'rejected' ? 'border-red-500 text-red-700 bg-red-50' :
+                                    offer.status === 'withdrawn' ? 'border-gray-500 text-gray-700 bg-gray-50' : 
+                                    'border-blue-500 text-blue-700 bg-blue-50'
+                                  }>
+                                    {offer.status === 'active' && '?? Yeni Teklif'}
+                                    {offer.status === 'accepted' && '? Kabul Edildi'}
+                                    {offer.status === 'rejected' && '? Reddedildi'}
+                                    {offer.status === 'withdrawn' && '?? Geri �ekildi'}
+                                  </Badge>
+                                  {extendedOffer.seller_rating && (
+                                    <div className="flex items-center text-yellow-500">
+                                      <span className="text-xs mr-1">?</span>
+                                      <span className="text-sm">{extendedOffer.seller_rating}</span>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+
+                              <div className="flex items-center space-x-2">
+                                {offer.status === 'active' && (
+                                  <>
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      className="text-green-600 border-green-200 hover:bg-green-50"
+                                      onClick={() => handleOfferAction(offer.id, 'accept')}
+                                    >
+                                      ? Kabul Et
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      className="text-red-600 border-red-200 hover:bg-red-50"
+                                      onClick={() => handleOfferAction(offer.id, 'reject')}
+                                    >
+                                      ? Reddet
+                                    </Button>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            )}
+          </TabsContent>
+
+          {/* Orders Tab */}
+          <TabsContent value="orders" className="space-y-4">
+            <div className="flex justify-between items-center">
+              <h2 className="text-xl font-semibold">Ald�klar�m</h2>
+            </div>
+            
+            {/* Orders */}
+            <div className="space-y-4">
+              {orders.length === 0 ? (
+                <Card>
+                  <CardContent className="flex flex-col items-center justify-center py-16">
+                    <Package className="h-12 w-12 text-muted-foreground mb-4" />
+                    <p className="text-lg font-medium text-muted-foreground mb-2">Hen�z sipari�in yok</p>
+                    <p className="text-sm text-muted-foreground text-center max-w-md">
+                      Teklifleri kabul etti�inde ve sat�n alma i�lemini tamamlad���nda sipari�lerin burada g�r�necek.
+                    </p>
+                  </CardContent>
+                </Card>
+              ) : (
+                orders.map((order: any) => {
+                  const formatDate = (dateString: string) => {
+                    const date = new Date(dateString);
+                    return date.toLocaleDateString('tr-TR', {
+                      day: 'numeric',
+                      month: 'short',
+                      year: 'numeric'
+                    });
+                  };
+
+                  const formatTime = (dateString: string) => {
+                    const date = new Date(dateString);
+                    return date.toLocaleTimeString('tr-TR', {
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    });
+                  };
+
+                  const getStatusText = (status: string) => {
+                    const statusMap: { [key: string]: string } = {
+                      'pending': 'Beklemede',
+                      'confirmed': 'Onaylandı',
+                      'preparing': 'Hazırlanıyor',
+                      'shipped': 'Kargoda',
+                      'delivered': 'Teslim Edildi',
+                      'completed': 'Tamamlandı',
+                      'cancelled': 'İptal Edildi'
+                    };
+                    return statusMap[status] || status;
+                  };
+
+                  return (
+                    <Card key={order.id} className="hover:shadow-lg transition-all duration-200 border-l-4 border-l-green-500">
+                      <CardContent className="p-6">
+                        <div className="space-y-4">
+                          {/* �st Bilgiler */}
+                          <div className="flex items-start justify-between">
+                            <div>
+                              <div className="flex items-center gap-2 mb-2">
+                                <Package className="h-5 w-5 text-green-600" />
+                                <h3 className="font-bold text-lg">Sipari� #{order.orderNumber}</h3>
+                                <OrderStatusBadge status={order.status} />
+                              </div>
+                              <div className="flex items-center gap-4 text-sm text-gray-600">
+                                <div className="flex items-center gap-1">
+                                  <Calendar className="h-4 w-4" />
+                                  <span>{formatDate(order.createdAt)}</span>
+                                </div>
+                                <div className="flex items-center gap-1">
+                                  <Clock className="h-4 w-4" />
+                                  <span>{formatTime(order.createdAt)}</span>
+                                </div>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <div className="text-2xl font-bold text-green-600">
+                                {formatPriceShort(order.total || 0)}
+                              </div>
+                              <div className="text-sm text-gray-500">
+                                {order.totalQuantity || order.items?.reduce((sum: number, item: any) => sum + (item.quantity || 0), 0) || order.itemCount} �r�n
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Sipari� Detaylar� Grid */}
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            <div className="bg-gray-50 p-3 rounded-lg">
+                              <div className="text-sm font-medium text-gray-700 mb-1">Durum</div>
+                              <div className="text-sm">{getStatusText(order.status)}</div>
+                            </div>
+
+                            {order.paymentStatus && (
+                              <div className="bg-gray-50 p-3 rounded-lg">
+                                <div className="text-sm font-medium text-gray-700 mb-1">�deme Durumu</div>
+                                <div className="flex items-center gap-1">
+                                  {order.paymentStatus === 'paid' ? (
+                                    <>
+                                      <CreditCard className="h-4 w-4 text-green-600" />
+                                      <span className="text-sm text-green-600">�dendi</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <CreditCard className="h-4 w-4 text-orange-600" />
+                                      <span className="text-sm text-orange-600">Beklemede</span>
+                                    </>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+
+                            {order.trackingNumber && (
+                              <div className="bg-gray-50 p-3 rounded-lg">
+                                <div className="text-sm font-medium text-gray-700 mb-1">Kargo Takip</div>
+                                <div className="flex items-center gap-1">
+                                  <Truck className="h-4 w-4 text-blue-600" />
+                                  <span className="text-sm font-mono">{order.trackingNumber}</span>
+                                </div>
+                              </div>
+                            )}
+
+                            {order.sellerName && (
+                              <div className="bg-gray-50 p-3 rounded-lg">
+                                <div className="text-sm font-medium text-gray-700 mb-1">Sat�c�</div>
+                                <div className="flex items-center gap-1">
+                                  <User className="h-4 w-4 text-gray-600" />
+                                  <span className="text-sm">{order.sellerName}</span>
+                                </div>
+                              </div>
+                            )}
+
+                            {order.shippingCost > 0 && (
+                              <div className="bg-gray-50 p-3 rounded-lg">
+                                <div className="text-sm font-medium text-gray-700 mb-1">Kargo �creti</div>
+                                <div className="text-sm">{formatPriceShort(order.shippingCost)}</div>
+                              </div>
+                            )}
+
+                            {order.estimatedDelivery && (
+                              <div className="bg-gray-50 p-3 rounded-lg">
+                                <div className="text-sm font-medium text-gray-700 mb-1">Tahmini Teslimat</div>
+                                <div className="text-sm">{formatDate(order.estimatedDelivery)}</div>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* �r�n G�rselleri */}
+                          <div className="flex items-center gap-3">
+                            <div className="flex -space-x-2">
+                              {order.items && order.items.length > 0 ? (
+                                <>
+                                  {order.items.slice(0, 4).map((item: any, index: number) => (
+                                    <div key={index} className="w-12 h-12 rounded-lg border-2 border-white shadow-sm overflow-hidden">
+                                      <img 
+                                        src={item.image || '/image-placeholder.png'} 
+                                        alt={item.title || '�r�n'} 
+                                        className="w-full h-full object-cover"
+                                        onError={(e) => {
+                                          const target = e.target as HTMLImageElement;
+                                          target.src = '/image-placeholder.png';
+                                        }}
+                                      />
+                                    </div>
+                                  ))}
+                                  {order.items.length > 4 && (
+                                    <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-500 rounded-lg border-2 border-white shadow-sm flex items-center justify-center">
+                                      <span className="text-xs font-bold text-white">+{order.items.length - 4}</span>
+                                    </div>
+                                  )}
+                                </>
+                              ) : (
+                                Array.from({ length: Math.min(order.itemCount, 4) }).map((_, index) => (
+                                  <div key={index} className="w-12 h-12 bg-gray-200 rounded-lg border-2 border-white shadow-sm flex items-center justify-center">
+                                    <ImageIcon className="h-6 w-6 text-gray-400" />
+                                  </div>
+                                ))
+                              )}
+                              {!order.items && order.itemCount > 4 && (
+                                <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-500 rounded-lg border-2 border-white shadow-sm flex items-center justify-center">
+                                  <span className="text-xs font-bold text-white">+{order.itemCount - 4}</span>
+                                </div>
+                              )}
+                            </div>
+                            <div className="text-sm text-gray-600">
+                              Toplam {order.totalQuantity || order.items?.reduce((sum: number, item: any) => sum + (item.quantity || 0), 0) || order.items?.length || order.itemCount} �r�n
+                            </div>
+                          </div>
+
+                          {/* Alt Butonlar */}
+                          <div className="flex items-center justify-between pt-4 border-t">
+                            <div className="flex items-center gap-2 text-sm text-gray-500">
+                              <MapPin className="h-4 w-4" />
+                              <span>Sipari� durumu: {getStatusText(order.status)}</span>
+                            </div>
+                            
+                            <div className="flex items-center gap-2">
+                              {/* Teslim Ald�m butonu - sadece 'shipped' durumunda g�ster */}
+                              {order.status === 'shipped' && (
+                                <Button 
+                                  size="sm" 
+                                  className="bg-green-600 hover:bg-green-700"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleMarkAsDelivered(order.id);
+                                  }}
+                                >
+                                  <CheckCircle className="h-4 w-4 mr-1" />
+                                  Teslim Ald�m
+                                </Button>
+                              )}
+                              
+                              <Button 
+                                variant="outline" 
+                                size="sm" 
+                                onClick={() => navigate(`/order/${order.orderNumber}`)}
+                              >
+                                <Eye className="h-4 w-4 mr-1" />
+                                Detaylar� G�r�nt�le
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })
+              )}
+            </div>
+          </TabsContent>
+
+          {/* Sales Tab */}
+          <TabsContent value="sales" className="space-y-4">
+            <div className="flex justify-between items-center">
+              <h2 className="text-xl font-semibold">Satt�klar�m</h2>
+            </div>
+            
+            {sales.length === 0 ? (
+              <Card>
+                <CardContent className="flex flex-col items-center justify-center py-16">
+                  <ShoppingBag className="h-12 w-12 text-muted-foreground mb-4" />
+                  <p className="text-lg font-medium text-muted-foreground mb-2">Hen�z sat���n yok</p>
+                  <p className="text-sm text-muted-foreground mb-4">Sat�lan �r�nlerin burada g�r�necek</p>
+                  <Button onClick={() => navigate('/create-listing')}>
+                    Yeni �lan Olu�tur
+                  </Button>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="space-y-4">
+                {sales.map((sale: any) => {
+                  const formatDate = (dateString: string) => {
+                    const date = new Date(dateString);
+                    return date.toLocaleDateString('tr-TR', {
+                      day: 'numeric',
+                      month: 'short',
+                      year: 'numeric'
+                    });
+                  };
+
+                  const formatTime = (dateString: string) => {
+                    const date = new Date(dateString);
+                    return date.toLocaleTimeString('tr-TR', {
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    });
+                  };
+
+                  const getStatusText = (status: string) => {
+                    const statusMap: { [key: string]: string } = {
+                      'pending': 'Beklemede',
+                      'confirmed': 'Onayland�',
+                      'preparing': 'Haz�rlan�yor',
+                      'shipped': 'Kargoda',
+                      'delivered': 'Teslim Edildi',
+                      'completed': 'Tamamland�',
+                      'cancelled': '�ptal Edildi'
+                    };
+                    return statusMap[status] || status;
+                  };
+
+                  return (
+                    <Card key={sale.id} className="hover:shadow-lg transition-all duration-200 border-l-4 border-l-blue-500">
+                      <CardContent className="p-6">
+                        <div className="space-y-4">
+                          {/* �st Bilgiler */}
+                          <div className="flex items-start justify-between">
+                            <div>
+                              <div className="flex items-center gap-2 mb-2">
+                                <Package className="h-5 w-5 text-blue-600" />
+                                <h3 className="font-bold text-lg">Sat�� #{sale.orderNumber}</h3>
+                                <OrderStatusBadge status={sale.status} />
+                              </div>
+                              <div className="flex items-center gap-4 text-sm text-gray-600">
+                                <div className="flex items-center gap-1">
+                                  <Calendar className="h-4 w-4" />
+                                  <span>{formatDate(sale.createdAt)}</span>
+                                </div>
+                                <div className="flex items-center gap-1">
+                                  <Clock className="h-4 w-4" />
+                                  <span>{formatTime(sale.createdAt)}</span>
+                                </div>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <div className="text-2xl font-bold text-blue-600">
+                                {formatPriceShort(sale.total || 0)}
+                              </div>
+                              <div className="text-sm text-gray-500">
+                                {sale.totalQuantity || sale.itemCount} �r�n
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Sat�� Detaylar� Grid */}
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            <div className="bg-gray-50 p-3 rounded-lg">
+                              <div className="text-sm font-medium text-gray-700 mb-1">Durum</div>
+                              <div className="text-sm">{getStatusText(sale.status)}</div>
+                            </div>
+
+                            {sale.paymentStatus && (
+                              <div className="bg-gray-50 p-3 rounded-lg">
+                                <div className="text-sm font-medium text-gray-700 mb-1">�deme Durumu</div>
+                                <div className="flex items-center gap-1">
+                                  {sale.paymentStatus === 'paid' ? (
+                                    <>
+                                      <CreditCard className="h-4 w-4 text-green-600" />
+                                      <span className="text-sm text-green-600">�dendi</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <CreditCard className="h-4 w-4 text-orange-600" />
+                                      <span className="text-sm text-orange-600">Beklemede</span>
+                                    </>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+
+                            {sale.trackingNumber && (
+                              <div className="bg-gray-50 p-3 rounded-lg">
+                                <div className="text-sm font-medium text-gray-700 mb-1">Kargo Takip</div>
+                                <div className="flex items-center gap-1">
+                                  <Truck className="h-4 w-4 text-blue-600" />
+                                  <span className="text-sm font-mono">{sale.trackingNumber}</span>
+                                </div>
+                              </div>
+                            )}
+
+                            {sale.buyerAddress && (
+                              <div className="bg-gray-50 p-3 rounded-lg">
+                                <div className="text-sm font-medium text-gray-700 mb-1">Teslimat Adresi</div>
+                                <div className="flex items-center gap-1">
+                                  <MapPin className="h-4 w-4 text-gray-600" />
+                                  <span className="text-sm line-clamp-1">{sale.buyerAddress}</span>
+                                </div>
+                              </div>
+                            )}
+
+                            {sale.shippingCost > 0 && (
+                              <div className="bg-gray-50 p-3 rounded-lg">
+                                <div className="text-sm font-medium text-gray-700 mb-1">Kargo �creti</div>
+                                <div className="text-sm">{formatPriceShort(sale.shippingCost)}</div>
+                              </div>
+                            )}
+
+                            {sale.estimatedDelivery && (
+                              <div className="bg-gray-50 p-3 rounded-lg">
+                                <div className="text-sm font-medium text-gray-700 mb-1">Tahmini Teslimat</div>
+                                <div className="text-sm">{formatDate(sale.estimatedDelivery)}</div>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* �r�n G�rselleri */}
+                          <div className="flex items-center gap-3">
+                            <div className="flex -space-x-2">
+                              {sale.items && sale.items.length > 0 ? (
+                                <>
+                                  {sale.items.slice(0, 4).map((item: any, index: number) => (
+                                    <div key={index} className="w-12 h-12 rounded-lg border-2 border-white shadow-sm overflow-hidden">
+                                      <img 
+                                        src={item.image || '/image-placeholder.png'} 
+                                        alt={item.title || '�r�n'} 
+                                        className="w-full h-full object-cover"
+                                        onError={(e) => {
+                                          const target = e.target as HTMLImageElement;
+                                          target.src = '/image-placeholder.png';
+                                        }}
+                                      />
+                                    </div>
+                                  ))}
+                                  {sale.items.length > 4 && (
+                                    <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-blue-500 rounded-lg border-2 border-white shadow-sm flex items-center justify-center">
+                                      <span className="text-xs font-bold text-white">+{sale.items.length - 4}</span>
+                                    </div>
+                                  )}
+                                </>
+                              ) : (
+                                Array.from({ length: Math.min(sale.totalQuantity || sale.itemCount, 4) }).map((_, index) => (
+                                  <div key={index} className="w-12 h-12 bg-gray-200 rounded-lg border-2 border-white shadow-sm flex items-center justify-center">
+                                    <ImageIcon className="h-6 w-6 text-gray-400" />
+                                  </div>
+                                ))
+                              )}
+                              {!sale.items && (sale.totalQuantity || sale.itemCount) > 4 && (
+                                <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-blue-500 rounded-lg border-2 border-white shadow-sm flex items-center justify-center">
+                                  <span className="text-xs font-bold text-white">+{(sale.totalQuantity || sale.itemCount) - 4}</span>
+                                </div>
+                              )}
+                            </div>
+                            <div className="text-sm text-gray-600">
+                              Toplam {sale.totalQuantity || sale.itemCount} �r�n
+                            </div>
+                          </div>
+
+                          {/* Alt Butonlar */}
+                          <div className="flex items-center justify-between pt-4 border-t">
+                            <div className="flex items-center gap-2 text-sm text-gray-500">
+                              <MapPin className="h-4 w-4" />
+                              <span>Sat�� durumu: {getStatusText(sale.status)}</span>
+                            </div>
+                            
+                            <div className="flex items-center gap-2">
+                              {/* ��lemi Ba�lat butonu - sadece 'confirmed' durumunda g�ster */}
+                              {sale.status === 'confirmed' && (
+                                <Button 
+                                  size="sm" 
+                                  className="bg-blue-600 hover:bg-blue-700"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleStartProcessing(sale.id);
+                                  }}
+                                >
+                                  <Play className="h-4 w-4 mr-1" />
+                                  ��lemi Ba�lat
+                                </Button>
+                              )}
+                              
+                              {/* Kargo Bilgileri butonu - sadece 'preparing' durumunda g�ster */}
+                              {sale.status === 'preparing' && (
+                                <Button 
+                                  size="sm" 
+                                  variant="outline"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedSale(sale);
+                                    setShowShippingModal(true);
+                                  }}
+                                >
+                                  <Truck className="h-4 w-4 mr-1" />
+                                  Kargo Bilgileri
+                                </Button>
+                              )}
+                              
+                              <Button 
+                                variant="outline" 
+                                size="sm" 
+                                onClick={() => navigate(`/order/${sale.orderNumber}`)}
+                              >
+                                <Eye className="h-4 w-4 mr-1" />
+                                Detaylar� G�r�nt�le
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            )}
+          </TabsContent>
+
+          {/* Favorites Tab */}
+          <TabsContent value="favorites" className="space-y-4">
+            <h2 className="text-xl font-semibold">Favorilerim</h2>
+            
+            {favoriteListings.length === 0 ? (
+              <Card>
+                <CardContent className="flex flex-col items-center justify-center py-16">
+                  <Heart className="h-12 w-12 text-muted-foreground mb-4" />
+                  <p className="text-lg font-medium text-muted-foreground mb-2">Hen�z favori �r�n�n yok</p>
+                  <p className="text-sm text-muted-foreground mb-4">Be�endi�in �r�nleri favorilere ekle!</p>
+                  <Button onClick={() => navigate('/')}>
+                    �r�nleri Ke�fet
+                  </Button>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="grid gap-6">
+                {(favoriteListings || []).filter(listing => listing && listing.id).map((listing) => {
+                  const images = parseImages(listing.images);
+                  const mainImage = images.length > 0 ? getImageUrl(images[0]) : '/placeholder-image.jpg';
+                  
+                  return (
+                    <Card key={listing.id} className="hover:shadow-lg transition-all duration-200 border-l-4 border-l-red-500">
+                      <CardContent className="p-6">
+                        <div className="flex flex-col md:flex-row gap-6">
+                          {/* Favori �lan G�rseli */}
+                          <div className="flex-shrink-0">
+                            <div className="w-32 h-32 rounded-lg overflow-hidden bg-gray-100 border">
+                              {images.length > 0 ? (
+                                <img 
+                                  src={mainImage}
+                                  alt={listing.title}
+                                  className="w-full h-full object-cover"
+                                  onLoad={() => console.log('? Favorite image loaded:', mainImage)}
+                                  onError={(e) => {
+                                    console.log('? Favorite image failed to load:', mainImage);
+                                    const target = e.target as HTMLImageElement;
+                                    target.src = '/placeholder-image.jpg';
+                                  }}
+                                />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center">
+                                  <ImageIcon className="h-8 w-8 text-gray-400" />
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Favori �lan Detaylar� */}
+                          <div className="flex-1 space-y-3">
+                            <div>
+                              <h3 className="font-bold text-xl text-gray-900 mb-1">
+                                {listing.title || '�lan ba�l���'}
+                              </h3>
+                              <p className="text-gray-600 text-sm line-clamp-2">
+                                {listing.description || 'A��klama bulunmuyor'}
+                              </p>
+                            </div>
+
+                            <div className="flex flex-wrap items-center gap-4 text-sm">
+                              <div className="flex items-center text-gray-600">
+                                <MapPin className="h-4 w-4 mr-1" />
+                                <span>{listing.city || listing.location || '�ehir belirtilmedi'}</span>
+                              </div>
+                              <div className="flex items-center text-gray-600">
+                                <Calendar className="h-4 w-4 mr-1" />
+                                <span>{getTimeAgo(listing.createdAt)}</span>
+                              </div>
+                              <div className="flex items-center text-gray-600">
+                                <Heart className="h-4 w-4 mr-1" />
+                                <span>Favorilerde</span>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center justify-between">
+                              <div className="space-y-1">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-2xl font-bold text-green-600">
+                                    {formatPriceShort(listing.budgetMax || listing.price || 0)}
+                                  </span>
+                                  {listing.budgetMin && listing.budgetMin !== listing.budgetMax && (
+                                    <span className="text-sm text-gray-500">
+                                      - {formatPriceShort(listing.budgetMin)}
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="flex items-center gap-4">
+                                  <Badge variant="outline" className="border-red-500 text-red-700 bg-red-50">
+                                    ?? Favori
+                                  </Badge>
+                                  {listing.status && (
+                                    <span className="text-xs text-gray-600 capitalize">
+                                      {listing.status === 'active' ? 'Aktif' : listing.status}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+
+                              <div className="flex items-center space-x-2">
+                                <FavoriteButton
+                                  listingId={(listing as any).listing_id?.toString() || listing.id.toString()}
+                                  userId={user.id}
+                                  size="sm"
+                                  initialState={true}
+                                  onFavoriteChange={(listingId, isFavorite) => {
+                                    console.log('?? Favorite changed in dashboard:', { listingId, isFavorite });
+                                    handleFavoriteChange(listingId, isFavorite);
+                                  }}
+                                />
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => {
+                                    // Use listing_id if available (from favorites API), otherwise fall back to id
+                                    const targetId = (listing as any).listing_id || listing.id;
+                                    console.log('?? Navigating to listing:', { 
+                                      originalListing: listing, 
+                                      targetId,
+                                      listing_id: (listing as any).listing_id,
+                                      id: listing.id 
+                                    });
+                                    navigate(`/listing/${targetId}`);
+                                  }}
+                                >
+                                  G�r�nt�le
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            )}
+          </TabsContent>
+        </Tabs>
+      </div>
+
+      {/* Status Update Modal */}
+      <Dialog open={showStatusModal} onOpenChange={setShowStatusModal}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Sipari� Durumu G�ncelle</DialogTitle>
+            <DialogDescription>
+              Sipari� #{selectedSale?.id} i�in durum g�ncellemesi yap�n
+            </DialogDescription>
+          </DialogHeader>
+          
+          
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <label htmlFor="status" className="text-right">
+                Durum
+              </label>
+              <Select value={statusForm.status} onValueChange={(value) => setStatusForm(prev => ({ ...prev, status: value }))}>
+                <SelectTrigger className="col-span-3">
+                  <SelectValue placeholder="Durum se�in" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="preparing">Haz�rlan�yor</SelectItem>
+                  <SelectItem value="shipped">Kargoya Verildi</SelectItem>
+                  <SelectItem value="delivered">Teslim Edildi</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="grid grid-cols-4 items-center gap-4">
+              <label htmlFor="tracking" className="text-right">
+                Kargo No
+              </label>
+              <Input
+                id="tracking"
+                placeholder="Takip numaras�"
+                className="col-span-3"
+                value={statusForm.trackingNumber}
+                onChange={(e) => setStatusForm(prev => ({ ...prev, trackingNumber: e.target.value }))}
+              />
+            </div>
+            
+            <div className="grid grid-cols-4 items-center gap-4">
+              <label htmlFor="carrier" className="text-right">
+                Kargo �irketi
+              </label>
+              <Input
+                id="carrier"
+                placeholder="Kargo �irketi"
+                className="col-span-3"
+                value={statusForm.carrier}
+                onChange={(e) => setStatusForm(prev => ({ ...prev, carrier: e.target.value }))}
+              />
+            </div>
+            
+            <div className="flex justify-end space-x-2">
+              <Button variant="outline" onClick={() => setShowStatusModal(false)}>
+                �ptal
+              </Button>
+              <Button onClick={() => {
+                handleStatusUpdate(
+                  selectedSale?.id || '', 
+                  {
+                    status: statusForm.status,
+                    trackingNumber: statusForm.trackingNumber,
+                    carrier: statusForm.carrier
+                  }
+                );
+              }}>
+                G�ncelle
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Shipping Form Modal */}
+      {selectedSale && (
+        <ShippingFormModal
+          isOpen={showShippingModal}
+          onClose={() => {
+            setShowShippingModal(false);
+            setSelectedSale(null);
+          }}
+          orderId={selectedSale.id}
+          etaDays={selectedSale.etaDays}
+          onSuccess={handleShippingAdded}
+        />
+      )}
+    </div>
+    </>
+  );
+}

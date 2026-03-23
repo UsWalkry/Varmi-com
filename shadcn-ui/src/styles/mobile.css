@@ -1,0 +1,99 @@
+/* Mobile-First CSS Enhancements */
+
+/* Touch-friendly minimum sizes (44px Apple/Google guidelines) */
+.touch-target {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+/* Mobile-optimized buttons */
+button, a[role="button"], .btn {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+/* Better mobile form inputs */
+input, textarea, select {
+  min-height: 44px;
+  min-width: 44px;
+  font-size: 16px; /* 16px prevents iOS zoom */
+}
+
+/* Mobile modal improvements */
+[role="dialog"] {
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+/* iOS-specific fixes */
+@supports (-webkit-touch-callout: none) {
+  /* Prevent zoom on focus */
+  input, textarea, select {
+    font-size: 16px !important;
+  }
+
+  /* Fix iOS input shadow */
+  input, textarea {
+    -webkit-appearance: none;
+    appearance: none;
+  }
+
+  /* Safe area insets for notched devices */
+  :root {
+    --sat: env(safe-area-inset-top);
+    --sab: env(safe-area-inset-bottom);
+  }
+
+  .safe-top {
+    padding-top: calc(1rem + var(--sat));
+  }
+
+  .safe-bottom {
+    padding-bottom: calc(1rem + var(--sab));
+  }
+}
+
+/* Smooth scrolling for mobile */
+@media (max-width: 768px) {
+  html {
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Prevent text size adjustment on orientation change */
+  body {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+
+  /* Mobile-optimized images */
+  img {
+    max-width: 100%;
+    height: auto;
+  }
+
+  /* Better mobile tables */
+  table {
+    display: block;
+    overflow-x: auto;
+  }
+}
+
+/* High DPI screens (retina) */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+  /* Sharper images */
+  img {
+    image-rendering: -webkit-optimize-contrast;
+  }
+}
+
+/* Reduce motion for accessibility */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

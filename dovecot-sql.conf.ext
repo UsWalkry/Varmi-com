@@ -1,0 +1,6 @@
+driver = mysql
+connect = host=127.0.0.1 dbname=varmi_db user=root password=Brkaydn426859..
+default_pass_scheme = SHA512-CRYPT
+
+password_query = SELECT email as user, password FROM virtual_users WHERE email='%u'
+user_query = SELECT 5000 AS uid, 5000 AS gid, '/var/mail/vhosts/%d/%n' AS home, 'maildir:/var/mail/vhosts/%d/%n' AS mail FROM virtual_users WHERE email='%u'
