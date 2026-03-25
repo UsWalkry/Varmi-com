@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 import '../../providers/auth_provider.dart';
 import '../../config/theme.dart';
+import '../../config/api_config.dart';
 import 'register_screen.dart';
 import '../home/home_screen.dart';
 
@@ -25,8 +28,125 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  Future<void> _handleLogin() async {
-    if (!_formKey.currentState!.validate()) return;
+  Future<void> _showForgotPasswordDialog() async {
+    final emailController = TextEditingController();
+    bool sending = false;
+
+    await showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) {
+          final isDark = context.isDark;
+          return AlertDialog(
+            backgroundColor: isDark ? const Color(0xFF151520) : Colors.white,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            title: Text(
+              'Şifremi Unuttum',
+              style: TextStyle(
+                color: isDark ? Colors.white : const Color(0xFF1F1F2E),
+                fontWeight: FontWeight.w700,
+                fontSize: 18,
+              ),
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'E-posta adresinizi girin, şifre sıfırlama bağlantısı göndereceğiz.',
+                  style: TextStyle(color: Colors.grey.shade500, fontSize: 13),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: emailController,
+                  keyboardType: TextInputType.emailAddress,
+                  style: TextStyle(
+                    color: isDark ? Colors.white : const Color(0xFF1F1F2E),
+                    fontSize: 14,
+                  ),
+                  decoration: InputDecoration(
+                    hintText: 'E-posta adresi',
+                    hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14),
+                    prefixIcon: const Icon(Icons.email_outlined, color: Color(0xFF9333EA), size: 20),
+                    filled: true,
+                    fillColor: isDark ? const Color(0xFF1C1C2A) : const Color(0xFFF9F8FF),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 0, vertical: 13),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(
+                        color: isDark ? const Color(0xFF2A2A3A) : const Color(0xFFEDE9FE),
+                        width: 1.5,
+                      ),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: Color(0xFF9333EA), width: 1.8),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: Text('İptal', style: TextStyle(color: Colors.grey.shade500)),
+              ),
+              ElevatedButton(
+                onPressed: sending
+                    ? null
+                    : () async {
+                        final email = emailController.text.trim();
+                        if (email.isEmpty || !email.contains('@')) return;
+
+                        setDialogState(() => sending = true);
+                        try {
+                          final response = await http.post(
+                            Uri.parse('${ApiConfig.baseUrl}/api/auth/forgot-password'),
+                            headers: {'Content-Type': 'application/json'},
+                            body: jsonEncode({'email': email}),
+                          );
+                          if (!ctx.mounted) return;
+                          Navigator.pop(ctx);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Eğer e-posta kayıtlıysa sıfırlama bağlantısı gönderildi.'),
+                              backgroundColor: Color(0xFF9333EA),
+                              duration: Duration(seconds: 4),
+                            ),
+                          );
+                        } catch (_) {
+                          if (!ctx.mounted) return;
+                          setDialogState(() => sending = false);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Bağlantı hatası, lütfen tekrar deneyin.'),
+                              backgroundColor: Color(0xFFEF4444),
+                            ),
+                          );
+                        }
+                      },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF9333EA),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+                child: sending
+                    ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                    : const Text('Gönder'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+    emailController.dispose();
+  }
+
+  Future<void> _handleLogin() async {    if (!_formKey.currentState!.validate()) return;
 
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
 
@@ -270,7 +390,28 @@ class _LoginScreenState extends State<LoginScreen> {
                                     : null,
                               ),
 
-                              const SizedBox(height: 32),
+                              // Şifremi unuttum
+                              Align(
+                                alignment: Alignment.centerRight,
+                                child: TextButton(
+                                  onPressed: _showForgotPasswordDialog,
+                                  style: TextButton.styleFrom(
+                                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                                    minimumSize: Size.zero,
+                                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                  ),
+                                  child: const Text(
+                                    'Şifremi Unuttum?',
+                                    style: TextStyle(
+                                      color: Color(0xFF9333EA),
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                              ),
+
+                              const SizedBox(height: 20),
 
                               // Giriş Yap button
                               Consumer<AuthProvider>(

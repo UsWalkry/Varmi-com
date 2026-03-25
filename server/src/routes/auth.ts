@@ -7,7 +7,7 @@ import speakeasy from 'speakeasy';
 import QRCode from 'qrcode';
 import { body, validationResult } from 'express-validator';
 import { query } from '../database.js';
-import { sendVerificationEmail, sendEmailChangeVerificationEmail, send2FAEmailCode } from '../services/emailService.js';
+import { sendVerificationEmail, sendEmailChangeVerificationEmail, send2FAEmailCode, sendPasswordResetEmail } from '../services/emailService.js';
 import { logger } from '../utils/logger.js';
 
 const router = Router();
@@ -1995,6 +1995,92 @@ router.post('/fcm-token', authenticateToken, async (req: any, res: Response) => 
   } catch (error) {
     console.error('❌ Save FCM token error:', error);
     res.status(500).json({ success: false, message: 'FCM token kaydedilemedi' });
+  }
+});
+
+// POST /forgot-password - Şifre sıfırlama e-postası gönder
+router.post('/forgot-password', async (req: Request, res: Response) => {
+  const { email } = req.body;
+
+  if (!email || typeof email !== 'string') {
+    return res.status(400).json({ success: false, message: 'E-posta adresi gerekli' });
+  }
+
+  try {
+    const users = await query('SELECT id, firstName, lastName FROM users WHERE email = ? AND role != ?', [email.toLowerCase().trim(), 'deleted']);
+
+    // Always return success to prevent email enumeration attacks
+    if (!Array.isArray(users) || users.length === 0) {
+      return res.json({ success: true, message: 'Eğer bu e-posta kayıtlıysa sıfırlama bağlantısı gönderildi' });
+    }
+
+    const user = users[0] as any;
+    const token = uuidv4();
+    const tokenId = uuidv4();
+    const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 saat
+
+    // Delete existing password reset tokens for this user (pwreset: prefixed)
+    await query("DELETE FROM email_verification_tokens WHERE user_id = ? AND email LIKE 'pwreset:%'", [user.id]);
+
+    // Store token with special prefix to distinguish from email verification tokens
+    await query(
+      `INSERT INTO email_verification_tokens (id, token, user_id, email, expires_at, created_at) VALUES (?, ?, ?, ?, ?, NOW())`,
+      [tokenId, token, user.id, `pwreset:${email.toLowerCase().trim()}`, expiresAt]
+    );
+
+    const frontendUrl = process.env.FRONTEND_URL || 'https://varmii.com';
+    const resetUrl = `${frontendUrl}/reset-password?token=${token}`;
+
+    try {
+      await sendPasswordResetEmail(email.toLowerCase().trim(), resetUrl, user.firstName);
+    } catch (emailError) {
+      console.error('❌ Password reset email error:', emailError);
+      // Don't fail the request even if email fails
+    }
+
+    console.log('✅ Password reset token created for user:', user.id);
+    return res.json({ success: true, message: 'Eğer bu e-posta kayıtlıysa sıfırlama bağlantısı gönderildi' });
+  } catch (error) {
+    console.error('❌ Forgot password error:', error);
+    return res.status(500).json({ success: false, message: 'Bir hata oluştu, lütfen tekrar deneyin' });
+  }
+});
+
+// POST /reset-password - Yeni şifre belirle
+router.post('/reset-password', async (req: Request, res: Response) => {
+  const { token, newPassword } = req.body;
+
+  if (!token || !newPassword) {
+    return res.status(400).json({ success: false, message: 'Token ve yeni şifre gerekli' });
+  }
+
+  const passwordCheck = isPasswordStrong(newPassword);
+  if (!passwordCheck.valid) {
+    return res.status(400).json({ success: false, message: passwordCheck.message });
+  }
+
+  try {
+    const tokens = await query(
+      "SELECT user_id, email FROM email_verification_tokens WHERE token = ? AND email LIKE 'pwreset:%' AND expires_at > NOW()",
+      [token]
+    );
+
+    if (!Array.isArray(tokens) || tokens.length === 0) {
+      return res.status(400).json({ success: false, message: 'Geçersiz veya süresi dolmuş sıfırlama bağlantısı' });
+    }
+
+    const tokenRow = tokens[0] as any;
+    const userId = tokenRow.user_id;
+
+    const hashedPassword = await hashPassword(newPassword);
+    await query('UPDATE users SET password_hash = ? WHERE id = ?', [hashedPassword, userId]);
+    await query('DELETE FROM email_verification_tokens WHERE token = ?', [token]);
+
+    console.log('✅ Password reset successful for user:', userId);
+    return res.json({ success: true, message: 'Şifreniz başarıyla güncellendi' });
+  } catch (error) {
+    console.error('❌ Reset password error:', error);
+    return res.status(500).json({ success: false, message: 'Bir hata oluştu, lütfen tekrar deneyin' });
   }
 });
 

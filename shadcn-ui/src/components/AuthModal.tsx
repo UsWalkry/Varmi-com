@@ -34,6 +34,27 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }: AuthModalP
   });
 
   const [isLoading, setIsLoading] = useState(false);
+  const [forgotMode, setForgotMode] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [forgotSent, setForgotSent] = useState(false);
+
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!forgotEmail.trim()) return;
+    setIsLoading(true);
+    try {
+      await fetch('/api/auth/forgot-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: forgotEmail.trim().toLowerCase() }),
+      });
+      setForgotSent(true);
+    } catch {
+      toast.error('Bir hata oluştu, lütfen tekrar deneyin');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   // LOGIN HANDLER - Custom email verification ile
   const handleLogin = async (e: React.FormEvent) => {
@@ -241,11 +262,64 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }: AuthModalP
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={isOpen} onOpenChange={(open) => { if (!open) { setForgotMode(false); setForgotSent(false); setForgotEmail(''); } onClose(); }}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Giriş Yap / Kayıt Ol</DialogTitle>
+          <DialogTitle>
+            {forgotMode ? 'Şifremi Unuttum' : 'Giriş Yap / Kayıt Ol'}
+          </DialogTitle>
         </DialogHeader>
+
+        {/* FORGOT PASSWORD VIEW */}
+        {forgotMode && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base font-medium text-muted-foreground">
+                {forgotSent
+                  ? 'Bağlantı Gönderildi'
+                  : 'Şifre Sıfırlama'}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {forgotSent ? (
+                <div className="space-y-4 text-center">
+                  <p className="text-sm text-muted-foreground">
+                    Eğer <strong>{forgotEmail}</strong> adresi kayıtlıysa, şifre sıfırlama bağlantısı gönderildi. Lütfen e-postanızı kontrol edin.
+                  </p>
+                  <Button variant="outline" className="w-full" onClick={() => { setForgotMode(false); setForgotSent(false); setForgotEmail(''); }}>
+                    Giriş ekranına dön
+                  </Button>
+                </div>
+              ) : (
+                <form onSubmit={handleForgotPassword} className="space-y-4">
+                  <p className="text-sm text-muted-foreground">
+                    Kayıtlı e-posta adresinizi girin, şifre sıfırlama bağlantısı göndereceğiz.
+                  </p>
+                  <div>
+                    <Label htmlFor="forgot-email">E-posta</Label>
+                    <Input
+                      id="forgot-email"
+                      type="email"
+                      value={forgotEmail}
+                      onChange={(e) => setForgotEmail(e.target.value.toLowerCase().trim())}
+                      placeholder="ornek@email.com"
+                      required
+                    />
+                  </div>
+                  <Button type="submit" className="w-full" disabled={isLoading}>
+                    {isLoading ? 'Gönderiliyor...' : 'Sıfırlama Bağlantısı Gönder'}
+                  </Button>
+                  <Button type="button" variant="ghost" className="w-full" onClick={() => setForgotMode(false)}>
+                    Geri dön
+                  </Button>
+                </form>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* NORMAL LOGIN/REGISTER TABS */}
+        {!forgotMode && (
         <Tabs defaultValue="login" className="w-full">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="login">Giriş Yap</TabsTrigger>
@@ -285,6 +359,16 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }: AuthModalP
                       placeholder="Şifreniz"
                       required
                     />
+                  </div>
+
+                  <div className="flex justify-end">
+                    <button
+                      type="button"
+                      className="text-sm text-purple-600 hover:text-purple-700 font-medium"
+                      onClick={() => { setForgotEmail(loginData.identifier); setForgotMode(true); }}
+                    >
+                      Şifremi Unuttum?
+                    </button>
                   </div>
 
                   <Button type="submit" className="w-full" disabled={isLoading}>
@@ -396,6 +480,7 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }: AuthModalP
             </Card>
           </TabsContent>
         </Tabs>
+        )}
       </DialogContent>
     </Dialog>
   );

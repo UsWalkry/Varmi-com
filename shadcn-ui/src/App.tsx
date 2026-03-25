@@ -20,6 +20,7 @@ import Checkout from './pages/Checkout';
 import SecuritySettings from './pages/SecuritySettings';
 import VerifyEmailChangePage from './pages/VerifyEmailChangePage';
 import EmailVerificationPage from './pages/VerifyEmailPage';
+import ResetPasswordPage from './pages/ResetPasswordPage';
 import TermsOfService from './pages/TermsOfService';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import CookiePolicy from './pages/CookiePolicy';
@@ -88,6 +89,7 @@ const RoutesContent = () => {
       <Route path="/checkout" element={<Checkout />} />
       <Route path="/verify-email" element={<EmailVerificationPage />} />
       <Route path="/verify-email-change" element={<VerifyEmailChangePage />} />
+      <Route path="/reset-password" element={<ResetPasswordPage />} />
       <Route path="/security" element={<SecuritySettings />} />
       <Route path="/terms" element={<TermsOfService />} />
       <Route path="/privacy" element={<PrivacyPolicy />} />
