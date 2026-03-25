@@ -2,10 +2,11 @@ name: Build & Deploy Frontend to cPanel (FTP)
 
 on:
   push:
-    branches: [main]
+    branches: [main, master]
     paths:
       - "shadcn-ui/**"
       - ".github/workflows/deploy-frontend.yml"
+  workflow_dispatch:
 
 jobs:
   build-and-deploy:
