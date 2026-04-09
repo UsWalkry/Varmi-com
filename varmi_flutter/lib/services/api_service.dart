@@ -39,7 +39,13 @@ class ApiService {
         onRequest: (options, handler) async {
           // Token yoksa storage'dan yükle (örn: sayfa yenilenmesinde)
           if (_authToken == null) {
-            _authToken = await _storage.read(key: ApiConfig.tokenKey);
+            try {
+              _authToken = await _storage.read(key: ApiConfig.tokenKey);
+            } catch (e) {
+              // BAD_DECRYPT: Keystore invalidated after reinstall — clear corrupted data
+              try { await _storage.deleteAll(); } catch (_) {}
+              _authToken = null;
+            }
           }
           if (_authToken != null) {
             options.headers['Authorization'] = 'Bearer $_authToken';
@@ -74,7 +80,14 @@ class ApiService {
   }
 
   Future<String?> getToken() async {
-    _authToken ??= await _storage.read(key: ApiConfig.tokenKey);
+    if (_authToken == null) {
+      try {
+        _authToken = await _storage.read(key: ApiConfig.tokenKey);
+      } catch (e) {
+        try { await _storage.deleteAll(); } catch (_) {}
+        _authToken = null;
+      }
+    }
     return _authToken;
   }
 

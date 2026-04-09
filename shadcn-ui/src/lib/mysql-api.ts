@@ -217,6 +217,10 @@ class MySQLAPI {
     return this.request('/listings/active');
   }
 
+  async getFeaturedListings() {
+    return this.request('/listings/featured');
+  }
+
   async getListing(id: string) {
     return this.request(`/listings/${id}`);
   }
@@ -839,6 +843,13 @@ class MySQLAPI {
   async deleteListingAsAdmin(listingId: string) {
     return this.request(`/admin/listings/${listingId}`, {
       method: 'DELETE'
+    });
+  }
+
+  async updateListingFeatured(listingId: string, featured: boolean) {
+    return this.request(`/admin/listings/${listingId}/featured`, {
+      method: 'PUT',
+      body: JSON.stringify({ featured })
     });
   }
 

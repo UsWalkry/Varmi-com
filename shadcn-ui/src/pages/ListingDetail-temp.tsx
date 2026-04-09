@@ -456,7 +456,7 @@ export default function ListingDetail() {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600 mx-auto mb-4"></div>
           <p>İlan yükleniyor...</p>
         </div>
       </div>
@@ -544,7 +544,7 @@ export default function ListingDetail() {
                       </div>
                       {/* Teklif sayısı sadece İlan İstatistikleri kartında gösterilir */}
                       {listing.exactProductOnly && (
-                        <Badge className="bg-blue-100 text-blue-800">Aynı Ürün Zorunlu</Badge>
+                        <Badge className="bg-orange-100 text-orange-800">Aynı Ürün Zorunlu</Badge>
                       )}
                     </div>
                   </div>
@@ -611,7 +611,7 @@ export default function ListingDetail() {
                       {getDeliveryText(listing.deliveryType)}
                     </Badge>
                     {listing.exactProductOnly && (
-                      <Badge className="bg-blue-100 text-blue-800">Aynı Ürün Zorunlu</Badge>
+                      <Badge className="bg-orange-100 text-orange-800">Aynı Ürün Zorunlu</Badge>
                     )}
                   </div>
 

@@ -299,7 +299,7 @@ export default function Checkout() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50">
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-orange-50">
       <Header />
       <div className="max-w-6xl mx-auto px-4 py-8">
         <div className="text-center mb-8">
@@ -360,7 +360,7 @@ export default function Checkout() {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Kargo Ücreti:</span>
-                  <span className="font-semibold text-blue-600">{offer.deliveryType === 'shipping' ? DataManager.formatPrice((offer.shippingCost ?? 0)) : 'Ücretsiz'}</span>
+                  <span className="font-semibold text-orange-600">{offer.deliveryType === 'shipping' ? DataManager.formatPrice((offer.shippingCost ?? 0)) : 'Ücretsiz'}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Adet:</span>
@@ -524,7 +524,7 @@ export default function Checkout() {
                         <Separator />
                         <div className="flex justify-between text-base font-bold">
                           <span>Kart ile Ödenecek:</span>
-                          <span className="text-blue-600">{DataManager.formatPrice(Math.max(0, (offer.price * qty) + (offer.deliveryType === 'shipping' ? (offer.shippingCost ?? 0) : 0) - commissionAmount))}</span>
+                          <span className="text-orange-600">{DataManager.formatPrice(Math.max(0, (offer.price * qty) + (offer.deliveryType === 'shipping' ? (offer.shippingCost ?? 0) : 0) - commissionAmount))}</span>
                         </div>
                       </div>
                     </div>
@@ -615,8 +615,8 @@ export default function Checkout() {
                 </div>
 
                 <p className="text-xs text-gray-500 text-center mt-4">
-                  Ödeme yaparak <a href="#" className="text-blue-600 hover:underline">kullanım şartlarını</a> ve 
-                  <a href="#" className="text-blue-600 hover:underline ml-1">gizlilik politikasını</a> kabul etmiş olursunuz.
+                  Ödeme yaparak <a href="#" className="text-orange-600 hover:underline">kullanım şartlarını</a> ve 
+                  <a href="#" className="text-orange-600 hover:underline ml-1">gizlilik politikasını</a> kabul etmiş olursunuz.
                 </p>
               </div>
             </div>

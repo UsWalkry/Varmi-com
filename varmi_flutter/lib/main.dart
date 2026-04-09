@@ -18,10 +18,14 @@ void main() async {
 
   // Register the background FCM handler BEFORE Firebase.initializeApp()
   registerFcmBackgroundHandler();
-  await Firebase.initializeApp();
 
-  await LocalNotificationService().initialize();
-  await FcmService().initialize();
+  try {
+    await Firebase.initializeApp();
+    await LocalNotificationService().initialize();
+    await FcmService().initialize();
+  } catch (e) {
+    debugPrint('Firebase init failed (continuing without push notifications): $e');
+  }
 
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(

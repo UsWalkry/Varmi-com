@@ -5,11 +5,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { ArrowLeft, Plus, X, CheckCircle, Clock } from 'lucide-react';
-import { categories, cities } from '@/lib/uiUtils';
+import { categories, cities, CATEGORY_GROUPS } from '@/lib/uiUtils';
 import { useAuth } from '@/hooks/use-auth-mysql';
 import { mysqlAPI } from '@/lib/mysql-api';
 import AuthModal from '@/components/AuthModal-mysql';
@@ -191,10 +191,13 @@ export default function CreateListing() {
                       <SelectValue placeholder="Kategori seçin" />
                     </SelectTrigger>
                     <SelectContent>
-                      {categories.map(cat => (
-                        <SelectItem key={cat} value={cat}>
-                          {cat}
-                        </SelectItem>
+                      {CATEGORY_GROUPS.map((group) => (
+                        <SelectGroup key={group.group}>
+                          <SelectLabel className="font-bold text-xs text-muted-foreground uppercase tracking-wide">{group.group}</SelectLabel>
+                          {group.subcategories.map(cat => (
+                            <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                          ))}
+                        </SelectGroup>
                       ))}
                     </SelectContent>
                   </Select>
@@ -393,26 +396,26 @@ export default function CreateListing() {
                 </p>
               </div>
 
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-left">
-                <p className="text-blue-800 font-medium mb-2 flex items-center gap-2">
+              <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 text-left">
+                <p className="text-orange-800 font-medium mb-2 flex items-center gap-2">
                   <CheckCircle className="h-4 w-4" />
                   Sonraki Adımlar:
                 </p>
-                <ul className="text-blue-700 text-sm space-y-2">
+                <ul className="text-orange-700 text-sm space-y-2">
                   <li className="flex items-start gap-2">
-                    <span className="text-blue-500 mt-0.5">•</span>
+                    <span className="text-orange-500 mt-0.5">•</span>
                     <span>Yönetici ekibimiz ilanınızı en kısa sürede inceleyecektir</span>
                   </li>
                   <li className="flex items-start gap-2">
-                    <span className="text-blue-500 mt-0.5">•</span>
+                    <span className="text-orange-500 mt-0.5">•</span>
                     <span>Onaylandığında size e-posta bildirimi gönderilecektir</span>
                   </li>
                   <li className="flex items-start gap-2">
-                    <span className="text-blue-500 mt-0.5">•</span>
+                    <span className="text-orange-500 mt-0.5">•</span>
                     <span>İlan onaylandıktan sonra satıcılar teklif göndermeye başlayabilir</span>
                   </li>
                   <li className="flex items-start gap-2">
-                    <span className="text-blue-500 mt-0.5">•</span>
+                    <span className="text-orange-500 mt-0.5">•</span>
                     <span>İlanınızın durumunu "Panelim" sayfasından takip edebilirsiniz</span>
                   </li>
                 </ul>

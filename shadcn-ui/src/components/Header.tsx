@@ -31,6 +31,7 @@ export default function Header({ onCreateListingClick }: HeaderProps) {
   const { itemCount } = useCart();
   const { theme, toggleTheme } = useTheme();
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [authModalTab, setAuthModalTab] = useState<'login' | 'register'>('login');
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [defaultAddress, setDefaultAddress] = useState<any>(null);
@@ -138,7 +139,7 @@ export default function Header({ onCreateListingClick }: HeaderProps) {
         <div className="flex h-16 items-center gap-4 justify-between">
           {/* Logo */}
           <Link to="/" className="flex items-center space-x-2 group flex-shrink-0">
-            <span className="font-bold text-xl bg-gradient-to-r from-purple-600 via-blue-600 to-green-500 bg-clip-text text-transparent hover:from-purple-700 hover:via-blue-700 hover:to-green-600 transition-all duration-300">
+            <span className="font-bold text-xl bg-gradient-to-r from-orange-500 via-amber-400 to-yellow-300 bg-clip-text text-transparent hover:from-orange-600 hover:via-amber-300 hover:to-yellow-200 transition-all duration-300">
               Var mıı?
             </span>
           </Link>
@@ -158,7 +159,8 @@ export default function Header({ onCreateListingClick }: HeaderProps) {
           </form>
 
           {/* Sağ Taraf - Teslimat Adresi, Bildirim, Hesap */}
-          <div className="flex items-center gap-3 flex-shrink-0">{/* Teslimat Adresi */}
+          <div className="flex items-center gap-3 flex-shrink-0">
+            {/* Teslimat Adresi */}
             <Button
               variant="ghost"
               size="sm"
@@ -177,10 +179,9 @@ export default function Header({ onCreateListingClick }: HeaderProps) {
                 </span>
               </div>
             </Button>
-            
+
             {user ? (
               <>
-                
                 {/* Sepet İkonu */}
                 <Button
                   variant="ghost"
@@ -190,7 +191,7 @@ export default function Header({ onCreateListingClick }: HeaderProps) {
                 >
                   <ShoppingCart className="h-5 w-5" />
                   {itemCount > 0 && (
-                    <Badge 
+                    <Badge
                       className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs"
                       variant="destructive"
                     >
@@ -198,7 +199,7 @@ export default function Header({ onCreateListingClick }: HeaderProps) {
                     </Badge>
                   )}
                 </Button>
-                
+
                 <NotificationBell />
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
@@ -269,17 +270,25 @@ export default function Header({ onCreateListingClick }: HeaderProps) {
                 </DropdownMenu>
               </>
             ) : (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="flex items-center gap-2"
-                onClick={() => setIsAuthModalOpen(true)}
-              >
-                <div className="flex flex-col items-start">
-                  <span className="text-xs text-muted-foreground">HESABIM</span>
-                  <span className="font-medium">Üye Ol | Giriş Yap</span>
-                </div>
-              </Button>
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-sm px-3"
+                  onClick={() => { setAuthModalTab('register'); setIsAuthModalOpen(true); }}
+                >
+                  Üye Ol
+                </Button>
+                <span className="text-muted-foreground">|</span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-sm px-3"
+                  onClick={() => { setAuthModalTab('login'); setIsAuthModalOpen(true); }}
+                >
+                  Giriş Yap
+                </Button>
+              </div>
             )}
           </div>
         </div>
@@ -289,6 +298,7 @@ export default function Header({ onCreateListingClick }: HeaderProps) {
         isOpen={isAuthModalOpen}
         onClose={() => setIsAuthModalOpen(false)}
         onAuthSuccess={handleAuthSuccess}
+        defaultTab={authModalTab}
       />
     </header>
   );

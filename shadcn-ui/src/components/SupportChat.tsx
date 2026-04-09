@@ -176,12 +176,12 @@ export function SupportChat() {
         )}
         
         <div className="flex items-center gap-3">
-          <div className="bg-gradient-to-r from-purple-600 via-blue-600 to-green-500 text-white rounded-2xl px-4 py-3 shadow-lg text-sm font-medium whitespace-nowrap">
+          <div className="bg-gradient-to-r from-orange-500 via-amber-400 to-yellow-300 text-white rounded-2xl px-4 py-3 shadow-lg text-sm font-medium whitespace-nowrap">
             Var mıı? Asistan'a sor
           </div>
           <button
             onClick={handleButtonClick}
-            className="bg-gradient-to-r from-purple-600 via-blue-600 to-green-500 hover:from-purple-700 hover:via-blue-700 hover:to-green-600 text-white rounded-full p-4 shadow-2xl transition-all duration-300 hover:scale-110 group relative"
+            className="bg-gradient-to-r from-orange-500 via-amber-400 to-yellow-300 hover:from-orange-600 hover:via-amber-300 hover:to-yellow-200 text-white rounded-full p-4 shadow-2xl transition-all duration-300 hover:scale-110 group relative"
             aria-label="Asistana Sor"
           >
             <MessageCircle className="h-7 w-7 group-hover:rotate-12 transition-transform" />
@@ -200,14 +200,14 @@ export function SupportChat() {
 
           <div className="py-6 space-y-6">
             <div className="flex justify-center">
-              <div className="w-16 h-16 rounded-full bg-gradient-to-r from-purple-600 via-blue-600 to-green-500 flex items-center justify-center shadow-lg">
+              <div className="w-16 h-16 rounded-full bg-gradient-to-r from-purple-600 via-orange-600 to-green-500 flex items-center justify-center shadow-lg">
                 <MessageCircle className="h-8 w-8 text-white" />
               </div>
             </div>
 
             <div className="text-center space-y-4">
               <p className="text-base text-gray-700 leading-relaxed">
-                <span className="font-bold bg-gradient-to-r from-purple-600 via-blue-600 to-green-500 bg-clip-text text-transparent">Var mıı?</span> Asistan'a hoş geldiniz. 👋 Asistan görüşmeleriniz kalite standartları gereği kayıt altına alınmaktadır. Kişisel verilerinizin işlenmesine yönelik detaylı bilgi için lütfen "İşlem Rehberi" sekmesi altındaki Aydınlatma Metnimizi inceleyiniz.
+                <span className="font-bold bg-gradient-to-r from-purple-600 via-orange-600 to-green-500 bg-clip-text text-transparent">Var mıı?</span> Asistan'a hoş geldiniz. 👋 Asistan görüşmeleriniz kalite standartları gereği kayıt altına alınmaktadır. Kişisel verilerinizin işlenmesine yönelik detaylı bilgi için lütfen "İşlem Rehberi" sekmesi altındaki Aydınlatma Metnimizi inceleyiniz.
               </p>
               <p className="text-sm text-gray-600 font-medium">
                 Bu işlemi yapabilmek için giriş yapmanız gerekmektedir.
@@ -349,8 +349,8 @@ export function SupportChat() {
               </p>
             </div>
 
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <p className="text-sm text-blue-800">
+            <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+              <p className="text-sm text-orange-800">
                 <strong>💡 İpucu:</strong> Ne kadar detaylı bilgi verirseniz, size o kadar hızlı ve doğru yardım edebiliriz.
               </p>
             </div>

@@ -110,7 +110,7 @@ export default function ListingCard({ listing }: ListingCardProps) {
             {/* Sepete Ekle İkonu - Hover'da Görünür ve Aktif İlanlar için */}
             {listing.status === 'active' && (
               <button
-                className="cart-btn absolute bottom-3 right-3 opacity-0 transition-all duration-300 bg-blue-600 hover:bg-blue-700 shadow-2xl rounded-md p-2 border-2 border-white cursor-pointer"
+                className="cart-btn absolute bottom-3 right-3 opacity-0 transition-all duration-300 bg-orange-600 hover:bg-orange-700 shadow-2xl rounded-md p-2 border-2 border-white cursor-pointer"
                 style={{ zIndex: 100 }}
                 onClick={handleAddToCart}
                 title="Sepete Ekle"
@@ -124,7 +124,7 @@ export default function ListingCard({ listing }: ListingCardProps) {
         <CardHeader className="pb-3">
           <div className="flex items-start justify-between">
             <div className="flex-1">
-              <h3 className="font-semibold text-lg group-hover:text-blue-600 transition-colors line-clamp-2">
+              <h3 className="font-semibold text-lg group-hover:text-orange-600 transition-colors line-clamp-2">
                 {listing.title}
               </h3>
               <div className="flex items-center gap-2 mt-2 text-sm text-muted-foreground">
@@ -153,7 +153,7 @@ export default function ListingCard({ listing }: ListingCardProps) {
               {getDeliveryText(listing.deliveryType)}
             </Badge>
             {listing.exactProductOnly && (
-              <Badge className="bg-blue-100 text-blue-800 border-blue-200">Aynı Ürün Zorunlu</Badge>
+              <Badge className="bg-orange-100 text-orange-800 border-orange-200">Aynı Ürün Zorunlu</Badge>
             )}
           </div>
 

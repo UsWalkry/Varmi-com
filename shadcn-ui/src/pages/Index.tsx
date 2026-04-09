@@ -130,7 +130,7 @@ export default function Index() {
         <Header onCreateListingClick={() => setIsCreateListingModalOpen(true)} />
         <div className="flex items-center justify-center min-h-[400px]">
           <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600 mx-auto mb-4"></div>
             <p>Yükleniyor...</p>
           </div>
         </div>
@@ -143,7 +143,7 @@ export default function Index() {
       <Header onCreateListingClick={() => setIsCreateListingModalOpen(true)} />
 
       {/* Hero Section */}
-      <section className="relative bg-gradient-to-br from-purple-600 via-blue-600 to-green-500 text-white py-12 overflow-hidden">
+      <section className="relative bg-gradient-to-br from-orange-500 via-amber-400 to-yellow-300 text-white py-12 overflow-hidden">
         {/* Background Pattern */}
         <div className="absolute inset-0 opacity-10">
           <div className="absolute inset-0" style={{
@@ -154,9 +154,9 @@ export default function Index() {
         {/* Floating Elements */}
         <div className="absolute inset-0 overflow-hidden">
           <div className="absolute top-20 left-10 w-16 h-16 bg-white/10 rounded-full animate-bounce" style={{animationDelay: '0s'}}></div>
-          <div className="absolute top-32 right-20 w-12 h-12 bg-yellow-300/20 rounded-full animate-bounce" style={{animationDelay: '1s'}}></div>
-          <div className="absolute bottom-20 left-20 w-20 h-20 bg-green-300/10 rounded-full animate-bounce" style={{animationDelay: '2s'}}></div>
-          <div className="absolute bottom-32 right-10 w-14 h-14 bg-blue-300/15 rounded-full animate-bounce" style={{animationDelay: '0.5s'}}></div>
+          <div className="absolute top-32 right-20 w-12 h-12 bg-amber-300/20 rounded-full animate-bounce" style={{animationDelay: '1s'}}></div>
+          <div className="absolute bottom-20 left-20 w-20 h-20 bg-orange-300/10 rounded-full animate-bounce" style={{animationDelay: '2s'}}></div>
+          <div className="absolute bottom-32 right-10 w-14 h-14 bg-yellow-200/20 rounded-full animate-bounce" style={{animationDelay: '0.5s'}}></div>
         </div>
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative z-10">
@@ -173,7 +173,7 @@ export default function Index() {
           <div className="space-y-6">
             <Button
               size="lg"
-              className="bg-white text-blue-600 hover:bg-gray-100 text-lg px-8 py-4 rounded-full shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200"
+              className="bg-white text-orange-600 hover:bg-gray-100 text-lg px-8 py-4 rounded-full shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200"
               onClick={() => setIsCreateListingModalOpen(true)}
             >
               Hemen İlan Ver
@@ -219,8 +219,8 @@ export default function Index() {
               onClick={() => setSelectedCategory('all')}
               className={`text-sm font-medium whitespace-nowrap px-3 py-2 rounded-md transition-all duration-200 ${
                 selectedCategory === 'all' 
-                  ? 'text-blue-600 bg-blue-50' 
-                  : 'text-gray-700 hover:text-blue-600 hover:bg-gray-50'
+                  ? 'text-orange-600 bg-orange-50' 
+                  : 'text-gray-700 hover:text-orange-600 hover:bg-gray-50'
               }`}
             >
               Elektronik
@@ -229,8 +229,8 @@ export default function Index() {
               onClick={() => setSelectedCategory('Moda & Giyim')}
               className={`text-sm font-medium whitespace-nowrap px-3 py-2 rounded-md transition-all duration-200 ${
                 selectedCategory === 'Moda & Giyim' 
-                  ? 'text-blue-600 bg-blue-50' 
-                  : 'text-gray-700 hover:text-blue-600 hover:bg-gray-50'
+                  ? 'text-orange-600 bg-orange-50' 
+                  : 'text-gray-700 hover:text-orange-600 hover:bg-gray-50'
               }`}
             >
               Moda
@@ -239,8 +239,8 @@ export default function Index() {
               onClick={() => setSelectedCategory('Ev & Yaşam')}
               className={`text-sm font-medium whitespace-nowrap px-3 py-2 rounded-md transition-all duration-200 ${
                 selectedCategory === 'Ev & Yaşam' 
-                  ? 'text-blue-600 bg-blue-50' 
-                  : 'text-gray-700 hover:text-blue-600 hover:bg-gray-50'
+                  ? 'text-orange-600 bg-orange-50' 
+                  : 'text-gray-700 hover:text-orange-600 hover:bg-gray-50'
               }`}
             >
               Ev, Yaşam, Kırtasiye, Ofis
@@ -249,8 +249,8 @@ export default function Index() {
               onClick={() => setSelectedCategory('Otomotiv')}
               className={`text-sm font-medium whitespace-nowrap px-3 py-2 rounded-md transition-all duration-200 ${
                 selectedCategory === 'Otomotiv' 
-                  ? 'text-blue-600 bg-blue-50' 
-                  : 'text-gray-700 hover:text-blue-600 hover:bg-gray-50'
+                  ? 'text-orange-600 bg-orange-50' 
+                  : 'text-gray-700 hover:text-orange-600 hover:bg-gray-50'
               }`}
             >
               Oto, Bahçe, Yapı Market
@@ -259,8 +259,8 @@ export default function Index() {
               onClick={() => setSelectedCategory('Anne & Bebek')}
               className={`text-sm font-medium whitespace-nowrap px-3 py-2 rounded-md transition-all duration-200 ${
                 selectedCategory === 'Anne & Bebek' 
-                  ? 'text-blue-600 bg-blue-50' 
-                  : 'text-gray-700 hover:text-blue-600 hover:bg-gray-50'
+                  ? 'text-orange-600 bg-orange-50' 
+                  : 'text-gray-700 hover:text-orange-600 hover:bg-gray-50'
               }`}
             >
               Anne, Bebek, Oyuncak
@@ -269,8 +269,8 @@ export default function Index() {
               onClick={() => setSelectedCategory('Spor & Outdoor')}
               className={`text-sm font-medium whitespace-nowrap px-3 py-2 rounded-md transition-all duration-200 ${
                 selectedCategory === 'Spor & Outdoor' 
-                  ? 'text-blue-600 bg-blue-50' 
-                  : 'text-gray-700 hover:text-blue-600 hover:bg-gray-50'
+                  ? 'text-orange-600 bg-orange-50' 
+                  : 'text-gray-700 hover:text-orange-600 hover:bg-gray-50'
               }`}
             >
               Spor, Outdoor
@@ -279,8 +279,8 @@ export default function Index() {
               onClick={() => setSelectedCategory('Kozmetik & Kişisel Bakım')}
               className={`text-sm font-medium whitespace-nowrap px-3 py-2 rounded-md transition-all duration-200 ${
                 selectedCategory === 'Kozmetik & Kişisel Bakım' 
-                  ? 'text-blue-600 bg-blue-50' 
-                  : 'text-gray-700 hover:text-blue-600 hover:bg-gray-50'
+                  ? 'text-orange-600 bg-orange-50' 
+                  : 'text-gray-700 hover:text-orange-600 hover:bg-gray-50'
               }`}
             >
               Kozmetik, Kişisel Bakım
@@ -289,8 +289,8 @@ export default function Index() {
               onClick={() => setSelectedCategory('Süpermarket & Petshop')}
               className={`text-sm font-medium whitespace-nowrap px-3 py-2 rounded-md transition-all duration-200 ${
                 selectedCategory === 'Süpermarket & Petshop' 
-                  ? 'text-blue-600 bg-blue-50' 
-                  : 'text-gray-700 hover:text-blue-600 hover:bg-gray-50'
+                  ? 'text-orange-600 bg-orange-50' 
+                  : 'text-gray-700 hover:text-orange-600 hover:bg-gray-50'
               }`}
             >
               Süpermarket, Pet Shop
@@ -299,8 +299,8 @@ export default function Index() {
               onClick={() => setSelectedCategory('Kitap & Müzik')}
               className={`text-sm font-medium whitespace-nowrap px-3 py-2 rounded-md transition-all duration-200 ${
                 selectedCategory === 'Kitap & Müzik' 
-                  ? 'text-blue-600 bg-blue-50' 
-                  : 'text-gray-700 hover:text-blue-600 hover:bg-gray-50'
+                  ? 'text-orange-600 bg-orange-50' 
+                  : 'text-gray-700 hover:text-orange-600 hover:bg-gray-50'
               }`}
             >
               Kitap, Müzik, Film, Hobi
@@ -402,7 +402,7 @@ export default function Index() {
                   key={listing.id}
                   className={`cursor-pointer hover:shadow-lg transition-all duration-200 group ${
                     isOwnListing 
-                      ? 'ring-2 ring-blue-500 ring-opacity-50 bg-gradient-to-br from-blue-50/50 to-green-50/50 hover:ring-opacity-75' 
+                      ? 'ring-2 ring-orange-500 ring-opacity-50 bg-gradient-to-br from-orange-50/50 to-amber-50/50 hover:ring-opacity-75' 
                       : ''
                   }`}
                   onClick={() => handleListingClick(listing.id)}
@@ -416,14 +416,14 @@ export default function Index() {
                           {isOwnListing && (
                             <Badge 
                               variant="default" 
-                              className="bg-blue-600 hover:bg-blue-700 text-white text-xs px-2 py-1"
+                              className="bg-orange-600 hover:bg-orange-700 text-white text-xs px-2 py-1"
                             >
                               Sizin İlanınız
                             </Badge>
                           )}
                         </div>
                         {isOwnListing && (
-                          <p className="text-xs text-blue-600 font-medium mb-2">
+                          <p className="text-xs text-orange-600 font-medium mb-2">
                             Bu sizin ilanınız - düzenlemek için tıklayın
                           </p>
                         )}
@@ -464,7 +464,7 @@ export default function Index() {
                     </div>
                     <div className="mt-2 text-xs">
                       {isOwnListing ? (
-                        <span className="text-blue-600 font-medium">
+                        <span className="text-orange-600 font-medium">
                           İlan sahibi: Siz
                         </span>
                       ) : (

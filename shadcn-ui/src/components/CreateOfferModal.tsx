@@ -638,22 +638,22 @@ export default function CreateOfferModal({
           </SubDialogHeader>
           <div className="grid gap-4">
             <div className="grid sm:grid-cols-2 gap-4">
-              <Card className={`cursor-pointer border-2 ${formData.shippingPackage === 'small' ? 'border-blue-500' : 'border-transparent hover:border-blue-300'} transition`} onClick={() => handleSelectPackage('small')}>
+              <Card className={`cursor-pointer border-2 ${formData.shippingPackage === 'small' ? 'border-orange-500' : 'border-transparent hover:border-orange-300'} transition`} onClick={() => handleSelectPackage('small')}>
                 <CardContent className="p-4 space-y-1 text-sm">
                   <p className="font-semibold">Küçük Paket</p>
-                  <p className="text-blue-600 font-medium">44.99 TL</p>
+                  <p className="text-orange-600 font-medium">44.99 TL</p>
                   <p className="text-muted-foreground text-xs leading-snug">Tişört, kolye, telefon, saat...</p>
                 </CardContent>
               </Card>
-              <Card className={`cursor-pointer border-2 ${formData.shippingPackage === 'medium' ? 'border-blue-500' : 'border-transparent hover:border-blue-300'} transition`} onClick={() => handleSelectPackage('medium')}>
+              <Card className={`cursor-pointer border-2 ${formData.shippingPackage === 'medium' ? 'border-orange-500' : 'border-transparent hover:border-orange-300'} transition`} onClick={() => handleSelectPackage('medium')}>
                 <CardContent className="p-4 space-y-1 text-sm">
                   <p className="font-semibold">Orta Paket</p>
-                  <p className="text-blue-600 font-medium">99.99 TL</p>
+                  <p className="text-orange-600 font-medium">99.99 TL</p>
                   <p className="text-muted-foreground text-xs leading-snug">Mont, çanta, bot, puzzle...</p>
                 </CardContent>
               </Card>
             </div>
-            <div className={`border rounded-md p-4 space-y-3 ${formData.shippingPackage === 'large' ? 'ring-2 ring-blue-500' : ''}`}>
+            <div className={`border rounded-md p-4 space-y-3 ${formData.shippingPackage === 'large' ? 'ring-2 ring-orange-500' : ''}`}>
               <div className="flex items-center justify-between">
                 <div>
                   <p className="font-semibold">Büyük Paket</p>

@@ -361,19 +361,19 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }: AuthModalP
                     />
                   </div>
 
-                  <div className="flex justify-end">
+                  <Button type="submit" className="w-full" disabled={isLoading}>
+                    {isLoading ? 'Giriş yapılıyor...' : 'Giriş Yap'}
+                  </Button>
+
+                  <div className="flex justify-center">
                     <button
                       type="button"
-                      className="text-sm text-purple-600 hover:text-purple-700 font-medium"
+                      className="text-sm text-purple-600 hover:text-purple-700 font-medium underline"
                       onClick={() => { setForgotEmail(loginData.identifier); setForgotMode(true); }}
                     >
                       Şifremi Unuttum?
                     </button>
                   </div>
-
-                  <Button type="submit" className="w-full" disabled={isLoading}>
-                    {isLoading ? 'Giriş yapılıyor...' : 'Giriş Yap'}
-                  </Button>
                 </form>
               </CardContent>
             </Card>

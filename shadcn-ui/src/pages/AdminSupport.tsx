@@ -290,7 +290,7 @@ export default function AdminSupport() {
   const getPriorityBadge = (priority: string) => {
     const priorityConfig = {
       low: { label: 'Düşük', className: 'bg-gray-100 text-gray-800' },
-      medium: { label: 'Orta', className: 'bg-blue-100 text-blue-800' },
+      medium: { label: 'Orta', className: 'bg-orange-100 text-orange-800' },
       high: { label: 'Yüksek', className: 'bg-orange-100 text-orange-800' },
       urgent: { label: 'Acil', className: 'bg-red-100 text-red-800' }
     };

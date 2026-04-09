@@ -64,7 +64,7 @@ interface Order {
 
 const orderStatusConfig = {
   pending: { label: 'Beklemede', color: 'bg-yellow-100 text-yellow-800', icon: Clock },
-  preparing: { label: 'Hazırlanıyor', color: 'bg-blue-100 text-blue-800', icon: Package },
+  preparing: { label: 'Hazırlanıyor', color: 'bg-orange-100 text-orange-800', icon: Package },
   shipped: { label: 'Kargoda', color: 'bg-purple-100 text-purple-800', icon: Truck },
   delivered: { label: 'Teslim Edildi', color: 'bg-green-100 text-green-800', icon: CheckCircle },
   cancelled: { label: 'İptal Edildi', color: 'bg-red-100 text-red-800', icon: XCircle }
@@ -211,10 +211,10 @@ export default function AdminOrders() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Hazırlanıyor</CardTitle>
-              <Package className="h-4 w-4 text-blue-500" />
+              <Package className="h-4 w-4 text-orange-500" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-blue-600">{orderStats.preparing}</div>
+              <div className="text-2xl font-bold text-orange-600">{orderStats.preparing}</div>
             </CardContent>
           </Card>
 
@@ -269,7 +269,7 @@ export default function AdminOrders() {
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
               >
                 <option value="all">Tüm Durumlar</option>
                 <option value="pending">Beklemede</option>
@@ -417,7 +417,7 @@ export default function AdminOrders() {
                 <select
                   value={newStatus}
                   onChange={(e) => setNewStatus(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
                 >
                   <option value="">Durum seçin</option>
                   <option value="pending">Beklemede</option>

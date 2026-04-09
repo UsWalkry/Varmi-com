@@ -99,7 +99,7 @@ export default function VerifyEmailPage() {
       case 'error':
         return <XCircle className="w-16 h-16 text-red-500" />;
       case 'pending':
-        return <Mail className="w-16 h-16 text-blue-500" />;
+        return <Mail className="w-16 h-16 text-orange-500" />;
       case 'checking':
       default:
         return <Clock className="w-16 h-16 text-gray-500 animate-spin" />;
@@ -175,12 +175,12 @@ export default function VerifyEmailPage() {
             </div>
             
             {status === 'pending' && (
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-left">
+              <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 text-left">
                 <div className="flex items-start">
-                  <AlertCircle className="w-5 h-5 text-blue-500 mt-0.5 mr-3 flex-shrink-0" />
+                  <AlertCircle className="w-5 h-5 text-orange-500 mt-0.5 mr-3 flex-shrink-0" />
                   <div className="text-sm">
-                    <p className="font-medium text-blue-800 mb-1">Email doğrulama adımları:</p>
-                    <ol className="text-blue-700 space-y-1">
+                    <p className="font-medium text-orange-800 mb-1">Email doğrulama adımları:</p>
+                    <ol className="text-orange-700 space-y-1">
                       <li>1. Email gelen kutunuzu kontrol edin</li>
                       <li>2. Spam klasörünü de kontrol edin</li>
                       <li>3. Doğrulama linkine tıklayın</li>

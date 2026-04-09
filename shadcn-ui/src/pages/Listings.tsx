@@ -7,6 +7,8 @@ import { Badge } from '@/components/ui/badge';
 import { Search, MapPin, Clock, TrendingUp, Package, ChevronLeft } from 'lucide-react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { Listing } from '@/lib/mockData';
+
+type ListingWithFeatured = Listing & { featured?: boolean };
 import { mysqlAPI, getImageUrl } from '@/lib/mysql-api';
 import { formatPriceShort } from '@/utils/formatPrice';
 import { getTimeAgo, categories, cities } from '@/lib/uiUtils';
@@ -158,13 +160,14 @@ export default function Listings() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { user: currentUser } = useAuth();
-  const [listings, setListings] = useState<Listing[]>([]);
+  const [listings, setListings] = useState<ListingWithFeatured[]>([]);
   const [searchQuery, setSearchQuery] = useState(searchParams.get('q') || '');
   const [selectedCategory, setSelectedCategory] = useState(searchParams.get('category') || 'all');
   const [selectedCity, setSelectedCity] = useState(searchParams.get('city') || 'all');
   const [budgetMax, setBudgetMax] = useState(searchParams.get('budget') || '');
   const [selectedCondition, setSelectedCondition] = useState(searchParams.get('condition') || 'all');
   const [sortBy, setSortBy] = useState(searchParams.get('sort') || 'newest');
+  const [featuredOnly, setFeaturedOnly] = useState(searchParams.get('featured') === '1' || searchParams.get('featured') === 'true');
   const [isLoading, setIsLoading] = useState(true);
   const [isCreateListingModalOpen, setIsCreateListingModalOpen] = useState(false);
 
@@ -214,8 +217,9 @@ export default function Listings() {
       
       // sort=offers ise sadece teklif alanları göster
       const matchesOfferFilter = sortBy !== 'offers' || (listing.offerCount ?? 0) > 0;
+      const matchesFeatured = !featuredOnly || listing.featured === true;
       
-      return matchesQ && matchesC && matchesCity && matchesB && matchesCond && matchesOfferFilter;
+      return matchesQ && matchesC && matchesCity && matchesB && matchesCond && matchesOfferFilter && matchesFeatured;
     })
     .sort((a, b) => {
       switch (sortBy) {
@@ -237,7 +241,7 @@ export default function Listings() {
         <Header onCreateListingClick={() => setIsCreateListingModalOpen(true)} />
         <div className="flex items-center justify-center min-h-[400px]">
           <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600 mx-auto mb-4"></div>
             <p>Yükleniyor...</p>
           </div>
         </div>

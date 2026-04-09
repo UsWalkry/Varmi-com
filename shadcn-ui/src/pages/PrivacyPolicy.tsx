@@ -9,7 +9,7 @@ export default function PrivacyPolicy() {
       
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-green-500 to-blue-500 rounded-full mb-4">
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-green-500 to-orange-500 rounded-full mb-4">
             <Shield className="w-8 h-8 text-white" />
           </div>
           <h1 className="text-4xl font-bold text-gray-900 mb-2">Gizlilik Politikası</h1>
@@ -20,9 +20,9 @@ export default function PrivacyPolicy() {
           <CardContent className="prose prose-sm max-w-none p-8 text-gray-700">
             <div className="space-y-8">
               {/* GİRİŞ */}
-              <section className="bg-blue-50 p-6 rounded-lg border-l-4 border-blue-500">
-                <h2 className="text-2xl font-bold text-blue-900 mb-4">🔒 Gizliliğiniz Bizim İçin Önemlidir</h2>
-                <p className="text-blue-800 leading-relaxed">
+              <section className="bg-orange-50 p-6 rounded-lg border-l-4 border-orange-500">
+                <h2 className="text-2xl font-bold text-orange-900 mb-4">🔒 Gizliliğiniz Bizim İçin Önemlidir</h2>
+                <p className="text-orange-800 leading-relaxed">
                   Varmii.com olarak, kişisel verilerinizin gizliliğine ve güvenliğine büyük önem veriyoruz. Bu Gizlilik Politikası, platformumuzu kullanırken toplanan kişisel bilgilerinizin nasıl işlendiğini, saklandığını ve korunduğunu açıklamaktadır. 6698 sayılı Kişisel Verilerin Korunması Kanunu (KVKK) kapsamında hazırlanmış bu politika, tüm kullanıcılarımız için geçerlidir.
                 </p>
               </section>
@@ -59,9 +59,9 @@ export default function PrivacyPolicy() {
                     </ul>
                   </div>
 
-                  <div className="bg-blue-50 p-4 rounded-lg border-l-4 border-blue-500">
-                    <h3 className="font-bold text-blue-900 mb-2">📧 İletişim Bilgileri</h3>
-                    <ul className="list-disc list-inside space-y-1 text-blue-800">
+                  <div className="bg-orange-50 p-4 rounded-lg border-l-4 border-orange-500">
+                    <h3 className="font-bold text-orange-900 mb-2">📧 İletişim Bilgileri</h3>
+                    <ul className="list-disc list-inside space-y-1 text-orange-800">
                       <li>E-posta adresi</li>
                       <li>Telefon numarası</li>
                       <li>Adres bilgileri (il, ilçe, posta kodu, açık adres)</li>
@@ -107,49 +107,49 @@ export default function PrivacyPolicy() {
                 <p className="mb-4">Toplanan kişisel verileriniz aşağıdaki amaçlarla işlenmektedir:</p>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="bg-white p-4 rounded-lg border-2 border-gray-200 hover:border-blue-400 transition-colors">
+                  <div className="bg-white p-4 rounded-lg border-2 border-gray-200 hover:border-orange-400 transition-colors">
                     <div className="text-3xl mb-2">✅</div>
                     <h4 className="font-bold mb-2">Üyelik İşlemleri</h4>
                     <p className="text-sm text-gray-600">Hesap oluşturma, kimlik doğrulama ve üyelik yönetimi</p>
                   </div>
 
-                  <div className="bg-white p-4 rounded-lg border-2 border-gray-200 hover:border-blue-400 transition-colors">
+                  <div className="bg-white p-4 rounded-lg border-2 border-gray-200 hover:border-orange-400 transition-colors">
                     <div className="text-3xl mb-2">🛒</div>
                     <h4 className="font-bold mb-2">Alışveriş İşlemleri</h4>
                     <p className="text-sm text-gray-600">İlan yayınlama, teklif verme, sipariş takibi</p>
                   </div>
 
-                  <div className="bg-white p-4 rounded-lg border-2 border-gray-200 hover:border-blue-400 transition-colors">
+                  <div className="bg-white p-4 rounded-lg border-2 border-gray-200 hover:border-orange-400 transition-colors">
                     <div className="text-3xl mb-2">💰</div>
                     <h4 className="font-bold mb-2">Ödeme İşlemleri</h4>
                     <p className="text-sm text-gray-600">Güvenli ödeme altyapısı, fatura düzenleme</p>
                   </div>
 
-                  <div className="bg-white p-4 rounded-lg border-2 border-gray-200 hover:border-blue-400 transition-colors">
+                  <div className="bg-white p-4 rounded-lg border-2 border-gray-200 hover:border-orange-400 transition-colors">
                     <div className="text-3xl mb-2">🚚</div>
                     <h4 className="font-bold mb-2">Teslimat</h4>
                     <p className="text-sm text-gray-600">Kargo gönderimi, adres teyidi, teslimat takibi</p>
                   </div>
 
-                  <div className="bg-white p-4 rounded-lg border-2 border-gray-200 hover:border-blue-400 transition-colors">
+                  <div className="bg-white p-4 rounded-lg border-2 border-gray-200 hover:border-orange-400 transition-colors">
                     <div className="text-3xl mb-2">📊</div>
                     <h4 className="font-bold mb-2">Analiz ve İyileştirme</h4>
                     <p className="text-sm text-gray-600">Kullanıcı deneyimi analizi, hizmet kalitesi artırma</p>
                   </div>
 
-                  <div className="bg-white p-4 rounded-lg border-2 border-gray-200 hover:border-blue-400 transition-colors">
+                  <div className="bg-white p-4 rounded-lg border-2 border-gray-200 hover:border-orange-400 transition-colors">
                     <div className="text-3xl mb-2">📧</div>
                     <h4 className="font-bold mb-2">İletişim</h4>
                     <p className="text-sm text-gray-600">Bildirimler, kampanyalar, müşteri destek</p>
                   </div>
 
-                  <div className="bg-white p-4 rounded-lg border-2 border-gray-200 hover:border-blue-400 transition-colors">
+                  <div className="bg-white p-4 rounded-lg border-2 border-gray-200 hover:border-orange-400 transition-colors">
                     <div className="text-3xl mb-2">🔒</div>
                     <h4 className="font-bold mb-2">Güvenlik</h4>
                     <p className="text-sm text-gray-600">Dolandırıcılık önleme, hesap güvenliği</p>
                   </div>
 
-                  <div className="bg-white p-4 rounded-lg border-2 border-gray-200 hover:border-blue-400 transition-colors">
+                  <div className="bg-white p-4 rounded-lg border-2 border-gray-200 hover:border-orange-400 transition-colors">
                     <div className="text-3xl mb-2">⚖️</div>
                     <h4 className="font-bold mb-2">Yasal Yükümlülükler</h4>
                     <p className="text-sm text-gray-600">Mevzuat gereği kayıt tutma, resmi taleplere cevap</p>
@@ -208,9 +208,9 @@ export default function PrivacyPolicy() {
                 <p className="mb-4">Web sitemizde kullanıcı deneyimini iyileştirmek için çerezler kullanılmaktadır:</p>
                 
                 <div className="space-y-3">
-                  <div className="bg-blue-50 p-4 rounded-lg">
-                    <h4 className="font-bold text-blue-900 mb-2">🍪 Zorunlu Çerezler</h4>
-                    <p className="text-sm text-blue-800">Sitenin temel fonksiyonları için gereklidir (oturum yönetimi, güvenlik)</p>
+                  <div className="bg-orange-50 p-4 rounded-lg">
+                    <h4 className="font-bold text-orange-900 mb-2">🍪 Zorunlu Çerezler</h4>
+                    <p className="text-sm text-orange-800">Sitenin temel fonksiyonları için gereklidir (oturum yönetimi, güvenlik)</p>
                   </div>
 
                   <div className="bg-green-50 p-4 rounded-lg">
@@ -271,11 +271,11 @@ export default function PrivacyPolicy() {
                 <p className="mb-4">6698 sayılı KVKK'nın 11. maddesi uyarınca aşağıdaki haklara sahipsiniz:</p>
                 
                 <div className="space-y-3">
-                  <div className="flex items-start gap-3 p-3 bg-blue-50 rounded-lg border-l-4 border-blue-500">
+                  <div className="flex items-start gap-3 p-3 bg-orange-50 rounded-lg border-l-4 border-orange-500">
                     <span className="text-2xl">📋</span>
                     <div>
-                      <h4 className="font-bold text-blue-900">Bilgi Talep Etme</h4>
-                      <p className="text-sm text-blue-800">Kişisel verilerinizin işlenip işlenmediğini öğrenme ve işlenmişse bilgi talep etme</p>
+                      <h4 className="font-bold text-orange-900">Bilgi Talep Etme</h4>
+                      <p className="text-sm text-orange-800">Kişisel verilerinizin işlenip işlenmediğini öğrenme ve işlenmişse bilgi talep etme</p>
                     </div>
                   </div>
 
@@ -312,7 +312,7 @@ export default function PrivacyPolicy() {
                   </div>
                 </div>
 
-                <div className="mt-6 bg-gradient-to-r from-blue-100 to-purple-100 p-6 rounded-lg">
+                <div className="mt-6 bg-gradient-to-r from-orange-100 to-purple-100 p-6 rounded-lg">
                   <h4 className="font-bold text-gray-900 mb-3">📬 Başvuru Yöntemi</h4>
                   <p className="text-sm text-gray-700 mb-3">
                     Yukarıdaki haklarınızı kullanmak için aşağıdaki yöntemlerle başvuruda bulunabilirsiniz:
@@ -334,19 +334,19 @@ export default function PrivacyPolicy() {
                   </p>
                   <ul className="space-y-2 text-sm">
                     <li className="flex items-start gap-2">
-                      <span className="text-blue-600 font-bold">•</span>
+                      <span className="text-orange-600 font-bold">•</span>
                       <span><strong>Üyelik Bilgileri:</strong> Hesap aktif olduğu sürece + 10 yıl (Vergi Usul Kanunu gereği)</span>
                     </li>
                     <li className="flex items-start gap-2">
-                      <span className="text-blue-600 font-bold">•</span>
+                      <span className="text-orange-600 font-bold">•</span>
                       <span><strong>İşlem Kayıtları:</strong> İşlem tarihinden itibaren 10 yıl</span>
                     </li>
                     <li className="flex items-start gap-2">
-                      <span className="text-blue-600 font-bold">•</span>
+                      <span className="text-orange-600 font-bold">•</span>
                       <span><strong>İletişim Kayıtları:</strong> Silme talebi veya 2 yıl</span>
                     </li>
                     <li className="flex items-start gap-2">
-                      <span className="text-blue-600 font-bold">•</span>
+                      <span className="text-orange-600 font-bold">•</span>
                       <span><strong>Çerez Verileri:</strong> 2 yıla kadar (çerez türüne göre değişir)</span>
                     </li>
                   </ul>
@@ -364,14 +364,14 @@ export default function PrivacyPolicy() {
               </section>
 
               {/* 10. İLETİŞİM */}
-              <section className="bg-gradient-to-r from-blue-50 to-green-50 p-6 rounded-lg border-2 border-blue-200">
+              <section className="bg-gradient-to-r from-orange-50 to-green-50 p-6 rounded-lg border-2 border-orange-200">
                 <h2 className="text-2xl font-bold text-gray-900 mb-4">📧 İletişim</h2>
                 <p className="mb-4">Gizlilik politikamız veya kişisel verilerinizle ilgili sorularınız için:</p>
                 <div className="space-y-2">
                   <p><strong>Platform:</strong> Varmii.com</p>
-                  <p><strong>E-posta:</strong> <a href="mailto:destek@varmii.com" className="text-blue-600 hover:underline">destek@varmii.com</a></p>
-                  <p><strong>KVKK Başvuruları:</strong> <a href="mailto:kvkk@varmii.com" className="text-blue-600 hover:underline">kvkk@varmii.com</a></p>
-                  <p><strong>Web:</strong> <a href="https://www.varmii.com" className="text-blue-600 hover:underline">www.varmii.com</a></p>
+                  <p><strong>E-posta:</strong> <a href="mailto:destek@varmii.com" className="text-orange-600 hover:underline">destek@varmii.com</a></p>
+                  <p><strong>KVKK Başvuruları:</strong> <a href="mailto:kvkk@varmii.com" className="text-orange-600 hover:underline">kvkk@varmii.com</a></p>
+                  <p><strong>Web:</strong> <a href="https://www.varmii.com" className="text-orange-600 hover:underline">www.varmii.com</a></p>
                 </div>
               </section>
 

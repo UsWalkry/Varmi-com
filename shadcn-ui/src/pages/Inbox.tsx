@@ -67,7 +67,7 @@ export default function Inbox() {
           messages.map((msg) => (
             <Card key={msg.id} className="mb-4">
               <CardContent className="flex gap-4 items-start">
-                <div className="w-10 h-10 bg-gradient-to-r from-blue-600 to-green-600 rounded-full flex items-center justify-center text-white font-bold">
+                <div className="w-10 h-10 bg-gradient-to-r from-orange-600 to-green-600 rounded-full flex items-center justify-center text-white font-bold">
                   {msg.fromUserName.charAt(0).toUpperCase()}
                 </div>
                 <div className="flex-1 min-w-0">

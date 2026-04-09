@@ -53,6 +53,7 @@ CREATE TABLE IF NOT EXISTS listings (
   expires_at TIMESTAMP NULL,
   view_count INT DEFAULT 0,
   favorite_count INT DEFAULT 0,
+  is_featured TINYINT(1) NOT NULL DEFAULT 0,
   offer_count INT DEFAULT 0,
   mask_owner_name TINYINT(1) DEFAULT 0,
   offers_public TINYINT(1) DEFAULT 1,

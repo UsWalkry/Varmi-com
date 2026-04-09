@@ -56,6 +56,25 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, defaultTab =
     setActiveTab(defaultTab);
   }, [defaultTab, isOpen]);
 
+  // Şifremi Unuttum state
+  const [forgotMode, setForgotMode] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [forgotSent, setForgotSent] = useState(false);
+
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await fetch('/api/auth/forgot-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: forgotEmail }),
+      });
+      setForgotSent(true);
+    } catch {
+      toast.error('Bir hata oluştu. Lütfen tekrar deneyin.');
+    }
+  };
+
   // Şifre görünürlük state'leri
   const [showLoginPassword, setShowLoginPassword] = useState(false);
   const [showRegisterPassword, setShowRegisterPassword] = useState(false);
@@ -409,12 +428,35 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, defaultTab =
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={isOpen} onOpenChange={(open) => { if (!open) { setForgotMode(false); setForgotSent(false); setForgotEmail(''); } onClose(); }}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>Giriş Yap veya Kayıt Ol</DialogTitle>
+          <DialogTitle>{forgotMode ? 'Şifremi Unuttum' : 'Giriş Yap veya Kayıt Ol'}</DialogTitle>
         </DialogHeader>
 
+        {forgotMode && (
+          <div className="py-2">
+            {forgotSent ? (
+              <div className="text-center space-y-4">
+                <p className="text-green-600 font-medium">✓ E-posta gönderildi!</p>
+                <p className="text-sm text-gray-500">Şifre sıfırlama bağlantısı e-posta adresinize gönderildi. Lütfen gelen kutunuzu kontrol edin.</p>
+                <Button variant="outline" className="w-full" onClick={() => { setForgotMode(false); setForgotSent(false); setForgotEmail(''); }}>Giriş Ekranına Dön</Button>
+              </div>
+            ) : (
+              <form onSubmit={handleForgotPassword} className="space-y-4">
+                <p className="text-sm text-gray-500">Kayıtlı e-posta adresinizi girin. Şifre sıfırlama bağlantısı göndereceğiz.</p>
+                <div className="space-y-2">
+                  <Label htmlFor="forgot-email">E-posta Adresi</Label>
+                  <Input id="forgot-email" type="email" placeholder="ornek@email.com" value={forgotEmail} onChange={(e) => setForgotEmail(e.target.value)} required />
+                </div>
+                <Button type="submit" className="w-full">Sıfırlama Bağlantısı Gönder</Button>
+                <Button type="button" variant="ghost" className="w-full" onClick={() => setForgotMode(false)}>← Giriş Ekranına Dön</Button>
+              </form>
+            )}
+          </div>
+        )}
+
+        {!forgotMode && (
         <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'login' | 'register')} className="w-full">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="login">Giriş Yap</TabsTrigger>
@@ -491,6 +533,9 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, defaultTab =
                   >
                     {isLoading ? 'Giriş yapılıyor...' : 'Giriş Yap'}
                   </Button>
+                  <div className="flex justify-center pt-1">
+                    <button type="button" className="text-sm text-purple-600 hover:text-purple-700 font-medium underline" onClick={() => { setForgotEmail(loginData.email); setForgotMode(true); }}>Şifremi Unuttum?</button>
+                  </div>
                 </form>
                 ) : (
                   <form onSubmit={handle2FALogin} className="space-y-4">
@@ -666,6 +711,7 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, defaultTab =
                       <SelectContent>
                         <SelectItem value="Kadın">👩 Kadın</SelectItem>
                         <SelectItem value="Erkek">👨 Erkek</SelectItem>
+                        <SelectItem value="Belirtmek istemiyorum">🚫 Belirtmek istemiyorum</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -738,6 +784,7 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, defaultTab =
             </Card>
           </TabsContent>
         </Tabs>
+        )}
       </DialogContent>
     </Dialog>
   );

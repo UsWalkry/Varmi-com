@@ -186,7 +186,7 @@ export default function CommissionPage() {
           <>
             {/* Stats row */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <Card className="bg-gradient-to-br from-purple-600 to-blue-600 text-white border-0">
+              <Card className="bg-gradient-to-br from-orange-500 to-orange-600 text-white border-0">
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
                     <div>

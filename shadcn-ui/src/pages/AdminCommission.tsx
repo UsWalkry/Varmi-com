@@ -172,7 +172,7 @@ export default function AdminCommission() {
               <CardTitle className="text-sm font-medium text-gray-600">
                 Komisyon Kazanan Kullanıcılar
               </CardTitle>
-              <Users className="h-4 w-4 text-blue-600" />
+              <Users className="h-4 w-4 text-orange-600" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{stats?.totalUsersWithCommission || 0}</div>
@@ -252,19 +252,19 @@ export default function AdminCommission() {
           </CardHeader>
           <CardContent className="space-y-6">
             {/* Current Active Rates Display */}
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <h3 className="font-semibold text-blue-900 mb-3 flex items-center gap-2">
+            <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+              <h3 className="font-semibold text-orange-900 mb-3 flex items-center gap-2">
                 <TrendingUp className="h-4 w-4" />
                 Aktif Oranlar
               </h3>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <p className="text-sm text-blue-700 mb-1">İlan Sahibi Komisyonu</p>
-                  <p className="text-2xl font-bold text-blue-900">{settings.listingOwnerRate}%</p>
+                  <p className="text-sm text-orange-700 mb-1">İlan Sahibi Komisyonu</p>
+                  <p className="text-2xl font-bold text-orange-900">{settings.listingOwnerRate}%</p>
                 </div>
                 <div>
-                  <p className="text-sm text-blue-700 mb-1">Satıcı Komisyonu</p>
-                  <p className="text-2xl font-bold text-blue-900">{settings.sellerRate}%</p>
+                  <p className="text-sm text-orange-700 mb-1">Satıcı Komisyonu</p>
+                  <p className="text-2xl font-bold text-orange-900">{settings.sellerRate}%</p>
                 </div>
               </div>
             </div>
@@ -355,7 +355,7 @@ export default function AdminCommission() {
                   <Separator className="my-2" />
                   <div className="flex justify-between">
                     <span className="text-gray-700 font-medium">Toplam komisyon:</span>
-                    <span className="font-bold text-blue-600">
+                    <span className="font-bold text-orange-600">
                       {formatPrice(50000 * ((newSettings.listingOwnerRate + newSettings.sellerRate) / 100))}
                     </span>
                   </div>
@@ -383,7 +383,7 @@ export default function AdminCommission() {
                 <Button
                   onClick={handleSaveSettings}
                   disabled={!hasChanges || saving}
-                  className="bg-blue-600 hover:bg-blue-700"
+                  className="bg-orange-600 hover:bg-orange-700"
                 >
                   {saving ? (
                     <>
@@ -421,7 +421,7 @@ export default function AdminCommission() {
               </p>
             </div>
             <div className="flex gap-2">
-              <div className="text-blue-600 font-bold">ℹ</div>
+              <div className="text-orange-600 font-bold">ℹ</div>
               <p>
                 <strong>Kendi Alımları:</strong> Kullanıcılar kendi ilanlarındaki kendi tekliflerini satın aldıklarında komisyon kazanmazlar.
               </p>

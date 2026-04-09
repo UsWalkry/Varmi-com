@@ -482,7 +482,7 @@ export default function AdminUsers() {
       case 'admin':
         return 'bg-purple-100 text-purple-700';
       case 'moderator':
-        return 'bg-blue-100 text-blue-700';
+        return 'bg-orange-100 text-orange-700';
       default:
         return 'bg-gray-100 text-gray-700';
     }
@@ -536,7 +536,7 @@ export default function AdminUsers() {
                   <p className="text-sm font-medium text-gray-600">Toplam Kullanıcı</p>
                   <p className="text-2xl font-bold">{users.length}</p>
                 </div>
-                <Users className="h-8 w-8 text-blue-600" />
+                <Users className="h-8 w-8 text-orange-600" />
               </div>
             </CardContent>
           </Card>
@@ -574,11 +574,11 @@ export default function AdminUsers() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-600">Yeni (Bu Ay)</p>
-                  <p className="text-2xl font-bold text-blue-600">
+                  <p className="text-2xl font-bold text-orange-600">
                     {users.filter(u => new Date(u.createdAt) > new Date(Date.now() - 1000 * 60 * 60 * 24 * 30)).length}
                   </p>
                 </div>
-                <Calendar className="h-8 w-8 text-blue-600" />
+                <Calendar className="h-8 w-8 text-orange-600" />
               </div>
             </CardContent>
           </Card>

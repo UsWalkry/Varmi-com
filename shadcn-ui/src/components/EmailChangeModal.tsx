@@ -178,7 +178,7 @@ export default function EmailChangeModal({ isOpen, onClose, currentEmail, newEma
             </div>
             <div className="text-sm">
               <span className="font-medium text-muted-foreground">Yeni email:</span>
-              <p className="mt-1 p-2 bg-blue-50 border border-blue-200 rounded text-sm font-medium">
+              <p className="mt-1 p-2 bg-orange-50 border border-orange-200 rounded text-sm font-medium">
                 {newEmail}
               </p>
             </div>
@@ -187,12 +187,12 @@ export default function EmailChangeModal({ isOpen, onClose, currentEmail, newEma
           {/* İlk durum: Confirmation gönderme */}
           {!confirmationSent && !emailChanged && (
             <div className="space-y-4">
-              <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <div className="p-4 bg-orange-50 border border-orange-200 rounded-lg">
                 <div className="flex items-start gap-3">
-                  <Mail className="w-5 h-5 text-blue-600 mt-0.5" />
+                  <Mail className="w-5 h-5 text-orange-600 mt-0.5" />
                   <div>
-                    <h4 className="font-medium text-blue-900">Confirmation Email</h4>
-                    <p className="text-sm text-blue-700 mt-1">
+                    <h4 className="font-medium text-orange-900">Confirmation Email</h4>
+                    <p className="text-sm text-orange-700 mt-1">
                       Kaydet butonuna tıkladığınızda yeni email adresinize bir onay linki gönderilecek.
                       Bu linke tıklayarak email değişikliğini tamamlayabilirsiniz.
                     </p>

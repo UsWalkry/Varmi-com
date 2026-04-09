@@ -221,7 +221,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-200 bg-gray-50">
           <Link
             to="/"
-            className="flex items-center px-3 py-2 text-sm font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors border border-blue-200"
+            className="flex items-center px-3 py-2 text-sm font-medium text-orange-600 hover:text-orange-700 hover:bg-orange-50 rounded-lg transition-colors border border-orange-200"
           >
             <Home className="mr-3 h-4 w-4" />
             🏠 Ana Siteye Dön

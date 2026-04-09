@@ -108,7 +108,7 @@ export default function StoreProfile() {
                     className="w-24 h-24 rounded-lg object-cover border"
                   />
                 ) : (
-                  <div className="w-24 h-24 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
+                  <div className="w-24 h-24 rounded-lg bg-gradient-to-br from-orange-500 to-purple-600 flex items-center justify-center">
                     <Store className="w-12 h-12 text-white" />
                   </div>
                 )}

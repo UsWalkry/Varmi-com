@@ -41,11 +41,14 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   final List<Map<String, dynamic>> _categories = [
     {'label': 'Tümü', 'icon': Icons.apps_rounded},
     {'label': 'Elektronik', 'icon': Icons.devices_rounded},
-    {'label': 'Giyim', 'icon': Icons.checkroom_rounded},
-    {'label': 'Ev & Yaşam', 'icon': Icons.home_rounded},
-    {'label': 'Spor', 'icon': Icons.sports_soccer_rounded},
-    {'label': 'Kitap', 'icon': Icons.menu_book_rounded},
-    {'label': 'Diğer', 'icon': Icons.category_rounded},
+    {'label': 'Moda', 'icon': Icons.checkroom_rounded},
+    {'label': 'Ev, Yaşam, Kırtasiye', 'icon': Icons.home_rounded},
+    {'label': 'Oto, Bahçe, Yapı', 'icon': Icons.directions_car_rounded},
+    {'label': 'Anne, Bebek, Oyuncak', 'icon': Icons.child_care_rounded},
+    {'label': 'Spor & Outdoor', 'icon': Icons.sports_soccer_rounded},
+    {'label': 'Kozmetik', 'icon': Icons.face_retouching_natural_rounded},
+    {'label': 'Süpermarket & Petshop', 'icon': Icons.shopping_basket_rounded},
+    {'label': 'Kitap, Müzik, Hobi', 'icon': Icons.menu_book_rounded},
   ];
 
   @override

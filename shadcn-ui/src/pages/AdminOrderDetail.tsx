@@ -65,7 +65,7 @@ interface OrderDetail {
 
 const orderStatusConfig = {
   pending: { label: 'Beklemede', color: 'bg-yellow-100 text-yellow-800', icon: Clock },
-  preparing: { label: 'Hazırlanıyor', color: 'bg-blue-100 text-blue-800', icon: Package },
+  preparing: { label: 'Hazırlanıyor', color: 'bg-orange-100 text-orange-800', icon: Package },
   shipped: { label: 'Kargoda', color: 'bg-purple-100 text-purple-800', icon: Truck },
   delivered: { label: 'Teslim Edildi', color: 'bg-green-100 text-green-800', icon: CheckCircle },
   cancelled: { label: 'İptal Edildi', color: 'bg-red-100 text-red-800', icon: XCircle }
@@ -239,7 +239,7 @@ export default function AdminOrderDetail() {
               <CardContent>
                 <div className="space-y-4">
                   <div className="flex items-center gap-3">
-                    <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                    <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
                     <div className="flex-1">
                       <div className="font-medium">Sipariş Oluşturuldu</div>
                       <div className="text-sm text-gray-500">{getTimeAgo(order.createdAt)}</div>
@@ -248,7 +248,7 @@ export default function AdminOrderDetail() {
                   
                   {order.startedProcessingAt && (
                     <div className="flex items-center gap-3">
-                      <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                      <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
                       <div className="flex-1">
                         <div className="font-medium">Hazırlığa Alındı</div>
                         <div className="text-sm text-gray-500">{getTimeAgo(order.startedProcessingAt)}</div>

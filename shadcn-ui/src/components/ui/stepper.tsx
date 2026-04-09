@@ -44,7 +44,7 @@ export const Stepper: React.FC<StepperProps> = ({ steps, current, onStepClick, c
                 className={cn(
                   'relative flex h-8 w-8 shrink-0 items-center justify-center rounded-full border text-sm font-medium transition',
                   state === 'done' && 'bg-green-600 text-white border-green-600',
-                  state === 'active' && 'border-blue-600 text-blue-600 bg-blue-50',
+                  state === 'active' && 'border-orange-600 text-orange-600 bg-orange-50',
                   state === 'upcoming' && 'border-gray-300 text-gray-400'
                 )}
                 aria-current={state === 'active' ? 'step' : undefined}

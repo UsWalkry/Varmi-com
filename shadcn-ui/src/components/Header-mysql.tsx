@@ -58,7 +58,7 @@ export default function Header() {
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between">
           <Link to="/" className="flex items-center space-x-2 group flex-shrink-0">
-            <span className="font-bold text-xl bg-gradient-to-r from-purple-600 via-blue-600 to-green-500 bg-clip-text text-transparent hover:from-purple-700 hover:via-blue-700 hover:to-green-600 transition-all duration-300">
+            <span className="font-bold text-xl bg-gradient-to-r from-orange-500 via-amber-400 to-yellow-300 bg-clip-text text-transparent hover:from-orange-600 hover:via-amber-300 hover:to-yellow-200 transition-all duration-300">
               Var mıı?
             </span>
           </Link>

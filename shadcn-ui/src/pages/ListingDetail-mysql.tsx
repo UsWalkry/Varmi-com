@@ -57,7 +57,7 @@ export default function ListingDetailMySQL() {
         <Header onCreateListingClick={() => setIsCreateListingModalOpen(true)} />
         <div className="flex items-center justify-center min-h-[400px]">
           <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600 mx-auto mb-4"></div>
             <p>İlan yükleniyor...</p>
           </div>
         </div>
@@ -154,8 +154,8 @@ export default function ListingDetailMySQL() {
               </CardHeader>
               <CardContent>
                 <div className="flex items-center gap-3 mb-4">
-                  <div className="h-10 w-10 bg-blue-100 rounded-full flex items-center justify-center">
-                    <span className="text-blue-600 font-semibold">
+                  <div className="h-10 w-10 bg-orange-100 rounded-full flex items-center justify-center">
+                    <span className="text-orange-600 font-semibold">
                       {listing.seller?.firstName?.[0] || 'U'}
                     </span>
                   </div>

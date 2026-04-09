@@ -394,22 +394,6 @@ export default function Dashboard() {
   console.log('?? Current user token:', localStorage.getItem('mysql-auth-token'));
       console.log('?? Current user data:', localStorage.getItem('user'));
       
-      // TEMPORARY: Transfer sample orders to current user
-      try {
-        console.log('?? Transferring sample orders...');
-        const transferResponse = await fetch('/api/orders/transfer-sample-orders', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('mysql-auth-token')}`,
-            'Content-Type': 'application/json'
-          }
-        });
-        const transferResult = await transferResponse.json();
-        console.log('? Transfer result:', transferResult);
-      } catch (transferError) {
-        console.warn('?? Transfer failed:', transferError);
-      }
-      
       // Get current user info
       try {
         const userResponse = await mysqlAPI.getCurrentUser();
@@ -995,8 +979,8 @@ export default function Dashboard() {
                 </p>
               </div>
             </div>
-            <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-md">
-              <p className="text-xs text-blue-800">
+            <div className="mt-3 p-3 bg-orange-50 border border-orange-200 rounded-md">
+              <p className="text-xs text-orange-800">
                 💡 <strong>Komisyon bakiyenizi alışverişlerinizde kullanabilirsiniz!</strong> Teklif satın alırken komisyon bakiyenizden ödeme yapma seçeneği sunulacaktır.
               </p>
             </div>
@@ -1512,7 +1496,7 @@ export default function Dashboard() {
                                     <Button
                                       size="sm"
                                       variant="outline"
-                                      className="text-blue-600 border-blue-200 hover:bg-blue-50 w-full sm:w-auto text-xs"
+                                      className="text-orange-600 border-orange-200 hover:bg-orange-50 w-full sm:w-auto text-xs"
                                       onClick={() => handleEditOffer(offer)}
                                     >
                                       <Edit className="h-4 w-4 mr-1" />
@@ -1544,7 +1528,7 @@ export default function Dashboard() {
                                   <Button
                                     size="sm"
                                     variant="outline"
-                                    className="text-blue-600 border-blue-200 hover:bg-blue-50 w-full sm:w-auto text-xs"
+                                    className="text-orange-600 border-orange-200 hover:bg-orange-50 w-full sm:w-auto text-xs"
                                     onClick={() => handleEditOffer(offer)}
                                   >
                                     <Edit className="h-4 w-4 mr-1" />
@@ -1673,7 +1657,7 @@ export default function Dashboard() {
                                   {extendedOffer.seller_id ? (
                                     <Link 
                                       to={`/profile/${extendedOffer.seller_id}`}
-                                      className="text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
+                                      className="text-orange-600 hover:text-orange-800 hover:underline cursor-pointer"
                                     >
                                       {extendedOffer.seller_name || 'Bilinmiyor'}
                                     </Link>
@@ -1690,7 +1674,7 @@ export default function Dashboard() {
                                         setReviewsModalOpen(true);
                                       }
                                     }}
-                                    className={extendedOffer.seller_id ? "inline-flex items-center gap-1 cursor-pointer hover:bg-blue-50 hover:border-blue-300 border border-transparent transition-all rounded-md px-2 py-1 -mx-2 -my-1" : "inline-flex items-center gap-1"}
+                                    className={extendedOffer.seller_id ? "inline-flex items-center gap-1 cursor-pointer hover:bg-orange-50 hover:border-orange-300 border border-transparent transition-all rounded-md px-2 py-1 -mx-2 -my-1" : "inline-flex items-center gap-1"}
                                     title={extendedOffer.seller_id ? "Değerlendirmeleri görüntüle" : ""}
                                     disabled={!extendedOffer.seller_id}
                                   >
@@ -1789,11 +1773,11 @@ export default function Dashboard() {
                                 </div>
                                 <div className="flex items-center gap-4">
                                   <Badge variant="outline" className={
-                                    offer.status === 'active' ? 'border-blue-500 text-blue-700 bg-blue-50' :
+                                    offer.status === 'active' ? 'border-orange-500 text-orange-700 bg-orange-50' :
                                     offer.status === 'accepted' ? 'border-green-500 text-green-700 bg-green-50' :
                                     offer.status === 'rejected' ? 'border-red-500 text-red-700 bg-red-50' :
                                     offer.status === 'withdrawn' ? 'border-gray-500 text-gray-700 bg-gray-50' : 
-                                    'border-blue-500 text-blue-700 bg-blue-50'
+                                    'border-orange-500 text-orange-700 bg-orange-50'
                                   }>
                                     {offer.status === 'active' && '🔵 Yeni Teklif'}
                                     {offer.status === 'accepted' && '✅ Kabul Edildi'}
@@ -2021,7 +2005,7 @@ export default function Dashboard() {
                                 <div className="bg-gray-50 p-3 rounded-lg">
                                   <div className="text-sm font-medium text-gray-700 mb-1">Kargo Takip</div>
                                   <div className="flex items-center gap-1">
-                                    <Truck className="h-4 w-4 text-blue-600" />
+                                    <Truck className="h-4 w-4 text-orange-600" />
                                     <span className="text-sm font-mono">{order.trackingNumber}</span>
                                   </div>
                                 </div>
@@ -2034,7 +2018,7 @@ export default function Dashboard() {
                                     <User className="h-4 w-4 text-gray-600" />
                                     <Link 
                                       to={`/profile/${order.primarySellerId || order.sellerId || ''}`}
-                                      className="text-sm text-blue-600 hover:text-blue-800 hover:underline cursor-pointer transition-colors"
+                                      className="text-sm text-orange-600 hover:text-orange-800 hover:underline cursor-pointer transition-colors"
                                       onClick={(e) => e.stopPropagation()}
                                     >
                                       {maskDisplayName(order.sellerName || sellerDisplayName)}
@@ -2077,7 +2061,7 @@ export default function Dashboard() {
                                       </div>
                                     ))}
                                     {order.items.length > 4 && (
-                                      <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-500 rounded-lg border-2 border-white shadow-sm flex items-center justify-center">
+                                      <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-purple-500 rounded-lg border-2 border-white shadow-sm flex items-center justify-center">
                                         <span className="text-xs font-bold text-white">+{order.items.length - 4}</span>
                                       </div>
                                     )}
@@ -2090,7 +2074,7 @@ export default function Dashboard() {
                                   ))
                                 )}
                                 {!order.items && order.itemCount > 4 && (
-                                  <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-500 rounded-lg border-2 border-white shadow-sm flex items-center justify-center">
+                                  <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-purple-500 rounded-lg border-2 border-white shadow-sm flex items-center justify-center">
                                     <span className="text-xs font-bold text-white">+{order.itemCount - 4}</span>
                                   </div>
                                 )}
@@ -2208,7 +2192,7 @@ export default function Dashboard() {
                           <div className="flex items-start justify-between">
                             <div>
                               <div className="flex items-center gap-2 mb-2">
-                                <Package className="h-5 w-5 text-blue-600" />
+                                <Package className="h-5 w-5 text-orange-600" />
                                 <h3 className="font-bold text-lg">{firstSaleItemTitle}</h3>
                                 <OrderStatusBadge status={normalizedSaleStatus} />
                               </div>
@@ -2224,7 +2208,7 @@ export default function Dashboard() {
                               </div>
                             </div>
                             <div className="text-right">
-                              <div className="text-2xl font-bold text-blue-600">
+                              <div className="text-2xl font-bold text-orange-600">
                                 {formatPriceShort(sale.total || 0)}
                               </div>
                               <div className="text-sm text-gray-500">
@@ -2263,7 +2247,7 @@ export default function Dashboard() {
                               <div className="bg-gray-50 p-3 rounded-lg">
                                 <div className="text-sm font-medium text-gray-700 mb-1">Kargo Takip</div>
                                 <div className="flex items-center gap-1">
-                                  <Truck className="h-4 w-4 text-blue-600" />
+                                  <Truck className="h-4 w-4 text-orange-600" />
                                   <span className="text-sm font-mono">{sale.trackingNumber}</span>
                                 </div>
                               </div>
@@ -2313,7 +2297,7 @@ export default function Dashboard() {
                                     </div>
                                   ))}
                                   {sale.items.length > 4 && (
-                                    <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-blue-500 rounded-lg border-2 border-white shadow-sm flex items-center justify-center">
+                                    <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-orange-500 rounded-lg border-2 border-white shadow-sm flex items-center justify-center">
                                       <span className="text-xs font-bold text-white">+{sale.items.length - 4}</span>
                                     </div>
                                   )}
@@ -2326,7 +2310,7 @@ export default function Dashboard() {
                                 ))
                               )}
                               {!sale.items && (sale.totalQuantity || sale.itemCount) > 4 && (
-                                <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-blue-500 rounded-lg border-2 border-white shadow-sm flex items-center justify-center">
+                                <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-orange-500 rounded-lg border-2 border-white shadow-sm flex items-center justify-center">
                                   <span className="text-xs font-bold text-white">+{(sale.totalQuantity || sale.itemCount) - 4}</span>
                                 </div>
                               )}
@@ -2348,7 +2332,7 @@ export default function Dashboard() {
                               {sale.status === 'confirmed' && (
                                 <Button 
                                   size="sm" 
-                                  className="bg-blue-600 hover:bg-blue-700"
+                                  className="bg-orange-600 hover:bg-orange-700"
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     handleStartProcessing(sale.id);

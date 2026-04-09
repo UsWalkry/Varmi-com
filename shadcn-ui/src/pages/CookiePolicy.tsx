@@ -77,7 +77,7 @@ export default function CookiePolicy() {
   return (
     <>
       <Header />
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 py-12">
+      <div className="min-h-screen bg-gradient-to-br from-orange-50 via-purple-50 to-pink-50 py-12">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           {/* Back Button */}
           <Link 
@@ -141,7 +141,7 @@ export default function CookiePolicy() {
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-1">
                     <h3 className="font-semibold text-gray-900">İşlevsel Çerezler</h3>
-                    <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs font-medium rounded-full">
+                    <span className="px-2 py-0.5 bg-orange-100 text-orange-700 text-xs font-medium rounded-full">
                       Opsiyonel
                     </span>
                   </div>
@@ -161,7 +161,7 @@ export default function CookiePolicy() {
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-1">
                     <h3 className="font-semibold text-gray-900">Analitik Çerezler</h3>
-                    <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs font-medium rounded-full">
+                    <span className="px-2 py-0.5 bg-orange-100 text-orange-700 text-xs font-medium rounded-full">
                       Opsiyonel
                     </span>
                   </div>
@@ -181,7 +181,7 @@ export default function CookiePolicy() {
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-1">
                     <h3 className="font-semibold text-gray-900">Pazarlama Çerezleri</h3>
-                    <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs font-medium rounded-full">
+                    <span className="px-2 py-0.5 bg-orange-100 text-orange-700 text-xs font-medium rounded-full">
                       Opsiyonel
                     </span>
                   </div>
@@ -239,7 +239,7 @@ export default function CookiePolicy() {
                   kaydedilen küçük metin dosyalarıdır. Çerezler, web sitesinin daha verimli çalışmasını sağlar 
                   ve kullanıcı deneyimini iyileştirir.
                 </p>
-                <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded">
+                <div className="bg-orange-50 border-l-4 border-orange-500 p-4 rounded">
                   <p className="text-sm">
                     💡 <strong>Not:</strong> Çerezler virüs veya zararlı yazılım içermez ve cihazınıza zarar vermez.
                   </p>
@@ -272,7 +272,7 @@ export default function CookiePolicy() {
                 </div>
 
                 {/* Fonksiyonel Çerezler */}
-                <div className="border-l-4 border-blue-500 pl-4">
+                <div className="border-l-4 border-orange-500 pl-4">
                   <h3 className="text-lg font-semibold text-gray-900 mb-2 flex items-center gap-2">
                     ⚙️ Fonksiyonel Çerezler
                   </h3>
@@ -338,7 +338,7 @@ export default function CookiePolicy() {
                   <h3 className="font-semibold text-gray-900">Popüler Tarayıcılarda Çerez Ayarları:</h3>
                   <ul className="space-y-2">
                     <li className="flex items-start gap-2">
-                      <span className="text-blue-600">🌐</span>
+                      <span className="text-orange-600">🌐</span>
                       <div>
                         <strong>Google Chrome:</strong>
                         <span className="text-sm text-gray-600 block">
@@ -356,7 +356,7 @@ export default function CookiePolicy() {
                       </div>
                     </li>
                     <li className="flex items-start gap-2">
-                      <span className="text-blue-400">🧭</span>
+                      <span className="text-orange-400">🧭</span>
                       <div>
                         <strong>Safari:</strong>
                         <span className="text-sm text-gray-600 block">
@@ -365,7 +365,7 @@ export default function CookiePolicy() {
                       </div>
                     </li>
                     <li className="flex items-start gap-2">
-                      <span className="text-blue-500">🌊</span>
+                      <span className="text-orange-500">🌊</span>
                       <div>
                         <strong>Microsoft Edge:</strong>
                         <span className="text-sm text-gray-600 block">
@@ -390,25 +390,25 @@ export default function CookiePolicy() {
                   çerezlerini kullanabiliriz:
                 </p>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
                     <h4 className="font-semibold text-gray-900 mb-2">📊 Google Analytics</h4>
                     <p className="text-sm text-gray-600">
                       Web sitesi trafiğini ve kullanıcı davranışlarını analiz eder.
                     </p>
                   </div>
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
                     <h4 className="font-semibold text-gray-900 mb-2">📱 Facebook Pixel</h4>
                     <p className="text-sm text-gray-600">
                       Reklam kampanyalarının etkinliğini ölçer ve hedefli reklamlar gösterir.
                     </p>
                   </div>
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
                     <h4 className="font-semibold text-gray-900 mb-2">🎯 Google Ads</h4>
                     <p className="text-sm text-gray-600">
                       Remarketing ve reklam performans takibi yapar.
                     </p>
                   </div>
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
                     <h4 className="font-semibold text-gray-900 mb-2">🔍 Hotjar</h4>
                     <p className="text-sm text-gray-600">
                       Kullanıcı deneyimini iyileştirmek için davranış analizi yapar.

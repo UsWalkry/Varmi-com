@@ -1,23 +1,24 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Search, MapPin, Clock, TrendingUp, Package, Star, ShoppingCart } from 'lucide-react';
+import { Search, MapPin, Clock, TrendingUp, Package, Star, ShoppingCart, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { Listing } from '@/lib/mockData';
 import { mysqlAPI, getImageUrl } from '@/lib/mysql-api';
+
+type ListingWithFeatured = Listing & { featured?: boolean; };
 import { useCart } from '@/contexts/CartContext';
 import { toast } from 'sonner';
-import { formatPrice as formatPriceOld, getTimeAgo, categories, cities } from '@/lib/uiUtils';
+import { formatPrice as formatPriceOld, getTimeAgo, categories, cities, CATEGORY_GROUPS } from '@/lib/uiUtils';
 import { formatPriceShort } from '@/utils/formatPrice';
 import Header from '@/components/Header';
 import FavoriteButton from '@/components/FavoriteButton';
 import AuthModal from '@/components/AuthModal-mysql';
 import CreateListingModal from '@/components/CreateListingModal';
 import { useAuth } from '@/hooks/use-auth-mysql';
-import { toast } from 'sonner';
 import { getOptimizedImageUrl, getResponsiveSrcSet } from '@/lib/imageOptimization';
 
 // Helper functions
@@ -38,7 +39,7 @@ function getDeliveryText(delivery: string) {
 
 // ListingCard component with hover image switching
 interface ListingCardProps {
-  listing: Listing;
+  listing: ListingWithFeatured;
   isOwnListing: boolean;
   currentUser: any;
 }
@@ -104,8 +105,10 @@ function ListingCard({ listing, isOwnListing, currentUser }: ListingCardProps) {
       <Card
         className={`cursor-pointer hover:shadow-lg transition-all duration-200 group overflow-hidden h-[320px] flex flex-col ${
           isOwnListing 
-            ? 'ring-2 ring-blue-500 ring-opacity-50 bg-gradient-to-br from-blue-50/50 to-green-50/50 hover:ring-opacity-75' 
-            : ''
+            ? 'ring-2 ring-orange-500 ring-opacity-50 bg-gradient-to-br from-orange-50/50 to-amber-50/50 hover:ring-opacity-75' 
+            : listing.featured
+              ? 'ring-2 ring-orange-400 ring-opacity-40 bg-orange-50/60'
+              : ''
         }`}
         title={isOwnListing ? 'Bu sizin ilanınız' : ''}
         onMouseEnter={startImageCycle}
@@ -137,7 +140,7 @@ function ListingCard({ listing, isOwnListing, currentUser }: ListingCardProps) {
         {/* Sepete Ekle İkonu - Hover'da ve teklif varsa Görünür */}
         {listing.status === 'active' && !isOwnListing && isHovering && (listing.offerCount ?? 0) > 0 && (
           <button
-            className="absolute bottom-2 right-2 transition-all duration-300 bg-blue-600 hover:bg-blue-700 shadow-lg rounded-md p-2 border-2 border-white cursor-pointer"
+            className="absolute bottom-2 right-2 transition-all duration-300 bg-orange-600 hover:bg-orange-700 shadow-lg rounded-md p-2 border-2 border-white cursor-pointer"
             style={{ zIndex: 100, opacity: 1 }}
             onClick={(e) => {
               e.preventDefault();
@@ -164,9 +167,17 @@ function ListingCard({ listing, isOwnListing, currentUser }: ListingCardProps) {
               {isOwnListing && (
                 <Badge 
                   variant="default" 
-                  className="bg-blue-600 hover:bg-blue-700 text-white text-xs px-1 py-0 flex-shrink-0"
+                  className="bg-orange-600 hover:bg-orange-700 text-white text-xs px-1 py-0 flex-shrink-0"
                 >
                   Sizin
+                </Badge>
+              )}
+              {listing.featured && !isOwnListing && (
+                <Badge 
+                  variant="default" 
+                  className="bg-amber-500 text-white text-xs px-1 py-0 flex-shrink-0"
+                >
+                  Vitrin
                 </Badge>
               )}
             </div>
@@ -215,7 +226,7 @@ function ListingCard({ listing, isOwnListing, currentUser }: ListingCardProps) {
             {showBudget ? (
               <span className="text-green-600">{formatPriceShort(listing.budgetMax || 0)}'ye kadar</span>
             ) : (
-              <div className="flex items-center text-sm text-blue-600">
+              <div className="flex items-center text-sm text-orange-600">
                 <TrendingUp className="h-3 w-3 mr-1" />
                 <span className="font-medium">{listing.offerCount ?? 0} teklif var</span>
               </div>
@@ -233,8 +244,10 @@ export default function Index() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { user: currentUser } = useAuth();
-  const [listings, setListings] = useState<Listing[]>([]);
-  const [allListings, setAllListings] = useState<Listing[]>([]); // Tüm ilanları sakla
+  const [listings, setListings] = useState<ListingWithFeatured[]>([]);
+  const [featuredListings, setFeaturedListings] = useState<ListingWithFeatured[]>([]);
+  const featuredCarouselRef = useRef<HTMLDivElement | null>(null);
+  const [allListings, setAllListings] = useState<ListingWithFeatured[]>([]); // Tüm ilanları sakla
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedCity, setSelectedCity] = useState('all');
@@ -275,7 +288,10 @@ export default function Index() {
         listing.title.toLowerCase().includes(q) || 
         (listing.description || '').toLowerCase().includes(q);
       
-      const matchesCategory = selectedCategory === 'all' || listing.category === selectedCategory;
+      const matchesCategory =
+        selectedCategory === 'all' ||
+        listing.category === selectedCategory ||
+        !!(CATEGORY_GROUPS.find(g => g.group === selectedCategory)?.subcategories.includes(listing.category));
       const matchesCity = selectedCity === 'all' || listing.city === selectedCity;
       const matchesBudget = !budgetMax || (listing.budgetMax || 0) <= parseInt(budgetMax);
       
@@ -394,6 +410,33 @@ export default function Index() {
     return () => { ignore = true; };
   }, []); // Sadece component mount'ta çalışır
 
+  // Load featured listings from MySQL API
+  useEffect(() => {
+    let ignore = false;
+    
+    const loadFeatured = async () => {
+      if (ignore) return;
+      
+      try {
+        const response = await mysqlAPI.getFeaturedListings();
+        const rows = response?.success && Array.isArray(response.listings) ? response.listings : 
+                     Array.isArray(response) ? response : [];
+        
+        if (!ignore) {
+          setFeaturedListings(rows);
+        }
+      } catch (e) {
+        console.error('❌ Featured listings error:', e);
+        if (!ignore) {
+          setFeaturedListings([]);
+        }
+      }
+    };
+    
+    loadFeatured();
+    return () => { ignore = true; };
+  }, []); // Sadece component mount'ta çalışır
+
   const getConditionText = (condition: string) => {
     switch (condition) {
       case 'new': return 'Sıfır';
@@ -423,7 +466,7 @@ export default function Index() {
         <Header onCreateListingClick={() => setIsCreateListingModalOpen(true)} />
         <div className="flex items-center justify-center min-h-[400px]">
           <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600 mx-auto mb-4"></div>
             <p>Yükleniyor...</p>
           </div>
         </div>
@@ -466,97 +509,55 @@ export default function Index() {
       `}</style>
 
       {/* Hero Section */}
-      <section className="relative bg-gradient-to-br from-purple-600 via-blue-600 to-green-500 text-white py-12 overflow-hidden">
+      <section className="relative bg-gradient-to-br from-orange-500 via-amber-400 to-yellow-300 text-white py-12 overflow-hidden">
         {/* Background Pattern */}
         <div className="absolute inset-0 opacity-10">
           <div className="absolute inset-0" style={{
             backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
           }}></div>
         </div>
-        
-        {/* Advanced Floating Shopping Elements */}
+
+        {/* Decorative Geometric Elements */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          {/* Shopping Cart - floating with glow */}
-          <div className="absolute top-20 left-10 text-5xl float-animation pulse-glow" style={{animationDelay: '0s'}}>
-            🛒
-          </div>
-          
-          {/* Credit Card - slow spin */}
-          <div className="absolute top-32 right-20 text-4xl spin-slow" style={{animationDelay: '0s'}}>
-            💳
-          </div>
-          
-          {/* Gift Box - swing animation */}
-          <div className="absolute bottom-20 left-20 text-6xl swing" style={{animationDelay: '0.3s'}}>
-            🎁
-          </div>
-          
-          {/* Package - complex float */}
-          <div className="absolute bottom-32 right-10 text-5xl float-slow" style={{animationDelay: '0.5s'}}>
-            📦
-          </div>
-          
-          {/* Money Bag - floating with glow */}
-          <div className="absolute top-1/2 left-1/4 text-4xl float-animation pulse-glow" style={{animationDelay: '1.5s'}}>
-            💰
-          </div>
-          
-          {/* Price Tag - swing */}
-          <div className="absolute top-1/3 right-1/4 text-5xl swing" style={{animationDelay: '0.8s'}}>
-            🏷️
-          </div>
-          
-          {/* Additional Shopping Elements */}
-          <div className="absolute top-1/4 left-1/2 text-3xl float-slow" style={{animationDelay: '1s'}}>
-            🛍️
-          </div>
-          
-          <div className="absolute bottom-1/4 right-1/3 text-4xl float-animation" style={{animationDelay: '2s'}}>
-            🎯
-          </div>
-          
-          <div className="absolute top-2/3 left-1/3 text-3xl swing pulse-glow" style={{animationDelay: '1.2s'}}>
-            ⭐
-          </div>
-          
-          <div className="absolute bottom-1/3 left-1/2 text-4xl float-slow" style={{animationDelay: '0.7s'}}>
-            🏪
-          </div>
-          
-          {/* Sparkles and stars */}
-          <div className="absolute top-40 right-1/4 text-2xl float-animation" style={{animationDelay: '0.4s'}}>
-            ✨
-          </div>
-          
-          <div className="absolute bottom-40 left-1/3 text-2xl pulse-glow" style={{animationDelay: '1.8s'}}>
-            💎
-          </div>
+          <div className="absolute -top-20 -left-20 w-96 h-96 bg-white/5 rounded-full blur-3xl"></div>
+          <div className="absolute -bottom-20 -right-20 w-96 h-96 bg-white/5 rounded-full blur-3xl"></div>
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-amber-400/10 rounded-full blur-3xl"></div>
+          <svg className="absolute inset-0 w-full h-full opacity-[0.07]" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <pattern id="dots" x="0" y="0" width="30" height="30" patternUnits="userSpaceOnUse">
+                <circle cx="2" cy="2" r="1.5" fill="white"/>
+              </pattern>
+            </defs>
+            <rect width="100%" height="100%" fill="url(#dots)"/>
+          </svg>
+          <div className="absolute top-10 right-10 w-32 h-32 border border-white/10 rounded-full"></div>
+          <div className="absolute top-10 right-10 w-56 h-56 border border-white/5 rounded-full -translate-x-12 -translate-y-12"></div>
+          <div className="absolute bottom-10 left-10 w-40 h-40 border border-white/10 rounded-full"></div>
+          <div className="absolute bottom-10 left-10 w-64 h-64 border border-white/5 rounded-full -translate-x-12"></div>
         </div>
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative z-10">
           <div className="mb-6">
             <h1 className="text-3xl md:text-5xl lg:text-6xl font-bold mb-4 leading-tight">
-              Aradığın Ürünü Bul, <span className="text-[#10B981] animate-pulse">En İyi Fiyata Al!</span>
+              Aradığın Ürünü Bul, <span className="text-amber-100">En İyi Fiyata Al!</span>
             </h1>
             <p className="text-lg md:text-xl lg:text-2xl mb-8 opacity-90 max-w-4xl mx-auto leading-relaxed">
-              📦 Ürün ilanı oluştur, satıcılardan teklif al, karşılaştır ve en uygununu seç!
+              Ürün ilanı oluştur, satıcılardan teklif al, karşılaştır ve en uygununu seç!
             </p>
           </div>
 
           {/* Action Buttons */}
           <div className="space-y-6">
             <div className="relative inline-block">
-              {/* Glow effect behind button */}
-              <div className="absolute -inset-1 bg-gradient-to-r from-yellow-400 via-pink-400 to-purple-400 rounded-full blur opacity-75 group-hover:opacity-100 transition duration-1000 animate-pulse"></div>
+              <div className="absolute -inset-1 bg-gradient-to-r from-amber-400 via-orange-400 to-yellow-300 rounded-full blur opacity-75 group-hover:opacity-100 transition duration-1000 animate-pulse"></div>
               <Button
                 size="lg"
-                className="relative bg-white text-blue-600 hover:bg-gray-100 text-lg px-10 py-6 rounded-full shadow-2xl hover:shadow-3xl transform hover:scale-110 transition-all duration-300 font-bold group"
+                className="relative bg-white text-orange-600 hover:bg-gray-100 text-lg px-10 py-6 rounded-full shadow-2xl hover:shadow-3xl transform hover:scale-110 transition-all duration-300 font-bold group"
                 onClick={() => setIsCreateListingModalOpen(true)}
               >
                 <span className="flex items-center gap-2">
-                  <span className="text-2xl animate-bounce">🛍️</span>
                   <span>Ücretsiz İlan Ver</span>
-                  <span className="text-2xl group-hover:translate-x-1 transition-transform">→</span>
+                  <span className="group-hover:translate-x-1 transition-transform">→</span>
                 </span>
               </Button>
             </div>
@@ -591,7 +592,6 @@ export default function Index() {
                   <div className="font-semibold">İndir</div>
                 </div>
               </a>
-
               <a
                 href="#"
                 className="group inline-flex items-center bg-black text-white px-6 py-3 rounded-xl hover:bg-gray-800 transition-all duration-300 shadow-lg hover:shadow-2xl transform hover:scale-105 hover:-translate-y-1"
@@ -667,8 +667,13 @@ export default function Index() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="all">Tüm Kategoriler</SelectItem>
-                        {categories && categories.map(category => (
-                          <SelectItem key={category} value={category}>{category}</SelectItem>
+                        {CATEGORY_GROUPS.map((group) => (
+                          <SelectGroup key={group.group}>
+                            <SelectLabel className="font-bold text-xs text-muted-foreground uppercase tracking-wide">{group.group}</SelectLabel>
+                            {group.subcategories.map(cat => (
+                              <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                            ))}
+                          </SelectGroup>
                         ))}
                       </SelectContent>
                     </Select>
@@ -748,32 +753,130 @@ export default function Index() {
 
           {/* Right Content - Results */}
           <div className="lg:col-span-3">
-            {/* Category Quick Links */}
-            <div className="mb-8 border-b border-gray-200">
-              <div className="flex flex-wrap gap-3 pb-3">
-                {[
-                  { name: 'Moda', category: 'Moda & Giyim' },
-                  { name: 'Elektronik', category: 'Elektronik' },
-                  { name: 'Ev & Yaşam', category: 'Ev & Yaşam' },
-                  { name: 'Anne & Bebek', category: 'Anne & Bebek' },
-                  { name: 'Kozmetik', category: 'Kozmetik & Kişisel Bakım' },
-                  { name: 'Mücevher & Saat', category: 'Mücevher & Saat' },
-                  { name: 'Spor', category: 'Spor & Outdoor' },
-                  { name: 'Kitap & Müzik', category: 'Kitap, Müzik, Film, Oyun' },
-                  { name: 'Süpermarket', category: 'Süpermarket & Petshop' },
-                ].map((cat) => (
-                  <button
-                    key={cat.category}
-                    onClick={() => setSelectedCategory(cat.category)}
-                    className={`text-sm font-medium whitespace-nowrap px-2.5 py-1.5 rounded-md transition-all duration-200 ${
-                      selectedCategory === cat.category ? 'text-blue-600 bg-blue-50' : 'text-gray-700 hover:text-blue-600 hover:bg-gray-50'
-                    }`}
-                  >
-                    {cat.name}
-                  </button>
-                ))}
+            {/* Category Navigation Bar with hover dropdowns */}
+            <div className="mb-8 border-b border-gray-200/80">
+              <div className="flex flex-wrap gap-0 pb-0">
+                {/* Tümü butonu */}
+                <button
+                  onClick={() => setSelectedCategory('all')}
+                  className={`text-sm font-semibold whitespace-nowrap px-3 py-3 transition-all duration-200 border-b-2 ${
+                    selectedCategory === 'all'
+                      ? 'text-orange-600 border-orange-600'
+                      : 'text-gray-500 border-transparent hover:text-orange-600 hover:border-orange-300'
+                  }`}
+                >
+                  Tümü
+                </button>
+
+                {CATEGORY_GROUPS.map((group) => {
+                  const isActive =
+                    selectedCategory === group.group ||
+                    group.subcategories.includes(selectedCategory);
+                  return (
+                    <div key={group.group} className="relative group">
+                      {/* Ana başlık */}
+                      <button
+                        onClick={() => setSelectedCategory(group.group)}
+                        className={`flex items-center gap-1 text-sm font-semibold whitespace-nowrap px-3 py-3 transition-all duration-200 border-b-2 ${
+                          isActive
+                            ? 'text-orange-600 border-orange-600'
+                            : 'text-gray-600 border-transparent hover:text-orange-600 hover:border-orange-300'
+                        }`}
+                      >
+                        {group.group}
+                        <ChevronDown className="h-3.5 w-3.5 mt-0.5 opacity-50 group-hover:opacity-100 transition-transform duration-200 group-hover:rotate-180" />
+                      </button>
+
+                      {/* Alt kategori dropdown */}
+                      <div className="absolute left-0 top-full z-50 hidden group-hover:block pt-0">
+                        <div className="bg-white border border-gray-200 rounded-xl shadow-xl shadow-black/10 min-w-[200px] py-2 mt-1">
+                          {/* Grubun hepsini seç */}
+                          <button
+                            onClick={() => setSelectedCategory(group.group)}
+                            className={`w-full text-left px-4 py-2 text-sm font-bold border-b border-gray-100 mb-1 transition-colors ${
+                              selectedCategory === group.group
+                                ? 'text-orange-600 bg-orange-50'
+                                : 'text-gray-800 hover:bg-gray-50'
+                            }`}
+                          >
+                            Tüm {group.group}
+                          </button>
+                          {group.subcategories.map((sub) => (
+                            <button
+                              key={sub}
+                              onClick={() => setSelectedCategory(sub)}
+                              className={`w-full text-left px-4 py-1.5 text-sm transition-colors ${
+                                selectedCategory === sub
+                                  ? 'text-orange-600 font-semibold bg-orange-50'
+                                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                              }`}
+                            >
+                              {sub}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
+
+            {featuredListings.length > 0 && (
+              <div className="mb-10">
+                <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3 mb-4">
+                  <div>
+                    <h2 className="text-2xl font-bold">Vitrin İlanları ✨</h2>
+                    <p className="text-sm text-muted-foreground max-w-2xl">
+                      En öne çıkmış ilanlar burada. Admin panelden yönetilebilen özel vitrinin en güncel ilanlarını kaydırarak inceleyebilirsiniz.
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => featuredCarouselRef.current?.scrollBy({ left: -320, behavior: 'smooth' })}
+                      className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-700 shadow-sm hover:bg-gray-50 transition"
+                      aria-label="Önceki vitrin ilanı"
+                    >
+                      <ChevronLeft className="h-5 w-5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => featuredCarouselRef.current?.scrollBy({ left: 320, behavior: 'smooth' })}
+                      className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-700 shadow-sm hover:bg-gray-50 transition"
+                      aria-label="Sonraki vitrin ilanı"
+                    >
+                      <ChevronRight className="h-5 w-5" />
+                    </button>
+                    <Link
+                      to="/listings?featured=1"
+                      className="text-primary hover:text-primary/80 font-medium flex items-center gap-1 transition-colors"
+                    >
+                      Tümünü Gör
+                      <span>›</span>
+                    </Link>
+                  </div>
+                </div>
+
+                <div
+                  ref={featuredCarouselRef}
+                  className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide snap-x snap-mandatory"
+                >
+                  {featuredListings.map((listing) => {
+                    const isOwnListing = currentUser && listing.buyerId === currentUser.id;
+                    return (
+                      <div key={listing.id} className="min-w-[320px] snap-start">
+                        <ListingCard
+                          listing={listing}
+                          isOwnListing={isOwnListing}
+                          currentUser={currentUser}
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-2xl font-bold">Aktif İlanlar 🛒</h2>

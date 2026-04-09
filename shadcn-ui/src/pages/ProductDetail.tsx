@@ -132,7 +132,7 @@ export default function ProductDetail() {
             {images.length > 1 && (
               <div className="mt-3 grid grid-cols-5 gap-2">
                 {images.map((src, idx) => (
-                  <button key={idx} className={`aspect-square rounded-md overflow-hidden border ${idx===activeIdx?'ring-2 ring-blue-500':''}`} onClick={()=>setActiveIdx(idx)}>
+                  <button key={idx} className={`aspect-square rounded-md overflow-hidden border ${idx===activeIdx?'ring-2 ring-orange-500':''}`} onClick={()=>setActiveIdx(idx)}>
                     <img src={src} className="w-full h-full object-cover" />
                   </button>
                 ))}
@@ -212,7 +212,7 @@ export default function ProductDetail() {
                 </span>
               )}
               {product.freeShipping && (
-                <span className="inline-flex items-center gap-1 text-blue-700 bg-blue-50 border border-blue-200 px-2 py-1 rounded">
+                <span className="inline-flex items-center gap-1 text-orange-700 bg-orange-50 border border-orange-200 px-2 py-1 rounded">
                   <Truck className="h-4 w-4" /> Kargo Bedava
                 </span>
               )}
@@ -243,7 +243,7 @@ export default function ProductDetail() {
               <button className="inline-flex items-center gap-2 px-2.5 py-1.5 text-sm rounded border bg-white text-gray-700" onClick={()=>setIsMessageOpen(true)}>
                 <MessageCircle className="h-4 w-4" /> Satıcıya Sor
               </button>
-              <button className={`inline-flex items-center gap-2 px-2.5 py-1.5 text-sm rounded border ${following? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-white text-gray-700'}`} onClick={handleToggleFollow}>
+              <button className={`inline-flex items-center gap-2 px-2.5 py-1.5 text-sm rounded border ${following? 'bg-orange-50 text-orange-700 border-orange-200' : 'bg-white text-gray-700'}`} onClick={handleToggleFollow}>
                 {following ? 'Takiptesin' : 'Satıcıyı Takip Et'}
               </button>
             </div>
@@ -403,7 +403,7 @@ export default function ProductDetail() {
                         </div>
                         {product.description && product.description.length > 300 && (
                           <div className="mt-3 flex justify-end">
-                            <button className="text-blue-600 hover:underline text-sm" onClick={()=>setShowFullDesc(true)}>
+                            <button className="text-orange-600 hover:underline text-sm" onClick={()=>setShowFullDesc(true)}>
                               Daha fazla göster
                             </button>
                           </div>
@@ -415,7 +415,7 @@ export default function ProductDetail() {
                           {renderSanitizedHtml(product.description)}
                         </div>
                         <div className="mt-3 flex justify-end">
-                          <button className="text-blue-600 hover:underline text-sm" onClick={()=>setShowFullDesc(false)}>
+                          <button className="text-orange-600 hover:underline text-sm" onClick={()=>setShowFullDesc(false)}>
                             Daha az göster
                           </button>
                         </div>

@@ -21,14 +21,18 @@ const router = Router();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-// Condition normalization helper - supports: new (Sıfır), good (2. El), any (Farketmez)
+// Condition normalization helper - supports: new (Sıfır), used/good (2. El), any (Farketmez)
+// DB ENUM: ('new', 'like_new', 'good', 'fair', 'poor', 'any')
 function normalizeCondition(condition: string | null | undefined): string {
   if (!condition) return 'any'; // Default to 'any' (Farketmez)
   const normalized = condition.toLowerCase().trim();
   // Map frontend values to database ENUM values
   if (normalized === 'new') return 'new';
+  if (normalized === 'like_new') return 'like_new';
   if (normalized === 'any') return 'any';
   if (normalized === 'used' || normalized === 'good') return 'good';
+  if (normalized === 'fair') return 'fair';
+  if (normalized === 'poor') return 'poor';
   return 'any'; // Unknown values default to 'any' (Farketmez)
 }
 
@@ -166,6 +170,7 @@ router.get('/active', async (req: Request, res: Response) => {
         l.buyer_id as user_id,
         l.view_count,
         l.favorite_count,
+        l.is_featured,
         u.firstName as first_name,
         u.lastName as last_name,
         COALESCE(o.offer_count, 0) as offer_count
@@ -214,6 +219,7 @@ router.get('/active', async (req: Request, res: Response) => {
           offerCount: parseInt(listing.offer_count) || 0, // Gerçek teklif sayısı
           viewCount: parseInt(listing.view_count) || 0,
           favoriteCount: parseInt(listing.favorite_count) || 0,
+          featured: listing.is_featured === 1,
           expiresAt: listing.expires_at || null,
           buyerId: listing.user_id,
           buyerName: `${listing.first_name} ${listing.last_name}`.trim() || 'Anonim',
@@ -239,6 +245,94 @@ router.get('/active', async (req: Request, res: Response) => {
       error: 'İlanlar getirilirken hata oluştu',
       ...(isProduction ? {} : { details: error instanceof Error ? error.message : String(error) })
     });
+  }
+});
+
+// Vitrin ilanlarını getir
+router.get('/featured', async (req: Request, res: Response) => {
+  logger.info('🔄 GET /api/listings/featured - Request received');
+
+  try {
+    const listings = await query(`
+      SELECT 
+        l.id,
+        l.title,
+        l.category,
+        l.listing_condition,
+        l.budget_max as price,
+        'TRY' as currency,
+        l.city as location,
+        l.description,
+        l.images,
+        l.delivery_type,
+        l.created_at,
+        l.expires_at,
+        l.buyer_id as user_id,
+        l.view_count,
+        l.favorite_count,
+        l.is_featured,
+        u.firstName as first_name,
+        u.lastName as last_name,
+        COALESCE(o.offer_count, 0) as offer_count
+      FROM listings l
+      JOIN users u ON l.buyer_id = u.id
+      LEFT JOIN (
+        SELECT listing_id, COUNT(*) as offer_count 
+        FROM offers 
+        WHERE status IN ('active', 'accepted')
+          AND (valid_until IS NULL OR valid_until > NOW())
+        GROUP BY listing_id
+      ) o ON l.id = o.listing_id
+      WHERE l.status = 'active' AND l.approval_status = 'approved'
+        AND l.is_featured = 1
+        AND (l.expires_at IS NULL OR l.expires_at > NOW())
+      ORDER BY l.created_at DESC
+    `) as any[];
+
+    const response = {
+      success: true,
+      listings: listings.map(listing => {
+        let images = [];
+        try {
+          images = listing.images ? JSON.parse(listing.images) : [];
+        } catch (e) {
+          console.warn('Failed to parse images JSON:', listing.images);
+          images = [];
+        }
+
+        return {
+          id: listing.id,
+          title: listing.title,
+          condition: listing.listing_condition,
+          price: parseFloat(listing.price) || 0,
+          budgetMax: parseFloat(listing.price) || 0,
+          currency: listing.currency,
+          location: listing.location,
+          city: listing.location,
+          description: listing.description,
+          images: images,
+          createdAt: listing.created_at,
+          category: listing.category || 'genel',
+          deliveryType: denormalizeDeliveryType(listing.delivery_type),
+          offerCount: parseInt(listing.offer_count) || 0,
+          viewCount: parseInt(listing.view_count) || 0,
+          favoriteCount: parseInt(listing.favorite_count) || 0,
+          featured: listing.is_featured === 1,
+          expiresAt: listing.expires_at || null,
+          buyerId: listing.user_id,
+          buyerName: `${listing.first_name} ${listing.last_name}`.trim() || 'Anonim',
+          seller: {
+            firstName: listing.first_name,
+            lastName: listing.last_name
+          }
+        };
+      })
+    };
+
+    res.json(response);
+  } catch (error) {
+    logger.error('❌ Get featured listings error:', error);
+    res.status(500).json({ success: false, error: 'Vitrin ilanları yüklenirken hata oluştu' });
   }
 });
 
@@ -386,7 +480,7 @@ router.put('/:id', authenticateToken, async (req: any, res: Response) => {
     `, [
       title,
       category || 'genel', 
-      condition, 
+      normalizeCondition(condition), 
       parseFloat(price), 
       location, 
       description,

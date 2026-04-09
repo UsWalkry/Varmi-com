@@ -117,7 +117,7 @@ export default function OfferCard({
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'active': return 'bg-blue-100 text-blue-800';
+      case 'active': return 'bg-orange-100 text-orange-800';
       case 'accepted': return 'bg-green-100 text-green-800';
       case 'rejected': return 'bg-red-100 text-red-800';
       case 'withdrawn': return 'bg-gray-100 text-gray-800';
@@ -172,7 +172,7 @@ export default function OfferCard({
             <div className="flex items-center flex-wrap gap-2 mb-2">
               <button 
                 onClick={handleUserClick}
-                className="font-semibold text-blue-600 hover:text-blue-800 hover:underline transition-colors cursor-pointer"
+                className="font-semibold text-orange-600 hover:text-orange-800 hover:underline transition-colors cursor-pointer"
               >
                 {offer.sellerName || 'İsimsiz Kullanıcı'}
               </button>
@@ -181,7 +181,7 @@ export default function OfferCard({
               {typeof offer.sellerRating !== 'undefined' && (
                 <button
                   onClick={handleRatingClick}
-                  className="flex items-center gap-1 cursor-pointer hover:bg-blue-50 hover:border-blue-300 border border-transparent transition-all rounded-md px-2 py-0.5 -mx-2"
+                  className="flex items-center gap-1 cursor-pointer hover:bg-orange-50 hover:border-orange-300 border border-transparent transition-all rounded-md px-2 py-0.5 -mx-2"
                   title="Değerlendirmeleri görüntüle"
                   disabled={!offer.sellerId}
                 >
@@ -199,7 +199,7 @@ export default function OfferCard({
               
               {/* Verified User Badge */}
               {offer.sellerEmailVerified && (
-                <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-700 border-blue-200">
+                <Badge variant="secondary" className="text-xs bg-orange-100 text-orange-700 border-orange-200">
                   <Award className="h-3 w-3 mr-1" />
                   Doğrulanmış Kullanıcı
                 </Badge>
@@ -341,7 +341,7 @@ export default function OfferCard({
             {/* Sepete Ekle Butonu - Sadece ilan sahibi için göster */}
             {listingId && (
               <Button 
-                className="w-full bg-blue-600 hover:bg-blue-700"
+                className="w-full bg-orange-600 hover:bg-orange-700"
                 size="sm"
                 onClick={handleAddToCart}
               >

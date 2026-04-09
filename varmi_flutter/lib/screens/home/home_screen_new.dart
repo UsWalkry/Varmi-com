@@ -33,11 +33,14 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   final List<String> _categories = [
     'Tümü',
     'Elektronik',
-    'Giyim',
-    'Ev & Yaşam',
-    'Spor',
-    'Kitap',
-    'Diğer'
+    'Moda',
+    'Ev, Yaşam, Kırtasiye',
+    'Oto, Bahçe, Yapı',
+    'Anne, Bebek, Oyuncak',
+    'Spor & Outdoor',
+    'Kozmetik',
+    'Süpermarket & Petshop',
+    'Kitap, Müzik, Hobi',
   ];
 
   @override

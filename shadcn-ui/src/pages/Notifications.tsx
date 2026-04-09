@@ -229,7 +229,7 @@ export default function Notifications() {
                     key={notification.id}
                     onClick={() => handleNotificationClick(notification)}
                     className={`p-4 cursor-pointer hover:bg-gray-50 transition-colors ${
-                      !notification.is_read ? 'bg-blue-50/50' : ''
+                      !notification.is_read ? 'bg-orange-50/50' : ''
                     }`}
                   >
                     <div className="flex items-start gap-4">
@@ -241,11 +241,11 @@ export default function Notifications() {
                       {/* Content */}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
-                          <h4 className={`font-medium truncate ${!notification.is_read ? 'text-blue-900' : 'text-gray-900'}`}>
+                          <h4 className={`font-medium truncate ${!notification.is_read ? 'text-orange-900' : 'text-gray-900'}`}>
                             {notification.title}
                           </h4>
                           {!notification.is_read && (
-                            <Badge variant="default" className="bg-blue-500 text-xs">
+                            <Badge variant="default" className="bg-orange-500 text-xs">
                               Yeni
                             </Badge>
                           )}
@@ -268,7 +268,7 @@ export default function Notifications() {
                         {notification.is_read ? (
                           <Check className="h-4 w-4 text-gray-400" />
                         ) : (
-                          <div className="h-2 w-2 rounded-full bg-blue-500"></div>
+                          <div className="h-2 w-2 rounded-full bg-orange-500"></div>
                         )}
                       </div>
                     </div>

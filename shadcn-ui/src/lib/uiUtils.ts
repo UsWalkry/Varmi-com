@@ -39,47 +39,122 @@ export function maskDisplayName(name: string): string {
   return `${firstChar}${middle}${lastChar}`;
 }
 
-export const categories = [
-  'Teknoloji',
-  'Moda & Giyim', 
-  'Ev & Yaşam',
-  'Spor & Outdoor',
-  'Kitap & Müzik',
-  'Sağlık & Güzellik',
-  'Bebek & Çocuk',
-  'Otomotiv',
-  'Hobi & Sanat',
-  'Elektronik & Bilgisayar',
-  'Cep Telefonu & Aksesuar',
-  'Beyaz Eşya',
-  'Mobilya & Dekorasyon',
-  'Bahçe & Yapı Market',
-  'Kozmetik & Kişisel Bakım',
-  'Süpermarket & Petshop',
-  'Anne & Bebek',
-  'Oyuncak & Oyun',
-  'Kırtasiye & Ofis',
-  'Elektrikli Ev Aletleri',
-  'Ayakkabı & Çanta',
-  'Aksesuar & Takı',
-  'Saat & Gözlük',
-  'İç Giyim & Pijama',
-  'Spor Giyim & Ayakkabı',
-  'Outdoor & Kamp Malzemeleri',
-  'Bisiklet & Scooter',
-  'Müzik Enstrümanları',
-  'Film & Dizi',
-  'Koleksiyon',
-  'El Sanatları & Hobi',
-  'Sanat & Antika',
-  'Evcil Hayvan Ürünleri',
-  'Yiyecek & İçecek',
-  'Vitamin & Takviye',
-  'Medikal Ürünler',
-  'Oto Aksesuar & Yedek Parça',
-  'Motor & ATV',
-  'Diğer'
+export interface CategoryGroup {
+  group: string;
+  subcategories: string[];
+}
+
+export const CATEGORY_GROUPS: CategoryGroup[] = [
+  {
+    group: 'Elektronik',
+    subcategories: [
+      'Bilgisayar / Tablet',
+      'Bilgisayar Parçaları',
+      'Ağ - Modem - Akıllı Ev',
+      'Çevre Birimleri',
+      'Yazılım Ürünleri',
+      'Bilgisayar Aksesuarları',
+      'Kulaklık',
+      'Monitör',
+      'Yazıcılar & Projeksiyon',
+      'Telefon & Aksesuar',
+      'TV & Ses Sistemleri',
+      'Beyaz Eşya',
+      'Klima & Isıtıcı',
+      'Elektrikli Ev Aletleri',
+      'Foto & Kamera',
+      'Oyun & Konsol',
+    ],
+  },
+  {
+    group: 'Moda',
+    subcategories: [
+      'Kadın Giyim',
+      'Erkek Giyim',
+      'Ayakkabı & Çanta',
+      'Çocuk Giyim',
+    ],
+  },
+  {
+    group: 'Ev, Yaşam, Kırtasiye',
+    subcategories: [
+      'Mutfak & Sofra',
+      'Mobilya',
+      'Ev Tekstil',
+      'Ofis & Kırtasiye',
+    ],
+  },
+  {
+    group: 'Oto, Bahçe, Yapı',
+    subcategories: [
+      'Yapı Market',
+      'El Aletleri',
+      'Güvenlik',
+      'Bahçe',
+      'Elektrik & Tesisat',
+      'Oto Aksesuar',
+      'Motor Ürünleri',
+      'Yedek Parça',
+    ],
+  },
+  {
+    group: 'Anne, Bebek, Oyuncak',
+    subcategories: [
+      'Oyuncak',
+      'Bebek Arabası',
+      'Mama',
+      'Bebek Odası',
+      'Bez & Islak Mendil',
+      'Bebek Giyim',
+    ],
+  },
+  {
+    group: 'Spor & Outdoor',
+    subcategories: [
+      'Spor Giyim',
+      'Fitness',
+      'Kamp',
+      'Scooter / Paten',
+      'Bisiklet',
+      'Su Sporları',
+      'Avcılık',
+    ],
+  },
+  {
+    group: 'Kozmetik',
+    subcategories: [
+      'Parfüm',
+      'Makyaj',
+      'Cilt Bakım',
+      'Saç Bakım',
+      'Ağız Bakım',
+      'Epilasyon',
+      'Deodorant',
+    ],
+  },
+  {
+    group: 'Süpermarket & Petshop',
+    subcategories: [
+      'Temizlik Ürünleri',
+      'Gıda',
+      'İçecek',
+      'Petshop',
+      'Ev Tüketim',
+    ],
+  },
+  {
+    group: 'Kitap, Müzik, Hobi',
+    subcategories: [
+      'Kitap',
+      'Müzik Enstrümanları',
+      'Film',
+      'Hobi',
+      'Dijital Ürünler',
+    ],
+  },
 ];
+
+export const categories = CATEGORY_GROUPS.flatMap(g => g.subcategories);
 
 export const cities = [
   'İstanbul',

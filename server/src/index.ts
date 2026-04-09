@@ -38,6 +38,7 @@ import monitoringRoutes, { metricsMiddleware } from './routes/monitoring.js';
 import sitemapRoutes from './routes/sitemap.js';
 import cartRoutes from './routes/cart.js';
 import ibanRoutes from './routes/ibans.js';
+import aiRoutes from './routes/ai.js';
 // .env yolunu her zaman server klasörüne sabitle (dist veya src’den çalışsa da)
 try {
   const __filename = fileURLToPath(import.meta.url);
@@ -82,31 +83,56 @@ app.use(helmet({
 }));
 
 // 🛡️ Rate Limiting - Redis-based (distributed, multi-server ready)
-const { redisClient } = await initRedis();
+let redisClient: any = null;
+let authLimiter: any = null;
+let limiter: any = null;
 
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 dakika
-  max: 500, // IP başına 500 istek (high-traffic için artırıldı)
-  message: 'Çok fazla istek gönderdiniz, lütfen 15 dakika sonra tekrar deneyin.',
-  standardHeaders: true,
-  legacyHeaders: false,
-  store: new RedisStore({
-    sendCommand: (...args: string[]) => redisClient.sendCommand(args),
-  }),
-});
-app.use(limiter);
+try {
+  const result = await initRedis();
+  redisClient = result.redisClient;
+  
+  limiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 dakika
+    max: 500, // IP başına 500 istek (high-traffic için artırıldı)
+    message: 'Çok fazla istek gönderdiniz, lütfen 15 dakika sonra tekrar deneyin.',
+    standardHeaders: true,
+    legacyHeaders: false,
+    store: new RedisStore({
+      sendCommand: (...args: string[]) => redisClient.sendCommand(args),
+    }),
+  });
+  
+  authLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 10, // 15 dakikada 10 deneme (biraz artırıldı)
+    message: 'Çok fazla giriş denemesi, lütfen 15 dakika sonra tekrar deneyin.',
+    skipSuccessfulRequests: true,
+    store: new RedisStore({
+      sendCommand: (...args: string[]) => redisClient.sendCommand(args),
+      prefix: 'rl:auth:',
+    }),
+  });
+} catch (err) {
+  console.warn('⚠️ Redis not available, using memory store for rate limiting');
+  
+  // Fallback: Use memory-based rate limiting
+  limiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 500,
+    message: 'Çok fazla istek gönderdiniz, lütfen 15 dakika sonra tekrar deneyin.',
+    standardHeaders: true,
+    legacyHeaders: false,
+  });
+  
+  authLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 10,
+    message: 'Çok fazla giriş denemesi, lütfen 15 dakika sonra tekrar deneyin.',
+    skipSuccessfulRequests: true,
+  });
+}
 
-// 🛡️ Auth endpoints için özel rate limiting
-const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 10, // 15 dakikada 10 deneme (biraz artırıldı)
-  message: 'Çok fazla giriş denemesi, lütfen 15 dakika sonra tekrar deneyin.',
-  skipSuccessfulRequests: true,
-  store: new RedisStore({
-    sendCommand: (...args: string[]) => redisClient.sendCommand(args),
-    prefix: 'rl:auth:',
-  }),
-});
+if (limiter) app.use(limiter);
 
 // 🛡️ Data sanitization - NoSQL injection koruması
 app.use(mongoSanitize());
@@ -218,6 +244,7 @@ app.use('/api/support', supportRoutes);
 app.use('/api/seller-profile', sellerProfileRoutes);
 app.use('/api/cart', cartRoutes);
 app.use('/api/ibans', ibanRoutes);
+app.use('/api/ai', aiRoutes);
 app.use('/api', monitoringRoutes);
 
 // SEO Routes (no /api prefix)

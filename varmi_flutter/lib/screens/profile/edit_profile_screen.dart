@@ -35,8 +35,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         return 'Kadın';
       case 'other':
         return 'Diğer';
+      case 'prefer_not_to_say':
+      case 'belirtmek istemiyorum':
+        return 'Belirtmek istemiyorum';
       default:
-        return ['Erkek', 'Kadın', 'Diğer'].contains(g) ? g : null;
+        return ['Erkek', 'Kadın', 'Diğer', 'Belirtmek istemiyorum'].contains(g) ? g : null;
     }
   }
 
@@ -239,6 +242,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   DropdownMenuItem(value: 'Erkek', child: Text('Erkek')),
                   DropdownMenuItem(value: 'Kadın', child: Text('Kadın')),
                   DropdownMenuItem(value: 'Diğer', child: Text('Diğer')),
+                  DropdownMenuItem(value: 'Belirtmek istemiyorum', child: Text('Belirtmek istemiyorum')),
                 ],
                 onChanged: (v) => setState(() => _selectedGender = v),
               ),

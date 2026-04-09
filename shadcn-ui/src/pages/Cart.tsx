@@ -36,7 +36,7 @@ const Cart: React.FC = () => {
     return (
       <div className="container mx-auto px-4 py-8 max-w-5xl">
         <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600"></div>
         </div>
       </div>
     );
@@ -49,7 +49,7 @@ const Cart: React.FC = () => {
           <ShoppingCart className="w-24 h-24 mx-auto text-gray-300 mb-4" />
           <h2 className="text-2xl font-bold text-gray-900 mb-2">Sepetiniz Boş</h2>
           <p className="text-gray-600 mb-6">Henüz sepetinize ürün eklemediniz</p>
-          <Button onClick={() => navigate('/')} className="bg-blue-600 hover:bg-blue-700">
+          <Button onClick={() => navigate('/')} className="bg-orange-600 hover:bg-orange-700">
             Alışverişe Başla
           </Button>
         </div>
@@ -114,7 +114,7 @@ const Cart: React.FC = () => {
                   {/* Price & Actions */}
                   <div className="flex flex-col items-end justify-between">
                     <div className="text-right">
-                      <p className="text-2xl font-bold text-blue-600">
+                      <p className="text-2xl font-bold text-orange-600">
                         ₺{item.offer_amount.toLocaleString('tr-TR')}
                       </p>
                       {item.shipping_cost > 0 && (
@@ -190,7 +190,7 @@ const Cart: React.FC = () => {
               <div className="border-t pt-2 mt-2">
                 <div className="flex justify-between text-lg font-bold text-gray-900">
                   <span>Toplam:</span>
-                  <span className="text-blue-600">
+                  <span className="text-orange-600">
                     ₺{parseFloat(cart.summary.total).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
                   </span>
                 </div>
@@ -199,7 +199,7 @@ const Cart: React.FC = () => {
 
             <Button 
               onClick={handleCheckout}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-lg py-6"
+              className="w-full bg-orange-600 hover:bg-orange-700 text-lg py-6"
             >
               Siparişi Tamamla
               <ArrowRight className="w-5 h-5 ml-2" />

@@ -63,7 +63,7 @@ const quickActions: QuickAction[] = [
     description: 'Kullanıcıları görüntüle ve yönet',
     icon: Users,
     href: '/admin/users',
-    color: 'bg-blue-500'
+    color: 'bg-orange-500'
   },
   {
     id: 'listings',
@@ -348,7 +348,7 @@ export default function AdminDashboard() {
               <CardTitle className="text-sm font-medium text-gray-600">
                 Toplam Kullanıcı
               </CardTitle>
-              <Users className="h-4 w-4 text-blue-600" />
+              <Users className="h-4 w-4 text-orange-600" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{stats.totalUsers.toLocaleString()}</div>
@@ -487,7 +487,7 @@ export default function AdminDashboard() {
               <CardTitle className="text-sm font-medium text-gray-600">
                 Hazırlanıyor
               </CardTitle>
-              <Package className="h-4 w-4 text-blue-600" />
+              <Package className="h-4 w-4 text-orange-600" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{stats.preparingOrders}</div>

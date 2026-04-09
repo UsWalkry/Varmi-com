@@ -304,7 +304,7 @@ export default function Profile() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+      <div className="min-h-screen bg-gradient-to-br from-orange-50 to-orange-100">
         <Header onCreateListingClick={() => setIsCreateListingModalOpen(true)} />
         <div className="flex items-center justify-center p-8">
           <div className="text-center">Yükleniyor...</div>
@@ -315,7 +315,7 @@ export default function Profile() {
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+      <div className="min-h-screen bg-gradient-to-br from-orange-50 to-orange-100">
         <Header onCreateListingClick={() => setIsCreateListingModalOpen(true)} />
         <div className="flex items-center justify-center p-8">
           <div className="text-center">
@@ -449,7 +449,7 @@ export default function Profile() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
         {/* Sticky user bar */}
         <div className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-full bg-gradient-to-br from-emerald-400 to-blue-500 flex items-center justify-center text-white font-semibold">
+          <div className="w-12 h-12 rounded-full bg-gradient-to-br from-emerald-400 to-orange-500 flex items-center justify-center text-white font-semibold">
             {user?.name?.[0] || user?.email?.[0] || 'U'}
           </div>
           <div>
@@ -462,7 +462,7 @@ export default function Profile() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* 1. KULLANICI PROFİLİ */}
           <Card className="border-2 hover:shadow-lg transition-shadow">
-            <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50">
+            <CardHeader className="bg-gradient-to-r from-orange-50 to-indigo-50">
               <CardTitle className="text-2xl flex items-center gap-2">
                 👤 Kullanıcı Profili
               </CardTitle>

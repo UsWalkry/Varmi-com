@@ -34,8 +34,8 @@ export default defineConfig(({ mode }) => {
   const sslCertPath = path.resolve(__dirname, '../server/ssl/cert.pem');
   
   let httpsConfig;
-  let port = 443; // Standard HTTPS port
-  let host = '192.168.1.119'; // Your current IP address
+  let port = 3000; // Use port 3000 for dev
+  let host = '0.0.0.0'; // Bind to all interfaces for external access
   
   try {
     if (fs.existsSync(sslKeyPath) && fs.existsSync(sslCertPath)) {

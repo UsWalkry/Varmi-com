@@ -331,16 +331,16 @@ export default function ListingCommentsModal({
     
     // Predefined nice gradient colors (Tailwind-like)
     const colors = [
-      'from-blue-400 to-purple-500',
+      'from-orange-400 to-purple-500',
       'from-pink-400 to-rose-500',
       'from-green-400 to-teal-500',
       'from-orange-400 to-red-500',
-      'from-cyan-400 to-blue-500',
+      'from-cyan-400 to-orange-500',
       'from-violet-400 to-purple-500',
       'from-amber-400 to-orange-500',
       'from-emerald-400 to-green-500',
       'from-fuchsia-400 to-pink-500',
-      'from-indigo-400 to-blue-500',
+      'from-indigo-400 to-orange-500',
     ];
     
     const index = Math.abs(hash) % colors.length;
@@ -366,7 +366,7 @@ export default function ListingCommentsModal({
         <div className="flex gap-3">
           {/* Avatar */}
           <Avatar className="h-8 w-8 flex-shrink-0">
-            <AvatarFallback className="text-xs bg-gradient-to-br from-blue-400 to-purple-500 text-white">
+            <AvatarFallback className="text-xs bg-gradient-to-br from-orange-400 to-purple-500 text-white">
               {getInitials(comment.userName)}
             </AvatarFallback>
           </Avatar>
@@ -425,11 +425,11 @@ export default function ListingCommentsModal({
                   <div className="mt-3 space-y-2">
                     {/* Warning for PRIVATE comments */}
                     {comment.visibility_state === 'PRIVATE' && !comment.is_first_seller_reply_exists && (
-                      <div className="flex items-start gap-2 p-2 bg-blue-50 border border-blue-200 rounded-lg">
-                        <svg className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <div className="flex items-start gap-2 p-2 bg-orange-50 border border-orange-200 rounded-lg">
+                        <svg className="w-4 h-4 text-orange-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
-                        <p className="text-xs text-blue-800">
+                        <p className="text-xs text-orange-800">
                           <strong>İlk yanıtınızı verdiğinizde</strong> bu yorum ve ilk cevabınız herkese görünür olacak. 
                           Sonraki mesajlar iki taraf arasında gizli kalacak.
                         </p>
@@ -459,7 +459,7 @@ export default function ListingCommentsModal({
                         disabled={submitting || !replyText[comment.id]?.trim()}
                         size="sm"
                         variant="ghost"
-                        className="h-9 px-3 text-blue-600 hover:text-blue-700 font-semibold"
+                        className="h-9 px-3 text-orange-600 hover:text-orange-700 font-semibold"
                       >
                         {submitting ? '...' : 'Gönder'}
                       </Button>
@@ -500,7 +500,7 @@ export default function ListingCommentsModal({
                               {isOwner && !reply.is_owner_reply && (
                                 <button 
                                   onClick={() => setShowReplyInput({ ...showReplyInput, [reply.id]: !showReplyInput[reply.id] })}
-                                  className="font-semibold hover:text-gray-700 text-blue-600"
+                                  className="font-semibold hover:text-gray-700 text-orange-600"
                                 >
                                   Cevapla
                                 </button>
@@ -533,7 +533,7 @@ export default function ListingCommentsModal({
                                   disabled={submitting || !replyText[reply.id]?.trim()}
                                   size="sm"
                                   variant="ghost"
-                                  className="h-8 px-2 text-blue-600 hover:text-blue-700 font-semibold text-xs"
+                                  className="h-8 px-2 text-orange-600 hover:text-orange-700 font-semibold text-xs"
                                 >
                                   {submitting ? '...' : 'Gönder'}
                                 </Button>
@@ -549,7 +549,7 @@ export default function ListingCommentsModal({
                                     <div className={nestedReply.isPending ? 'opacity-50' : ''}>
                                       <div className="flex gap-2">
                                         <Avatar className="h-6 w-6 flex-shrink-0">
-                                          <AvatarFallback className="text-xs bg-gradient-to-br from-blue-400 to-indigo-500 text-white">
+                                          <AvatarFallback className="text-xs bg-gradient-to-br from-orange-400 to-indigo-500 text-white">
                                             {nestedReply.is_owner_reply ? '👤' : getInitials(nestedReply.userName)}
                                           </AvatarFallback>
                                         </Avatar>
@@ -569,7 +569,7 @@ export default function ListingCommentsModal({
                                             {isOwner && !nestedReply.is_owner_reply && (
                                               <button 
                                                 onClick={() => setShowReplyInput({ ...showReplyInput, [nestedReply.id]: !showReplyInput[nestedReply.id] })}
-                                                className="font-semibold hover:text-gray-700 text-blue-600"
+                                                className="font-semibold hover:text-gray-700 text-orange-600"
                                               >
                                                 Cevapla
                                               </button>
@@ -602,7 +602,7 @@ export default function ListingCommentsModal({
                                                 disabled={submitting || !replyText[nestedReply.id]?.trim()}
                                                 size="sm"
                                                 variant="ghost"
-                                                className="h-8 px-2 text-blue-600 hover:text-blue-700 font-semibold text-xs"
+                                                className="h-8 px-2 text-orange-600 hover:text-orange-700 font-semibold text-xs"
                                               >
                                                 {submitting ? '...' : 'Gönder'}
                                               </Button>
@@ -635,7 +635,7 @@ export default function ListingCommentsModal({
                                                   {isOwner && !deepReply.is_owner_reply && (
                                                     <button 
                                                       onClick={() => setShowReplyInput({ ...showReplyInput, [deepReply.id]: !showReplyInput[deepReply.id] })}
-                                                      className="font-semibold hover:text-gray-700 text-blue-600"
+                                                      className="font-semibold hover:text-gray-700 text-orange-600"
                                                     >
                                                       Cevapla
                                                     </button>
@@ -667,7 +667,7 @@ export default function ListingCommentsModal({
                                                       disabled={submitting || !replyText[deepReply.id]?.trim()}
                                                       size="sm"
                                                       variant="ghost"
-                                                      className="h-8 px-2 text-blue-600 hover:text-blue-700 font-semibold text-xs"
+                                                      className="h-8 px-2 text-orange-600 hover:text-orange-700 font-semibold text-xs"
                                                     >
                                                       {submitting ? '...' : 'Gönder'}
                                                     </Button>
@@ -960,7 +960,7 @@ export default function ListingCommentsModal({
                 disabled={submitting || !newComment.trim()}
                 variant="ghost"
                 size="sm"
-                className="text-blue-500 hover:text-blue-600 disabled:text-blue-300 font-semibold px-2"
+                className="text-orange-500 hover:text-orange-600 disabled:text-orange-300 font-semibold px-2"
               >
                 {submitting ? 'Gönderiliyor...' : 'Gönder'}
               </Button>

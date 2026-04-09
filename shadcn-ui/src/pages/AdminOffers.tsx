@@ -107,7 +107,7 @@ interface Offer {
 const offerStatusConfig = {
   active: { label: 'Aktif', color: 'bg-green-100 text-green-800', icon: CheckCircle },
   inactive: { label: 'İnaktif', color: 'bg-gray-100 text-gray-600', icon: Clock },
-  accepted: { label: 'Kabul Edildi', color: 'bg-blue-100 text-blue-800', icon: CheckCircle },
+  accepted: { label: 'Kabul Edildi', color: 'bg-orange-100 text-orange-800', icon: CheckCircle },
   rejected: { label: 'Reddedildi', color: 'bg-red-100 text-red-800', icon: XCircle },
   withdrawn: { label: 'Geri Çekildi', color: 'bg-gray-100 text-gray-800', icon: XCircle },
   expired: { label: 'Süresi Doldu', color: 'bg-yellow-100 text-yellow-800', icon: Clock }
@@ -401,7 +401,7 @@ export default function AdminOffers() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Kabul Edildi</CardTitle>
-              <CheckCircle className="h-4 w-4 text-blue-500" />
+              <CheckCircle className="h-4 w-4 text-orange-500" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{offerStats.accepted}</div>
@@ -666,7 +666,7 @@ export default function AdminOffers() {
                   </div>
                   <div>
                     <p className="text-sm text-gray-500">Fiyat</p>
-                    <p className="font-medium text-lg text-blue-600">{formatPrice(selectedOffer.price)}</p>
+                    <p className="font-medium text-lg text-orange-600">{formatPrice(selectedOffer.price)}</p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-500">Miktar</p>
@@ -749,7 +749,7 @@ export default function AdminOffers() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <h3 className="font-semibold text-lg mb-3">Satıcı Bilgileri</h3>
-                  <div className="bg-blue-50 p-4 rounded-lg space-y-2">
+                  <div className="bg-orange-50 p-4 rounded-lg space-y-2">
                     <div>
                       <p className="text-sm text-gray-500">Ad Soyad</p>
                       <p className="font-medium">{selectedOffer.seller.name}</p>
@@ -1029,7 +1029,7 @@ export default function AdminOffers() {
                 )}
 
                 {/* Condition */}
-                <div className="flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium border bg-blue-100 text-blue-800 border-blue-300">
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium border bg-orange-100 text-orange-800 border-orange-300">
                   <Package size={16} />
                   {previewOffer.condition}
                 </div>
@@ -1064,8 +1064,8 @@ export default function AdminOffers() {
               </div>
 
               {/* Related Listing Info */}
-              <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
-                <h3 className="font-semibold text-blue-900 mb-2">İlgili İlan</h3>
+              <div className="bg-orange-50 rounded-lg p-4 border border-orange-200">
+                <h3 className="font-semibold text-orange-900 mb-2">İlgili İlan</h3>
                 <div className="space-y-1 text-sm">
                   <p><span className="font-medium">Başlık:</span> {previewOffer.listingTitle}</p>
                   <p><span className="font-medium">Kategori:</span> {previewOffer.listingCategory}</p>

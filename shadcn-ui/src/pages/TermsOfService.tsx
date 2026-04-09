@@ -9,7 +9,7 @@ export default function TermsOfService() {
       
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full mb-4">
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-orange-500 to-purple-500 rounded-full mb-4">
             <ScrollText className="w-8 h-8 text-white" />
           </div>
           <h1 className="text-4xl font-bold text-gray-900 mb-2">Üyelik Sözleşmesi</h1>
@@ -34,7 +34,7 @@ export default function TermsOfService() {
               <section>
                 <h2 className="text-2xl font-bold text-gray-900 mb-4">2. TANIMLAR</h2>
                 
-                <div className="space-y-3 bg-blue-50 p-4 rounded-lg">
+                <div className="space-y-3 bg-orange-50 p-4 rounded-lg">
                   <p><strong>İlan:</strong> Alıcıların aradıkları ürün veya hizmetleri tanımladıkları, bütçe ve tercihlerini belirttikleri içeriği ifade eder.</p>
                   
                   <p><strong>Teklif:</strong> Satıcıların, ilanlar üzerinden alıcılara sundukları ürün/hizmet tekliflerini ifade eder.</p>
@@ -189,7 +189,7 @@ export default function TermsOfService() {
               </section>
 
               {/* ONAY */}
-              <section className="bg-gradient-to-r from-blue-50 to-purple-50 p-6 rounded-lg border-2 border-blue-200">
+              <section className="bg-gradient-to-r from-orange-50 to-purple-50 p-6 rounded-lg border-2 border-orange-200">
                 <p className="text-center font-semibold text-lg text-gray-900 mb-3">
                   📋 SÖZLEŞME ONAY BEYANNAMESİ
                 </p>

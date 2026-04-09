@@ -80,7 +80,7 @@ export default function SecuritySettings() {
         <Header />
         <div className="container mx-auto px-4 py-16">
           <div className="flex items-center justify-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600"></div>
           </div>
         </div>
       </div>
@@ -100,7 +100,7 @@ export default function SecuritySettings() {
         <Card className="mb-6">
           <CardHeader>
             <div className="flex items-center gap-2">
-              <Shield className="h-5 w-5 text-blue-600" />
+              <Shield className="h-5 w-5 text-orange-600" />
               <CardTitle>İki Faktörlü Doğrulama (2FA)</CardTitle>
             </div>
             <CardDescription>
@@ -133,12 +133,12 @@ export default function SecuritySettings() {
             </div>
 
             {tfaEnabled && (
-              <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
-                <div className="flex items-center gap-2 text-blue-800">
+              <div className="p-3 bg-orange-50 rounded-lg border border-orange-200">
+                <div className="flex items-center gap-2 text-orange-800">
                   <Key className="h-4 w-4" />
                   <span className="text-sm font-medium">2FA Aktif</span>
                 </div>
-                <p className="text-sm text-blue-700 mt-1">
+                <p className="text-sm text-orange-700 mt-1">
                   Hesabınıza her giriş yaptığınızda <strong>{userEmail}</strong> adresine 
                   doğrulama kodu gönderilecek.
                 </p>

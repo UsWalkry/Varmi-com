@@ -65,12 +65,12 @@ export default function EmailVerificationPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-orange-50 flex items-center justify-center p-4">
       <Card className="w-full max-w-md mx-auto shadow-xl">
         <CardContent className="p-8 text-center">
           {/* Logo */}
           <div className="mb-8">
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-orange-500 to-orange-600 bg-clip-text text-transparent">
               Var mıı?
             </h1>
           </div>
@@ -78,8 +78,8 @@ export default function EmailVerificationPage() {
           {/* Status Icon */}
           <div className="mb-6">
             {status === 'loading' && (
-              <div className="w-20 h-20 mx-auto bg-blue-100 rounded-full flex items-center justify-center">
-                <Loader2 className="w-10 h-10 text-blue-600 animate-spin" />
+              <div className="w-20 h-20 mx-auto bg-orange-100 rounded-full flex items-center justify-center">
+                <Loader2 className="w-10 h-10 text-orange-600 animate-spin" />
               </div>
             )}
             
@@ -127,7 +127,7 @@ export default function EmailVerificationPage() {
             <div className="space-y-3">
               <Button 
                 onClick={handleGoHome}
-                className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+                className="w-full bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700"
               >
                 Ana Sayfaya Git
                 <ArrowRight className="w-4 h-4 ml-2" />
@@ -149,7 +149,7 @@ export default function EmailVerificationPage() {
               </Button>
               <Button 
                 onClick={() => window.location.reload()}
-                className="w-full bg-blue-600 hover:bg-blue-700"
+                className="w-full bg-orange-600 hover:bg-orange-700"
               >
                 Tekrar Dene
               </Button>
@@ -159,7 +159,7 @@ export default function EmailVerificationPage() {
           {status === 'loading' && (
             <div className="space-y-2">
               <div className="w-full bg-gray-200 rounded-full h-2">
-                <div className="bg-blue-600 h-2 rounded-full animate-pulse" style={{width: '70%'}}></div>
+                <div className="bg-orange-600 h-2 rounded-full animate-pulse" style={{width: '70%'}}></div>
               </div>
               <p className="text-sm text-gray-500">Doğrulama işlemi gerçekleştiriliyor...</p>
             </div>

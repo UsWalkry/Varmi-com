@@ -36,19 +36,28 @@ class _EditListingScreenState extends State<EditListingScreen> {
   static const int _maxImages = 5;
 
   static const List<String> _categories = [
-    'Teknoloji', 'Moda & Giyim', 'Ev & Yaşam', 'Spor & Outdoor',
-    'Kitap & Müzik', 'Sağlık & Güzellik', 'Bebek & Çocuk', 'Otomotiv',
-    'Hobi & Sanat', 'Elektronik & Bilgisayar', 'Cep Telefonu & Aksesuar',
-    'Beyaz Eşya', 'Mobilya & Dekorasyon', 'Bahçe & Yapı Market',
-    'Kozmetik & Kişisel Bakım', 'Süpermarket & Petshop', 'Anne & Bebek',
-    'Oyuncak & Oyun', 'Kırtasiye & Ofis', 'Elektrikli Ev Aletleri',
-    'Ayakkabı & Çanta', 'Aksesuar & Takı', 'Saat & Gözlük',
-    'İç Giyim & Pijama', 'Spor Giyim & Ayakkabı',
-    'Outdoor & Kamp Malzemeleri', 'Bisiklet & Scooter',
-    'Müzik Enstrümanları', 'Film & Dizi', 'Koleksiyon',
-    'El Sanatları & Hobi', 'Sanat & Antika', 'Evcil Hayvan Ürünleri',
-    'Yiyecek & İçecek', 'Vitamin & Takviye', 'Medikal Ürünler',
-    'Oto Aksesuar & Yedek Parça', 'Motor & ATV', 'Diğer',
+    // Elektronik
+    'Bilgisayar / Tablet', 'Bilgisayar Parçaları', 'Ağ - Modem - Akıllı Ev', 'Çevre Birimleri',
+    'Yazılım Ürünleri', 'Bilgisayar Aksesuarları', 'Kulaklık', 'Monitör',
+    'Yazıcılar & Projeksiyon', 'Telefon & Aksesuar', 'TV & Ses Sistemleri',
+    'Beyaz Eşya', 'Klima & Isıtıcı', 'Elektrikli Ev Aletleri', 'Foto & Kamera', 'Oyun & Konsol',
+    // Moda
+    'Kadın Giyim', 'Erkek Giyim', 'Ayakkabı & Çanta', 'Çocuk Giyim',
+    // Ev, Yaşam, Kırtasiye
+    'Mutfak & Sofra', 'Mobilya', 'Ev Tekstil', 'Ofis & Kırtasiye',
+    // Oto, Bahçe, Yapı
+    'Yapı Market', 'El Aletleri', 'Güvenlik', 'Bahçe', 'Elektrik & Tesisat',
+    'Oto Aksesuar', 'Motor Ürünleri', 'Yedek Parça',
+    // Anne, Bebek, Oyuncak
+    'Oyuncak', 'Bebek Arabası', 'Mama', 'Bebek Odası', 'Bez & Islak Mendil', 'Bebek Giyim',
+    // Spor & Outdoor
+    'Spor Giyim', 'Fitness', 'Kamp', 'Scooter / Paten', 'Bisiklet', 'Su Sporları', 'Avcılık',
+    // Kozmetik
+    'Parfüm', 'Makyaj', 'Cilt Bakım', 'Saç Bakım', 'Ağız Bakım', 'Epilasyon', 'Deodorant',
+    // Süpermarket & Petshop
+    'Temizlik Ürünleri', 'Gıda', 'İçecek', 'Petshop', 'Ev Tüketim',
+    // Kitap, Müzik, Hobi
+    'Kitap', 'Müzik Enstrümanları', 'Film', 'Hobi', 'Dijital Ürünler',
   ];
 
   static const List<String> _cities = [

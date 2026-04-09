@@ -32,6 +32,8 @@ export default function NotificationBell() {
   const navigate = useNavigate();
 
   const fetchNotifications = async () => {
+    const token = localStorage.getItem('mysql-auth-token');
+    if (!token) return;
     try {
       const response = await mysqlAPI.getNotifications();
       if (response.success) {
@@ -196,7 +198,7 @@ export default function NotificationBell() {
             <DropdownMenuItem
               key={notification.id}
               className={`flex flex-col items-start p-3 cursor-pointer ${
-                !notification.is_read ? 'bg-blue-50' : ''
+                !notification.is_read ? 'bg-orange-50' : ''
               }`}
               onClick={() => handleNotificationClick(notification)}
             >
@@ -206,7 +208,7 @@ export default function NotificationBell() {
                   <div className="flex items-center justify-between gap-2">
                     <p className="font-medium text-sm truncate">{notification.title}</p>
                     {!notification.is_read && (
-                      <div className="h-2 w-2 rounded-full bg-blue-500 flex-shrink-0" />
+                      <div className="h-2 w-2 rounded-full bg-orange-500 flex-shrink-0" />
                     )}
                   </div>
                   <p className="text-xs text-gray-600 mt-1 line-clamp-2">
@@ -225,7 +227,7 @@ export default function NotificationBell() {
           <>
             <DropdownMenuSeparator />
             <DropdownMenuItem 
-              className="justify-center text-sm text-blue-600 cursor-pointer"
+              className="justify-center text-sm text-orange-600 cursor-pointer"
               onClick={() => {
                 navigate('/notifications');
                 setIsOpen(false);

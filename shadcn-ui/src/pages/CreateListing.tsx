@@ -287,7 +287,7 @@ export default function CreateListing() {
               Ana Sayfaya Dön
             </Button>
             <div className="flex items-center gap-3">
-              <h1 className="text-xl font-bold text-blue-600">İlan Ver</h1>
+              <h1 className="text-xl font-bold text-orange-600">İlan Ver</h1>
             </div>
             <div className="flex items-center gap-2">
               {currentUser ? (

@@ -157,12 +157,12 @@ export default function VerifyEmailChangePage() {
               </div>
               
               {status === 'success' && (
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-left">
+                <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 text-left">
                   <div className="flex items-start">
-                    <Mail className="w-5 h-5 text-blue-500 mt-0.5 mr-3 flex-shrink-0" />
+                    <Mail className="w-5 h-5 text-orange-500 mt-0.5 mr-3 flex-shrink-0" />
                     <div className="text-sm">
-                      <p className="font-medium text-blue-800 mb-1">Email Güncellendi:</p>
-                      <p className="text-blue-700">
+                      <p className="font-medium text-orange-800 mb-1">Email Güncellendi:</p>
+                      <p className="text-orange-700">
                         3 saniye içinde ana sayfaya yönlendirileceksiniz.
                       </p>
                     </div>

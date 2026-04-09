@@ -311,7 +311,7 @@ router.get('/sales', authenticateToken, async (req, res) => {
         o.*,
         COUNT(oi.id) as item_count,
         SUM(oi.quantity) as total_quantity,
-        os.seller_name,
+        MAX(os.seller_name) as seller_name,
         MAX(off.eta_days) as eta_days,
         SUM(COALESCE(off.shipping_cost, 0)) as total_shipping_cost
       FROM orders o

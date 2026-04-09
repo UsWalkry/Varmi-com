@@ -26,8 +26,8 @@ class ApiConfig {
   static String get baseUrl {
     if (isProduction) return productionUrl;
     if (isEmulator) return emulatorUrl;
-    if (isPhysical) return physicalUrl;
-    return developmentUrl;
+    // Debug modda da production sunucusunu kullan (localhost telefonda çalışmaz)
+    return physicalUrl;
   }
   
   // API Endpoints

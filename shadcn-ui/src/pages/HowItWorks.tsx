@@ -109,7 +109,7 @@ export default function HowItWorks() {
   ];
 
   const colorClasses = {
-    blue: 'from-blue-500 to-blue-600',
+    blue: 'from-orange-500 to-orange-600',
     purple: 'from-purple-500 to-purple-600',
     green: 'from-green-500 to-green-600',
     orange: 'from-orange-500 to-orange-600',
@@ -118,7 +118,7 @@ export default function HowItWorks() {
   };
 
   const iconBgClasses = {
-    blue: 'bg-blue-100',
+    blue: 'bg-orange-100',
     purple: 'bg-purple-100',
     green: 'bg-green-100',
     orange: 'bg-orange-100',
@@ -127,7 +127,7 @@ export default function HowItWorks() {
   };
 
   const iconColorClasses = {
-    blue: 'text-blue-600',
+    blue: 'text-orange-600',
     purple: 'text-purple-600',
     green: 'text-green-600',
     orange: 'text-orange-600',
@@ -251,7 +251,7 @@ export default function HowItWorks() {
               Örnek Senaryolar
             </h2>
             <div className="grid md:grid-cols-2 gap-6">
-              <div className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-blue-500">
+              <div className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-orange-500">
                 <h3 className="text-xl font-bold text-gray-900 mb-3">
                   📱 Telefon Arıyorum
                 </h3>

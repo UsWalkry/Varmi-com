@@ -4,13 +4,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Progress } from '@/components/ui/progress';
-import { Plus, X, CheckCircle, Clock, ChevronLeft, ChevronRight } from 'lucide-react';
-import { categories, cities } from '@/lib/uiUtils';
+import { Plus, X, CheckCircle, Clock, ChevronLeft, ChevronRight, Sparkles, Loader2 } from 'lucide-react';
+import { categories, cities, CATEGORY_GROUPS } from '@/lib/uiUtils';
 import { useAuth } from '@/hooks/use-auth-mysql';
 import { mysqlAPI, getImageUrl } from '@/lib/mysql-api';
 import AuthModal from '@/components/AuthModal-mysql';
@@ -30,6 +30,15 @@ export default function CreateListingModal({ open, onOpenChange, onSuccess }: Cr
   const [showSuccessDialog, setShowSuccessDialog] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
   const totalSteps = 4;
+
+  // AI state
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiTitles, setAiTitles] = useState<string[]>([]);
+  const [aiDescs, setAiDescs] = useState<string[]>([]);
+  const [showAiTitles, setShowAiTitles] = useState(false);
+  const [showAiDescs, setShowAiDescs] = useState(false);
+  const [categoryDetecting, setCategoryDetecting] = useState(false);
+  const [autoDetectedCategory, setAutoDetectedCategory] = useState('');
 
   // Form state
   const [formData, setFormData] = useState({
@@ -57,12 +66,22 @@ export default function CreateListingModal({ open, onOpenChange, onSuccess }: Cr
     });
     setUploadedImages([]);
     setCurrentStep(1);
+    setAiTitles([]);
+    setAiDescs([]);
+    setShowAiTitles(false);
+    setShowAiDescs(false);
+    setCategoryDetecting(false);
+    setAutoDetectedCategory('');
     onOpenChange(false);
   };
 
   // Step navigation
   const nextStep = () => {
     if (currentStep < totalSteps) {
+      // Step 1'den geçerken AI kategori tespiti başlat (non-blocking)
+      if (currentStep === 1 && uploadedImages.length > 0) {
+        detectCategoryFromImages(uploadedImages);
+      }
       setCurrentStep(prev => prev + 1);
     }
   };
@@ -76,14 +95,14 @@ export default function CreateListingModal({ open, onOpenChange, onSuccess }: Cr
   // Validate current step
   const canProceed = () => {
     switch (currentStep) {
-      case 1: // Temel bilgiler
+      case 1: // Ürün Resimleri
+        return uploadedImages.length > 0;
+      case 2: // Kategori & Başlık
+        return !!(formData.title && formData.category);
+      case 3: // Detaylar
         // Şehir sadece elden teslim veya fark etmez seçiliyse zorunlu
         const cityRequired = formData.deliveryType === 'pickup' || formData.deliveryType === 'both';
-        return formData.title && formData.category && (!cityRequired || formData.city);
-      case 2: // Detaylar
-        return formData.budgetMax && parseFloat(formData.budgetMax) > 0;
-      case 3: // Resimler
-        return uploadedImages.length > 0;
+        return !!(formData.budgetMax && parseFloat(formData.budgetMax) > 0 && (!cityRequired || formData.city));
       case 4: // Özet
         return true;
       default:
@@ -92,6 +111,23 @@ export default function CreateListingModal({ open, onOpenChange, onSuccess }: Cr
   };
 
   // Handle file upload
+  const detectCategoryFromImages = async (imageUrls: string[]) => {
+    if (imageUrls.length === 0) return;
+    try {
+      setCategoryDetecting(true);
+      const response = await mysqlAPI.post('/ai/detect-category', { imageUrls });
+      if (response.success && response.category) {
+        setFormData(prev => ({ ...prev, category: response.category }));
+        setAutoDetectedCategory(response.category);
+        toast.success(`🤖 Kategori otomatik tespit edildi: ${response.category}`);
+      }
+    } catch {
+      // sessiz hata — kullanıcı manuel seçer
+    } finally {
+      setCategoryDetecting(false);
+    }
+  };
+
   const handleImageUpload = async (files: FileList) => {
     if (!files || files.length === 0) return;
 
@@ -110,7 +146,8 @@ export default function CreateListingModal({ open, onOpenChange, onSuccess }: Cr
       console.log('📤 Upload response:', response);
       
       if (response.success) {
-        setUploadedImages(prev => [...prev, ...response.data.imageUrls]);
+        const newUrls = response.data.imageUrls as string[];
+        setUploadedImages(prev => [...prev, ...newUrls]);
         toast.success('Resimler başarıyla yüklendi!');
       } else {
         console.error('❌ Upload failed:', response.error);
@@ -206,166 +243,65 @@ export default function CreateListingModal({ open, onOpenChange, onSuccess }: Cr
   };
 
   const handleAuthSuccess = () => {
-    console.log('Auth success');
     setIsAuthModalOpen(false);
+  };
+
+  // AI: başlık + açıklama önerileri al
+  const getAiSuggestions = async (type: 'titles' | 'descriptions') => {
+    if (!currentUser) { setIsAuthModalOpen(true); return; }
+    setAiLoading(true);
+    try {
+      const token = localStorage.getItem('mysql-auth-token');
+      const res = await fetch('/api/ai/suggest', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          category: formData.category,
+          title: formData.title,
+          imageUrls: uploadedImages,
+          condition: formData.condition,
+          deliveryType: formData.deliveryType,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        if (type === 'titles') {
+          setAiTitles(data.titles ?? []);
+          setShowAiTitles(true);
+          setShowAiDescs(false);
+        } else {
+          setAiDescs(data.descriptions ?? []);
+          setShowAiDescs(true);
+          setShowAiTitles(false);
+        }
+      } else {
+        toast.error(data.error || 'AI önerisi alınamadı');
+      }
+    } catch {
+      toast.error('AI servisine bağlanılamadı');
+    } finally {
+      setAiLoading(false);
+    }
   };
 
   // Render step content
   const renderStepContent = () => {
     switch (currentStep) {
-      case 1:
-        return renderStep1();
-      case 2:
-        return renderStep2();
-      case 3:
-        return renderStep3();
-      case 4:
-        return renderStep4();
-      default:
-        return null;
+      case 1: return renderStep1();
+      case 2: return renderStep2();
+      case 3: return renderStep3();
+      case 4: return renderStep4();
+      default: return null;
     }
   };
 
-  // Step 1: Temel Bilgiler
+  // Step 1: Görseller + Ürün Durumu + Teslimat Şekli
   const renderStep1 = () => (
-    <div className="space-y-4">
-      <div>
-        <Label htmlFor="title">Ne arıyorsunuz? *</Label>
-        <Input
-          id="title"
-          placeholder="Örn: iPhone 15 Pro Max"
-          value={formData.title}
-          onChange={(e) => setFormData({...formData, title: e.target.value})}
-          required
-        />
-        <p className="text-xs text-gray-500 mt-1">
-          Başlığınızın sonuna otomatik "Var mı?" eklenecektir
-        </p>
-      </div>
-
-      <div>
-        <Label htmlFor="category">Kategori *</Label>
-        <Select
-          value={formData.category}
-          onValueChange={(value) => setFormData({...formData, category: value})}
-        >
-          <SelectTrigger>
-            <SelectValue placeholder="Kategori seçin" />
-          </SelectTrigger>
-          <SelectContent>
-            {categories.map((cat) => (
-              <SelectItem key={cat} value={cat}>
-                {cat}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-
-      {/* Teslimat Tercihi - Önce bu seçilecek */}
-      <div>
-        <Label className="text-sm">Teslimat Tercihi *</Label>
-        <RadioGroup
-          value={formData.deliveryType}
-          onValueChange={(value) => {
-            // Kargo seçilirse şehir bilgisini temizle
-            const newCity = value === 'shipping' ? '' : formData.city;
-            setFormData({...formData, deliveryType: value, city: newCity});
-          }}
-          className="flex flex-row gap-4 mt-1"
-        >
-          <div className="flex items-center space-x-1.5">
-            <RadioGroupItem value="both" id="both" className="h-3 w-3" />
-            <Label htmlFor="both" className="font-normal cursor-pointer text-sm">Fark Etmez</Label>
-          </div>
-          <div className="flex items-center space-x-1.5">
-            <RadioGroupItem value="shipping" id="shipping" className="h-3 w-3" />
-            <Label htmlFor="shipping" className="font-normal cursor-pointer text-sm">Kargo</Label>
-          </div>
-          <div className="flex items-center space-x-1.5">
-            <RadioGroupItem value="pickup" id="pickup" className="h-3 w-3" />
-            <Label htmlFor="pickup" className="font-normal cursor-pointer text-sm">Elden Teslim</Label>
-          </div>
-        </RadioGroup>
-      </div>
-
-      {/* Şehir - Sadece elden teslim veya fark etmez seçiliyse göster */}
-      {(formData.deliveryType === 'pickup' || formData.deliveryType === 'both') && (
-        <div>
-          <Label htmlFor="city">Şehir *</Label>
-          <Select
-            value={formData.city}
-            onValueChange={(value) => setFormData({...formData, city: value})}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Şehir seçin" />
-            </SelectTrigger>
-            <SelectContent>
-              {cities.map((city) => (
-                <SelectItem key={city} value={city}>
-                  {city}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      )}
-    </div>
-  );
-
-  // Step 2: Detaylar
-  const renderStep2 = () => (
-    <div className="space-y-4">
-      <div>
-        <Label htmlFor="description">Açıklama</Label>
-        <Textarea
-          id="description"
-          placeholder="Aradığınız ürün hakkında detayları yazın..."
-          value={formData.description}
-          onChange={(e) => setFormData({...formData, description: e.target.value})}
-          rows={4}
-        />
-      </div>
-
-      <div>
-        <Label htmlFor="budgetMax">Maksimum Bütçe (₺) *</Label>
-        <Input
-          id="budgetMax"
-          type="number"
-          placeholder="0"
-          value={formData.budgetMax}
-          onChange={(e) => setFormData({...formData, budgetMax: e.target.value})}
-          required
-        />
-      </div>
-
-      <div>
-        <Label className="text-sm">Ürün Durumu</Label>
-        <RadioGroup
-          value={formData.condition}
-          onValueChange={(value) => setFormData({...formData, condition: value})}
-          className="flex flex-row gap-4 mt-1"
-        >
-          <div className="flex items-center space-x-1.5">
-            <RadioGroupItem value="any" id="any" className="h-3 w-3" />
-            <Label htmlFor="any" className="font-normal cursor-pointer text-sm">Fark Etmez</Label>
-          </div>
-          <div className="flex items-center space-x-1.5">
-            <RadioGroupItem value="new" id="new" className="h-3 w-3" />
-            <Label htmlFor="new" className="font-normal cursor-pointer text-sm">Sıfır</Label>
-          </div>
-          <div className="flex items-center space-x-1.5">
-            <RadioGroupItem value="used" id="used" className="h-3 w-3" />
-            <Label htmlFor="used" className="font-normal cursor-pointer text-sm">İkinci El</Label>
-          </div>
-        </RadioGroup>
-      </div>
-    </div>
-  );
-
-  // Step 3: Resimler
-  const renderStep3 = () => (
-    <div className="space-y-4">
+    <div className="space-y-5">
+      {/* Görseller */}
       <div>
         <Label>Ürün Resimleri * (En az 1, en fazla 5)</Label>
         <div className="mt-2">
@@ -383,7 +319,7 @@ export default function CreateListingModal({ open, onOpenChange, onSuccess }: Cr
             className={`flex items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer transition-colors ${
               uploadedImages.length >= 5
                 ? 'border-gray-300 bg-gray-50 cursor-not-allowed'
-                : 'border-gray-400 hover:border-blue-500 hover:bg-blue-50'
+                : 'border-gray-400 hover:border-orange-500 hover:bg-orange-50'
             }`}
           >
             <div className="text-center">
@@ -422,14 +358,249 @@ export default function CreateListingModal({ open, onOpenChange, onSuccess }: Cr
           Henüz resim yüklemediniz. En az 1 resim yüklemeniz gerekmektedir.
         </p>
       )}
+
+      {/* Ürün Durumu */}
+      <div>
+        <Label className="text-sm font-medium">Ürün Durumu</Label>
+        <RadioGroup
+          value={formData.condition}
+          onValueChange={(value) => setFormData({...formData, condition: value})}
+          className="flex flex-row gap-4 mt-2"
+        >
+          <div className="flex items-center space-x-1.5">
+            <RadioGroupItem value="any" id="cond-any" />
+            <Label htmlFor="cond-any" className="font-normal cursor-pointer">Fark Etmez</Label>
+          </div>
+          <div className="flex items-center space-x-1.5">
+            <RadioGroupItem value="new" id="cond-new" />
+            <Label htmlFor="cond-new" className="font-normal cursor-pointer">Sıfır</Label>
+          </div>
+          <div className="flex items-center space-x-1.5">
+            <RadioGroupItem value="used" id="cond-used" />
+            <Label htmlFor="cond-used" className="font-normal cursor-pointer">İkinci El</Label>
+          </div>
+        </RadioGroup>
+      </div>
+
+      {/* Teslimat Tercihi */}
+      <div>
+        <Label className="text-sm font-medium">Teslimat Tercihi *</Label>
+        <RadioGroup
+          value={formData.deliveryType}
+          onValueChange={(value) => {
+            const newCity = value === 'shipping' ? '' : formData.city;
+            setFormData({...formData, deliveryType: value, city: newCity});
+          }}
+          className="flex flex-row gap-4 mt-2"
+        >
+          <div className="flex items-center space-x-1.5">
+            <RadioGroupItem value="both" id="del-both" />
+            <Label htmlFor="del-both" className="font-normal cursor-pointer">Fark Etmez</Label>
+          </div>
+          <div className="flex items-center space-x-1.5">
+            <RadioGroupItem value="shipping" id="del-shipping" />
+            <Label htmlFor="del-shipping" className="font-normal cursor-pointer">Kargo</Label>
+          </div>
+          <div className="flex items-center space-x-1.5">
+            <RadioGroupItem value="pickup" id="del-pickup" />
+            <Label htmlFor="del-pickup" className="font-normal cursor-pointer">Elden Teslim</Label>
+          </div>
+        </RadioGroup>
+      </div>
+
+      {uploadedImages.length > 0 && (
+        <p className="text-xs text-purple-600 flex items-center gap-1">
+          <Sparkles className="h-3 w-3" /> İleri'ye basınca AI kategoriyi otomatik belirleyecek
+        </p>
+      )}
+    </div>
+  );
+
+  // Step 2: Kategori & Başlık (AI önerili)
+  const renderStep2 = () => (
+    <div className="space-y-4">
+      <div>
+        <div className="flex items-center justify-between mb-1">
+          <Label htmlFor="category">Kategori *</Label>
+          {categoryDetecting && (
+            <span className="flex items-center gap-1 text-xs text-purple-600">
+              <Loader2 className="h-3 w-3 animate-spin" /> AI kategori tespit ediyor...
+            </span>
+          )}
+          {!categoryDetecting && autoDetectedCategory && formData.category === autoDetectedCategory && (
+            <span className="flex items-center gap-1 text-xs text-green-600">
+              <Sparkles className="h-3 w-3" /> AI otomatik belirledi
+            </span>
+          )}
+        </div>
+        <Select
+          value={formData.category}
+          onValueChange={(value) => { setFormData({...formData, category: value}); setShowAiTitles(false); }}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder={categoryDetecting ? 'AI kategori belirleniyor...' : 'Kategori seçin'} />
+          </SelectTrigger>
+          <SelectContent>
+            {CATEGORY_GROUPS.map((group) => (
+              <SelectGroup key={group.group}>
+                <SelectLabel className="font-bold text-xs text-muted-foreground uppercase tracking-wide">{group.group}</SelectLabel>
+                {group.subcategories.map((cat) => (
+                  <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                ))}
+              </SelectGroup>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div>
+        <div className="flex items-center justify-between mb-1">
+          <Label htmlFor="title">Ne arıyorsunuz? *</Label>
+          <button
+            type="button"
+            onClick={() => getAiSuggestions('titles')}
+            disabled={aiLoading}
+            className="flex items-center gap-1 text-xs text-purple-600 hover:text-purple-800 font-medium disabled:opacity-50 transition-colors"
+          >
+            {aiLoading && !showAiDescs ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Sparkles className="h-3.5 w-3.5" />
+            )}
+            Yapay Zeka Öner
+          </button>
+        </div>
+        <Input
+          id="title"
+          placeholder="Örn: iPhone 15 Pro Max"
+          value={formData.title}
+          onChange={(e) => setFormData({...formData, title: e.target.value})}
+          required
+        />
+        <p className="text-xs text-gray-500 mt-1">
+          Başlığınızın sonuna otomatik "Var mı?" eklenecektir
+        </p>
+
+        {/* AI Başlık Önerileri */}
+        {showAiTitles && aiTitles.length > 0 && (
+          <div className="mt-2 border border-purple-200 rounded-lg bg-purple-50 p-3 space-y-1.5">
+            <p className="text-xs font-medium text-purple-700 flex items-center gap-1">
+              <Sparkles className="h-3 w-3" /> Yapay Zeka Önerileri — birini seçin:
+            </p>
+            {aiTitles.map((t, i) => (
+              <button
+                key={i}
+                type="button"
+                onClick={() => { setFormData({...formData, title: t}); setShowAiTitles(false); }}
+                className="block w-full text-left text-sm px-3 py-1.5 rounded-md hover:bg-purple-100 text-purple-900 transition-colors border border-transparent hover:border-purple-300"
+              >
+                {t}
+              </button>
+            ))}
+            <button type="button" onClick={() => setShowAiTitles(false)} className="text-xs text-gray-400 hover:text-gray-600 mt-1">Kapat</button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
+  // Step 3: Açıklama (AI: görsel+durum+teslimat) + Bütçe + Şehir
+  const renderStep3 = () => (
+    <div className="space-y-4">
+      {/* AI ipucu */}
+      <div className="bg-purple-50 border border-purple-200 rounded-lg px-3 py-2 text-xs text-purple-700 flex items-center gap-2">
+        <Sparkles className="h-3.5 w-3.5 flex-shrink-0" />
+        Yapay Zeka açıklamayı resimlerinize, ürün durumuna ({formData.condition === 'any' ? 'Fark Etmez' : formData.condition === 'new' ? 'Sıfır' : 'İkinci El'})
+        ve teslimat tercihine ({formData.deliveryType === 'both' ? 'Fark Etmez' : formData.deliveryType === 'shipping' ? 'Kargo' : 'Elden Teslim'}) göre oluşturacak.
+      </div>
+
+      <div>
+        <div className="flex items-center justify-between mb-1">
+          <Label htmlFor="description">Açıklama</Label>
+          <button
+            type="button"
+            onClick={() => getAiSuggestions('descriptions')}
+            disabled={aiLoading}
+            className="flex items-center gap-1 text-xs text-purple-600 hover:text-purple-800 font-medium disabled:opacity-50 transition-colors"
+          >
+            {aiLoading && !showAiTitles ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Sparkles className="h-3.5 w-3.5" />
+            )}
+            Yapay Zeka Öner
+          </button>
+        </div>
+        <Textarea
+          id="description"
+          placeholder="Aradığınız ürün hakkında detayları yazın..."
+          value={formData.description}
+          onChange={(e) => setFormData({...formData, description: e.target.value})}
+          rows={3}
+        />
+
+        {/* AI Açıklama Önerileri */}
+        {showAiDescs && aiDescs.length > 0 && (
+          <div className="mt-2 border border-purple-200 rounded-lg bg-purple-50 p-3 space-y-1.5">
+            <p className="text-xs font-medium text-purple-700 flex items-center gap-1">
+              <Sparkles className="h-3 w-3" /> Yapay Zeka Önerileri — birini seçin:
+            </p>
+            {aiDescs.map((d, i) => (
+              <button
+                key={i}
+                type="button"
+                onClick={() => { setFormData({...formData, description: d}); setShowAiDescs(false); }}
+                className="block w-full text-left text-sm px-3 py-1.5 rounded-md hover:bg-purple-100 text-purple-900 transition-colors border border-transparent hover:border-purple-300"
+              >
+                {d}
+              </button>
+            ))}
+            <button type="button" onClick={() => setShowAiDescs(false)} className="text-xs text-gray-400 hover:text-gray-600 mt-1">Kapat</button>
+          </div>
+        )}
+      </div>
+
+      <div>
+        <Label htmlFor="budgetMax">Maksimum Bütçe (₺) *</Label>
+        <Input
+          id="budgetMax"
+          type="number"
+          placeholder="0"
+          value={formData.budgetMax}
+          onChange={(e) => setFormData({...formData, budgetMax: e.target.value})}
+          required
+        />
+      </div>
+
+      {/* Şehir - Sadece elden teslim veya fark etmez seçiliyse göster */}
+      {(formData.deliveryType === 'pickup' || formData.deliveryType === 'both') && (
+        <div>
+          <Label htmlFor="city">Şehir *</Label>
+          <Select
+            value={formData.city}
+            onValueChange={(value) => setFormData({...formData, city: value})}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Şehir seçin" />
+            </SelectTrigger>
+            <SelectContent>
+              {cities.map((city) => (
+                <SelectItem key={city} value={city}>
+                  {city}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
     </div>
   );
 
   // Step 4: Özet
   const renderStep4 = () => (
     <div className="space-y-4">
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-        <h3 className="font-semibold text-blue-900 mb-3">İlan Özeti</h3>
+      <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+        <h3 className="font-semibold text-orange-900 mb-3">İlan Özeti</h3>
         <div className="space-y-2 text-sm">
           <div className="flex justify-between">
             <span className="text-gray-600">Başlık:</span>
@@ -573,26 +744,26 @@ export default function CreateListingModal({ open, onOpenChange, onSuccess }: Cr
                 </p>
               </div>
 
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-left">
-                <p className="text-blue-800 font-medium mb-2 flex items-center gap-2">
+              <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 text-left">
+                <p className="text-orange-800 font-medium mb-2 flex items-center gap-2">
                   <CheckCircle className="h-4 w-4" />
                   Sonraki Adımlar:
                 </p>
-                <ul className="text-blue-700 text-sm space-y-2">
+                <ul className="text-orange-700 text-sm space-y-2">
                   <li className="flex items-start gap-2">
-                    <span className="text-blue-500 mt-0.5">•</span>
+                    <span className="text-orange-500 mt-0.5">•</span>
                     <span>Yönetici ekibimiz ilanınızı en kısa sürede inceleyecektir</span>
                   </li>
                   <li className="flex items-start gap-2">
-                    <span className="text-blue-500 mt-0.5">•</span>
+                    <span className="text-orange-500 mt-0.5">•</span>
                     <span>Onaylandığında size e-posta bildirimi gönderilecektir</span>
                   </li>
                   <li className="flex items-start gap-2">
-                    <span className="text-blue-500 mt-0.5">•</span>
+                    <span className="text-orange-500 mt-0.5">•</span>
                     <span>İlan onaylandıktan sonra satıcılar teklif göndermeye başlayabilir</span>
                   </li>
                   <li className="flex items-start gap-2">
-                    <span className="text-blue-500 mt-0.5">•</span>
+                    <span className="text-orange-500 mt-0.5">•</span>
                     <span>İlanınızın durumunu "Panelim" sayfasından takip edebilirsiniz</span>
                   </li>
                 </ul>

@@ -140,7 +140,7 @@ export default function EmailVerification() {import { CheckCircle, XCircle, Load
 
   return (  }, [searchParams]);  const [message, setMessage] = useState('');import Header from '@/components/Header';import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-orange-50 to-orange-100 flex items-center justify-center p-4">
 
       <Card className="w-full max-w-md">
 
@@ -150,7 +150,7 @@ export default function EmailVerification() {import { CheckCircle, XCircle, Load
 
             {status === 'loading' && (
 
-              <Loader2 className="h-16 w-16 text-blue-500 animate-spin" />    try {
+              <Loader2 className="h-16 w-16 text-orange-600 animate-spin" />    try {
 
             )}
 
@@ -270,7 +270,7 @@ export default EmailVerification;      setStatus('loading');  const [verificatio
 
   return (
 
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">      
+    <div className="min-h-screen bg-gradient-to-br from-orange-50 to-orange-100 flex items-center justify-center p-4">      
 
       <Card className="w-full max-w-md">
 
@@ -280,7 +280,7 @@ export default EmailVerification;      setStatus('loading');  const [verificatio
 
             {status === 'loading' && (      
 
-              <Loader2 className="h-16 w-16 text-blue-500 animate-spin" />
+              <Loader2 className="h-16 w-16 text-orange-600 animate-spin" />
 
             )}      if (response.success) {export default function EmailVerification() {import { verifyEmailToken, sendCustomEmailVerification } from '@/lib/customEmailVerification';
 
@@ -390,7 +390,7 @@ export default EmailVerification;      setStatus('loading');  const [verificatio
 
     </div>
 
-  );    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+  );    <div className="min-h-screen bg-gradient-to-br from-orange-50 to-orange-100 flex items-center justify-center p-4">
 
 }
       <Card className="w-full max-w-md">            console.log('[EmailVerification] ✅ Verification successful');  const [verificationStatus, setVerificationStatus] = useState<'pending' | 'checking' | 'success' | 'error'>('pending');  const [isVerifying, setIsVerifying] = useState(false);
@@ -401,7 +401,7 @@ export default EmailVerification;      setStatus('loading');  const [verificatio
 
             {status === 'loading' && (
 
-              <Loader2 className="h-16 w-16 text-blue-500 animate-spin" />            setMessage('E-posta adresiniz başarıyla doğrulandı!');  const [message, setMessage] = useState('');  const [isVerified, setIsVerified] = useState(false);
+              <Loader2 className="h-16 w-16 text-orange-600 animate-spin" />            setMessage('E-posta adresiniz başarıyla doğrulandı!');  const [message, setMessage] = useState('');  const [isVerified, setIsVerified] = useState(false);
 
             )}
 
@@ -513,7 +513,7 @@ export default EmailVerification;      setStatus('loading');  const [verificatio
 
   );
 
-}        return <Loader2 className="h-16 w-16 text-blue-500 animate-spin mx-auto" />;                    // MySQL backend verify endpoint'ine direkt GET request
+}        return <Loader2 className="h-16 w-16 text-orange-600 animate-spin mx-auto" />;                    // MySQL backend verify endpoint'ine direkt GET request
 
       case 'success':
 
@@ -525,7 +525,7 @@ export default EmailVerification;      setStatus('loading');  const [verificatio
 
       default:
 
-        return <Mail className="h-16 w-16 text-blue-500 mx-auto" />;            setIsVerified(true);          if (response.ok) {
+        return <Mail className="h-16 w-16 text-orange-500 mx-auto" />;            setIsVerified(true);          if (response.ok) {
 
     }
 
@@ -535,7 +535,7 @@ export default EmailVerification;      setStatus('loading');  const [verificatio
 
   return (            setMessage('E-posta adresiniz başarıyla doğrulandı!');            setIsVerified(true);
 
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+    <div className="min-h-screen bg-gradient-to-br from-orange-50 to-orange-100">
 
       <Header onCreateListingClick={() => {}} />                        setVerificationStatus('success');
 
@@ -657,11 +657,11 @@ export default EmailVerification;      setStatus('loading');  const [verificatio
 
       case 'checking':      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
 
-        return <Loader2 className="h-16 w-16 text-blue-500 animate-spin mx-auto" />;        <Card className="w-full max-w-md">
+        return <Loader2 className="h-16 w-16 text-orange-600 animate-spin mx-auto" />;        <Card className="w-full max-w-md">
 
       case 'success':          <CardHeader className="text-center">
 
-        return <CheckCircle className="h-16 w-16 text-green-500 mx-auto" />;            <div className="mx-auto mb-4 w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+        return <CheckCircle className="h-16 w-16 text-green-500 mx-auto" />;            <div className="mx-auto mb-4 w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center">
 
       case 'error':              {verificationStatus === 'success' ? (
 
@@ -669,17 +669,17 @@ export default EmailVerification;      setStatus('loading');  const [verificatio
 
       default:              ) : verificationStatus === 'error' ? (
 
-        return <Mail className="h-16 w-16 text-blue-500 mx-auto" />;                <XCircle className="w-6 h-6 text-red-600" />
+        return <Mail className="h-16 w-16 text-orange-500 mx-auto" />;                <XCircle className="w-6 h-6 text-red-600" />
 
     }              ) : verificationStatus === 'checking' ? (
 
-  };                <Loader2 className="w-6 h-6 text-blue-600 animate-spin" />
+  };                <Loader2 className="w-6 h-6 text-orange-600 animate-spin" />
 
               ) : (
 
-  return (                <Mail className="w-6 h-6 text-blue-600" />
+  return (                <Mail className="w-6 h-6 text-orange-600" />
 
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">              )}
+    <div className="min-h-screen bg-gradient-to-br from-orange-50 to-orange-100">              )}
 
       <Header onCreateListingClick={() => {}} />            </div>
 
@@ -759,17 +759,17 @@ export default EmailVerification;      setStatus('loading');  const [verificatio
 
               </div>            {verificationStatus === 'pending' && (
 
-            )}              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-left">
+            )}              <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 text-left">
 
                 <div className="flex items-start">
 
-            <Button                   <AlertCircle className="w-5 h-5 text-blue-500 mt-0.5 mr-3 flex-shrink-0" />
+            <Button                   <AlertCircle className="w-5 h-5 text-orange-500 mt-0.5 mr-3 flex-shrink-0" />
 
               variant="default"                   <div className="text-sm">
 
-              onClick={() => navigate('/')}                    <p className="font-medium text-blue-800 mb-1">Email doğrulama adımları:</p>
+              onClick={() => navigate('/')}                    <p className="font-medium text-orange-800 mb-1">Email doğrulama adımları:</p>
 
-              className="w-full"                    <ol className="text-blue-700 space-y-1">
+              className="w-full"                    <ol className="text-orange-700 space-y-1">
 
             >                      <li>1. Email gelen kutunuzu kontrol edin</li>
 

@@ -148,7 +148,6 @@ router.get('/dashboard/activity', authenticateToken, adminOnly, async (req: Requ
     const recentOrders = await query(`
       SELECT 
         o.id,
-        o.order_number,
         o.status,
         o.total_amount,
         o.created_at,
@@ -565,6 +564,7 @@ router.get('/listings', authenticateToken, adminOnly, async (req: Request, res: 
           l.created_at,
           l.updated_at,
           l.mask_owner_name,
+          l.is_featured,
           COALESCE(offer_stats.offer_count, 0) as offer_count
         FROM listings l
         LEFT JOIN (
@@ -616,7 +616,10 @@ router.get('/listings', authenticateToken, adminOnly, async (req: Request, res: 
 
       res.json({ 
         success: true, 
-        listings,
+        listings: listings.map(listing => ({
+          ...listing,
+          featured: listing.is_featured === 1 || listing.is_featured === true
+        })),
         pagination: {
           page,
           limit,
@@ -686,6 +689,32 @@ router.post('/listings/:listingId/status', authenticateToken, adminOnly, async (
   } catch (error) {
     console.error('Update listing status error:', error);
     res.status(500).json({ success: false, message: 'İlan durumu güncellenemedi' });
+  }
+});
+
+// İlanı vitrin listesine ekleme/çıkarma
+router.put('/listings/:listingId/featured', authenticateToken, adminOnly, async (req: Request, res: Response) => {
+  try {
+    const listingId = req.params.listingId;
+    const { featured } = req.body;
+
+    if (typeof featured !== 'boolean') {
+      return res.status(400).json({ success: false, message: 'Featured değeri boolean olmalıdır' });
+    }
+
+    const result = await query(
+      'UPDATE listings SET is_featured = ? WHERE id = ?',
+      [featured ? 1 : 0, listingId]
+    );
+
+    if (result && result.affectedRows === 0) {
+      return res.status(404).json({ success: false, message: 'İlan bulunamadı' });
+    }
+
+    res.json({ success: true, message: `İlan ${featured ? 'vitrine eklendi' : 'vitrinden çıkarıldı'}` });
+  } catch (error) {
+    console.error('Update listing featured error:', error);
+    res.status(500).json({ success: false, message: 'İlan vitrin durumu güncellenemedi' });
   }
 });
 

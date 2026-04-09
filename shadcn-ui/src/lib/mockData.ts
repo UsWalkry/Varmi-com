@@ -275,56 +275,31 @@ export interface SearchFilters {
 }
 
 // Categories and cities
+// Kategoriler artık uiUtils.ts içindeki CATEGORY_GROUPS'tan gelir.
+// Geriye dönük uyumluluk için aynı flat listeyi burada da dışa aktarıyoruz.
 export const categories = [
-  // Elektronik & Teknoloji
-  'Elektronik',
-  'Telefon & Aksesuar',
-  'Bilgisayar & Tablet',
-  'TV, Görüntü & Ses',
-  'Beyaz Eşya',
-  'Foto & Kamera',
-  'Oyun & Konsol',
-  'Yazılım & Dijital Kod',
-  // Ev & Yaşam
-  'Ev & Yaşam',
-  'Mobilya',
-  'Ev Tekstili',
-  'Aydınlatma',
-  'Mutfak & Sofra',
-  'Temizlik & Tüketim',
-  // Moda & Kişisel Bakım
-  'Giyim & Aksesuar',
-  'Ayakkabı & Çanta',
-  'Kozmetik & Kişisel Bakım',
-  'Mücevher & Saat',
-  // Anne, Bebek, Oyuncak
-  'Anne & Bebek',
-  'Hobi & Oyuncak',
-  // Spor, Outdoor, Bahçe
-  'Spor & Outdoor',
-  'Kamp & Outdoor',
-  'Bahçe & Yapı Market',
-  // Kitap, Müzik, Film
-  'Kitap & Müzik',
-  'Müzik Enstrümanları',
-  'Film & Oyun',
-  // Otomotiv & Ulaşım
-  'Otomobil',
-  'Otomotiv Parça & Aksesuar',
-  'Motosiklet',
-  'Bisiklet & Scooter',
-  // Emlak & İş
-  'Emlak',
-  'İş & Sanayi',
-  'Ofis & Kırtasiye',
-  // Özel ilgi alanları
-  'Evcil Hayvan',
-  'Koleksiyon & Antika',
-  'Sağlık & Medikal',
-  'Yiyecek & İçecek',
-  'Eğitim & Kurs',
-  'Seyahat & Bilet',
-  'Diğer'
+  // Elektronik (16)
+  'Bilgisayar / Tablet', 'Bilgisayar Parçaları', 'Ağ - Modem - Akıllı Ev', 'Çevre Birimleri',
+  'Yazılım Ürünleri', 'Bilgisayar Aksesuarları', 'Kulaklık', 'Monitör',
+  'Yazıcılar & Projeksiyon', 'Telefon & Aksesuar', 'TV & Ses Sistemleri',
+  'Beyaz Eşya', 'Klima & Isıtıcı', 'Elektrikli Ev Aletleri', 'Foto & Kamera', 'Oyun & Konsol',
+  // Moda (4)
+  'Kadın Giyim', 'Erkek Giyim', 'Ayakkabı & Çanta', 'Çocuk Giyim',
+  // Ev, Yaşam, Kırtasiye (4)
+  'Mutfak & Sofra', 'Mobilya', 'Ev Tekstil', 'Ofis & Kırtasiye',
+  // Oto, Bahçe, Yapı (8)
+  'Yapı Market', 'El Aletleri', 'Güvenlik', 'Bahçe', 'Elektrik & Tesisat',
+  'Oto Aksesuar', 'Motor Ürünleri', 'Yedek Parça',
+  // Anne, Bebek, Oyuncak (6)
+  'Oyuncak', 'Bebek Arabası', 'Mama', 'Bebek Odası', 'Bez & Islak Mendil', 'Bebek Giyim',
+  // Spor & Outdoor (7)
+  'Spor Giyim', 'Fitness', 'Kamp', 'Scooter / Paten', 'Bisiklet', 'Su Sporları', 'Avcılık',
+  // Kozmetik (7)
+  'Parfüm', 'Makyaj', 'Cilt Bakım', 'Saç Bakım', 'Ağız Bakım', 'Epilasyon', 'Deodorant',
+  // Süpermarket & Petshop (5)
+  'Temizlik Ürünleri', 'Gıda', 'İçecek', 'Petshop', 'Ev Tüketim',
+  // Kitap, Müzik, Hobi (5)
+  'Kitap', 'Müzik Enstrümanları', 'Film', 'Hobi', 'Dijital Ürünler',
 ];
 
 export const cities = [

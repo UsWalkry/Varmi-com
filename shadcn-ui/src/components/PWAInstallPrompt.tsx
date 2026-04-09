@@ -74,7 +74,7 @@ export function PWAInstallPrompt() {
   if (isIOS && showPrompt) {
     return (
       <div className="fixed bottom-4 left-4 right-4 z-50 md:left-auto md:w-96">
-        <div className="bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg shadow-2xl p-4">
+        <div className="bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-lg shadow-2xl p-4">
           <div className="flex items-start justify-between mb-3">
             <div className="flex items-center gap-2">
               <Download className="h-5 w-5" />
@@ -101,7 +101,7 @@ export function PWAInstallPrompt() {
   if (deferredPrompt && showPrompt) {
     return (
       <div className="fixed bottom-4 left-4 right-4 z-50 md:left-auto md:w-96">
-        <div className="bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg shadow-2xl p-4">
+        <div className="bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-lg shadow-2xl p-4">
           <div className="flex items-start justify-between mb-3">
             <div className="flex items-center gap-2">
               <Download className="h-5 w-5" />

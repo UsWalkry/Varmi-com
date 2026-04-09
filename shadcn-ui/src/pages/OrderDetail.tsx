@@ -101,7 +101,7 @@ export default function OrderDetail() {
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-16">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600"></div>
               <p className="text-lg font-medium text-muted-foreground mt-4">Sipariş detayları yükleniyor...</p>
             </CardContent>
           </Card>
@@ -157,7 +157,7 @@ export default function OrderDetail() {
 
     const colors = {
       pending: 'bg-yellow-100 text-yellow-700',
-      confirmed: 'bg-blue-100 text-blue-700',
+      confirmed: 'bg-orange-100 text-orange-700',
       preparing: 'bg-orange-100 text-orange-700',
       shipped: 'bg-green-100 text-green-700',
       delivered: 'bg-green-100 text-green-700',
@@ -286,7 +286,7 @@ export default function OrderDetail() {
                           />
                           <div className="flex-1 min-w-0 w-full">
                             <div className="flex items-start justify-between gap-2">
-                              <h3 className="font-medium text-gray-900 break-words hover:text-blue-600">{item.title}</h3>
+                              <h3 className="font-medium text-gray-900 break-words hover:text-orange-600">{item.title}</h3>
                               <ExternalLink className="h-4 w-4 text-gray-400 flex-shrink-0" />
                             </div>
                             <p className="text-sm text-gray-600 mt-1 break-words overflow-hidden text-ellipsis" style={{
@@ -308,7 +308,7 @@ export default function OrderDetail() {
                               <div className="flex items-center gap-2 min-w-0 flex-1">
                                 <span className="text-sm text-gray-600 flex-shrink-0">Teklif Sahibi:</span>
                                 <span 
-                                  className="font-medium text-gray-900 hover:text-blue-600 cursor-pointer truncate"
+                                  className="font-medium text-gray-900 hover:text-orange-600 cursor-pointer truncate"
                                   onClick={() => {
                                     if (seller.seller_id) {
                                       navigate(`/profile/${seller.seller_id}`);
@@ -533,7 +533,7 @@ export default function OrderDetail() {
 
           {!sellerReviews ? (
             <div className="flex items-center justify-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600"></div>
             </div>
           ) : (
             <div className="space-y-6">
@@ -794,7 +794,7 @@ export default function OrderDetail() {
                     multiple
                     max={5}
                     onChange={(e) => setReturnImages(e.target.files)}
-                    className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                    className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-orange-50 file:text-orange-700 hover:file:bg-orange-100"
                   />
                   <p className="mt-1 text-sm text-gray-500">
                     En fazla 5 fotoğraf yükleyebilirsiniz (JPEG, PNG)

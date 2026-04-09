@@ -22,7 +22,7 @@ export const OrderStatusBadge: React.FC<OrderStatusBadgeProps> = ({ status, clas
           label: 'Onaylandı',
           variant: 'secondary' as const,
           icon: CheckCircle,
-          className: 'bg-blue-100 text-blue-700 border-blue-200'
+          className: 'bg-orange-100 text-orange-700 border-orange-200'
         };
       case 'preparing':
         return {

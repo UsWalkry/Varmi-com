@@ -18,7 +18,8 @@ interface GeneralInfoFormProps {
 
 const genderOptions = [
   { value: 'Kadın', label: '👩 Kadın' },
-  { value: 'Erkek', label: '👨 Erkek' }
+  { value: 'Erkek', label: '👨 Erkek' },
+  { value: 'Belirtmek istemiyorum', label: '🚫 Belirtmek istemiyorum' }
 ];
 
 export default function GeneralInfoForm({ user: propUser }: GeneralInfoFormProps) {

@@ -150,7 +150,7 @@ export default function UserProfile() {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto"></div>
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-orange-600 mx-auto"></div>
           <p className="text-lg font-medium text-muted-foreground mt-4">Profil yükleniyor...</p>
         </div>
       </div>
@@ -183,9 +183,9 @@ export default function UserProfile() {
       <div className="bg-white border-b">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
           <div className="flex items-center gap-2 text-sm text-gray-600">
-            <Link to="/" className="hover:text-blue-600 transition-colors">Ana Sayfa</Link>
+            <Link to="/" className="hover:text-orange-600 transition-colors">Ana Sayfa</Link>
             <span>›</span>
-            <Link to="/profiles" className="hover:text-blue-600 transition-colors">Kullanıcılar</Link>
+            <Link to="/profiles" className="hover:text-orange-600 transition-colors">Kullanıcılar</Link>
             <span>›</span>
             <span className="text-gray-900 font-medium">
               {maskDisplayName(`${profile.firstName || 'Bilinmeyen'} ${profile.lastName || 'Kullanıcı'}`)}
@@ -320,7 +320,7 @@ export default function UserProfile() {
                       </div>
                       
                       <CardHeader className="p-3 flex-shrink-0">
-                        <CardTitle className="text-sm line-clamp-2 group-hover:text-blue-600 transition-colors h-10 overflow-hidden leading-tight">
+                        <CardTitle className="text-sm line-clamp-2 group-hover:text-orange-600 transition-colors h-10 overflow-hidden leading-tight">
                           {listing.title}
                         </CardTitle>
                       </CardHeader>
@@ -336,7 +336,7 @@ export default function UserProfile() {
                               <Calendar className="h-3 w-3" />
                               {new Date(listing.created_at).toLocaleDateString('tr-TR')}
                             </div>
-                            <div className="flex items-center gap-1 text-blue-600">
+                            <div className="flex items-center gap-1 text-orange-600">
                               <Eye className="h-3 w-3" />
                               <span className="text-xs font-medium">İlana Git</span>
                             </div>
@@ -348,7 +348,7 @@ export default function UserProfile() {
                               <span className="font-medium">Durum:</span>
                               <span className={`font-medium ${
                                 listing.status === 'active' ? 'text-green-600' : 
-                                listing.status === 'sold' ? 'text-blue-600' : 'text-gray-600'
+                                listing.status === 'sold' ? 'text-orange-600' : 'text-gray-600'
                               }`}>
                                 {listing.status === 'active' ? 'Aktif' : 
                                  listing.status === 'sold' ? 'Satıldı' : 
@@ -393,8 +393,8 @@ export default function UserProfile() {
                         <div className="flex justify-between items-start">
                           <div className="flex-1">
                             <div className="flex items-center gap-2 mb-2">
-                              <Tag className="h-5 w-5 text-blue-600" />
-                              <h3 className="font-semibold text-lg text-blue-600 hover:text-blue-800">
+                              <Tag className="h-5 w-5 text-orange-600" />
+                              <h3 className="font-semibold text-lg text-orange-600 hover:text-orange-800">
                                 {offer.listing_title}
                               </h3>
                             </div>
@@ -407,9 +407,9 @@ export default function UserProfile() {
                                 </div>
                               </div>
                               
-                              <div className="bg-blue-50 p-3 rounded-lg">
+                              <div className="bg-orange-50 p-3 rounded-lg">
                                 <div className="text-sm font-medium text-gray-700 mb-1">Miktar</div>
-                                <div className="text-lg font-bold text-blue-600">
+                                <div className="text-lg font-bold text-orange-600">
                                   {offer.quantity} adet
                                 </div>
                               </div>
@@ -495,7 +495,7 @@ export default function UserProfile() {
                       </div>
                       
                       <CardHeader className="p-3 flex-shrink-0">
-                        <CardTitle className="text-sm line-clamp-2 group-hover:text-blue-600 transition-colors h-10 overflow-hidden leading-tight">
+                        <CardTitle className="text-sm line-clamp-2 group-hover:text-orange-600 transition-colors h-10 overflow-hidden leading-tight">
                           {favorite.listing_title}
                         </CardTitle>
                       </CardHeader>
@@ -507,7 +507,7 @@ export default function UserProfile() {
                               <Calendar className="h-3 w-3" />
                               {new Date(favorite.created_at).toLocaleDateString('tr-TR')}
                             </div>
-                            <div className="flex items-center gap-1 text-blue-600">
+                            <div className="flex items-center gap-1 text-orange-600">
                               <Eye className="h-3 w-3" />
                               <span className="text-xs font-medium">İlana Git</span>
                             </div>

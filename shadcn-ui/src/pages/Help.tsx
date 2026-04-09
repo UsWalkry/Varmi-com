@@ -318,7 +318,7 @@ export default function Help() {
               to="/terms"
               className="bg-white rounded-lg shadow-md p-4 hover:shadow-lg transition-shadow text-center group"
             >
-              <Shield className="h-8 w-8 text-blue-600 mx-auto mb-2 group-hover:scale-110 transition-transform" />
+              <Shield className="h-8 w-8 text-orange-600 mx-auto mb-2 group-hover:scale-110 transition-transform" />
               <h3 className="font-semibold text-gray-900">Kullanım Koşulları</h3>
               <p className="text-sm text-gray-500">Şartlar ve koşullar</p>
             </Link>
@@ -346,7 +346,7 @@ export default function Help() {
               const Icon = category.icon;
               const isExpanded = expandedCategory === category.id;
               const colorClasses = {
-                blue: 'bg-blue-100 text-blue-600',
+                blue: 'bg-orange-100 text-orange-600',
                 green: 'bg-green-100 text-green-600',
                 purple: 'bg-purple-100 text-purple-600',
                 orange: 'bg-orange-100 text-orange-600',

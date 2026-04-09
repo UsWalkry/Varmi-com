@@ -106,7 +106,7 @@ function AlsoViewedCard({ item }: { item: any }) {
             ) : (
               <div className="flex items-center justify-between">
                 <span className="text-xs text-muted-foreground">Teklif:</span>
-                <div className="flex items-center text-base font-bold text-blue-600">
+                <div className="flex items-center text-base font-bold text-orange-600">
                   <TrendingUp className="h-3 w-3 mr-1" />
                   <span>{offerCount} teklif</span>
                 </div>
@@ -782,7 +782,7 @@ export default function ListingDetail() {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600 mx-auto mb-4"></div>
           <p>İlan yükleniyor...</p>
         </div>
       </div>
@@ -875,7 +875,7 @@ export default function ListingDetail() {
                       {listing.buyerId ? (
                         <Link 
                           to={`/profile/${listing.buyerId}`}
-                          className="font-semibold text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
+                          className="font-semibold text-orange-600 hover:text-orange-800 hover:underline cursor-pointer"
                         >
                           {maskDisplayName(listing.buyerName)}
                         </Link>
@@ -911,7 +911,7 @@ export default function ListingDetail() {
                       </div>
                       {/* Teklif sayısı sadece İlan İstatistikleri kartında gösterilir */}
                       {listing.exactProductOnly && (
-                        <Badge className="bg-blue-100 text-blue-800">Aynı Ürün Zorunlu</Badge>
+                        <Badge className="bg-orange-100 text-orange-800">Aynı Ürün Zorunlu</Badge>
                       )}
                     </div>
                   </div>
@@ -1051,7 +1051,7 @@ export default function ListingDetail() {
                       {getDeliveryText(listing.deliveryType)}
                     </Badge>
                     {listing.exactProductOnly && (
-                      <Badge className="bg-blue-100 text-blue-800">Aynı Ürün Zorunlu</Badge>
+                      <Badge className="bg-orange-100 text-orange-800">Aynı Ürün Zorunlu</Badge>
                     )}
                   </div>
 
@@ -1074,7 +1074,7 @@ export default function ListingDetail() {
                         {listing.buyerId ? (
                           <Link 
                             to={`/profile/${listing.buyerId}`}
-                            className="font-semibold text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
+                            className="font-semibold text-orange-600 hover:text-orange-800 hover:underline cursor-pointer"
                           >
                             {maskDisplayName(listing.buyerName)}
                           </Link>
@@ -1089,7 +1089,7 @@ export default function ListingDetail() {
                             <button
                               type="button"
                               onClick={() => setIsReviewsModalOpen(true)}
-                              className="flex items-center gap-1 px-2 py-1 rounded-md border border-transparent hover:border-blue-500 hover:bg-blue-50 transition-all cursor-pointer"
+                              className="flex items-center gap-1 px-2 py-1 rounded-md border border-transparent hover:border-orange-500 hover:bg-orange-50 transition-all cursor-pointer"
                             >
                               <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
                               <span className="text-sm font-semibold">{reviewCount > 0 ? averageRating.toFixed(1) : '0.0'}</span>
@@ -1229,7 +1229,7 @@ export default function ListingDetail() {
                               {/* Header with user info */}
                               <div className="p-4 pb-3 border-b">
                                 <div className="flex items-center flex-wrap gap-2 mb-2">
-                                  <span className="font-semibold text-sm text-blue-600">
+                                  <span className="font-semibold text-sm text-orange-600">
                                     {comment.userName?.split(' ')[0] || 'Anonim'}****
                                   </span>
                                   
@@ -1258,7 +1258,7 @@ export default function ListingDetail() {
                                   {comment.comment}
                                 </p>
                                 {replyCount > 0 && (
-                                  <div className="text-xs text-blue-600 font-medium">
+                                  <div className="text-xs text-orange-600 font-medium">
                                     {replyCount} cevap
                                   </div>
                                 )}

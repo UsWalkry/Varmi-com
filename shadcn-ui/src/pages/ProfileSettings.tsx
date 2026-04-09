@@ -172,7 +172,7 @@ export default function ProfileSettings() {
                 </p>
                 <Button 
                   onClick={() => setIsAuthModalOpen(true)}
-                  className="w-full bg-gradient-to-r from-blue-600 to-green-600 hover:from-blue-700 hover:to-green-700"
+                  className="w-full bg-gradient-to-r from-orange-600 to-green-600 hover:from-orange-700 hover:to-green-700"
                 >
                   Giriş Yap
                 </Button>
@@ -195,7 +195,7 @@ export default function ProfileSettings() {
       <div className="min-h-screen bg-gray-50">
         <Header onCreateListingClick={() => setIsCreateListingModalOpen(true)} />
         <div className="flex items-center justify-center min-h-[400px]">
-          <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+          <Loader2 className="w-8 h-8 animate-spin text-orange-600" />
           <span className="ml-2 text-gray-600">Ayarlar yükleniyor...</span>
         </div>
       </div>
@@ -208,14 +208,14 @@ export default function ProfileSettings() {
       
       <div className="max-w-2xl mx-auto p-6 space-y-6 pt-20">
       <div className="flex items-center gap-3 mb-6">
-        <Settings className="w-6 h-6 text-blue-600" />
+        <Settings className="w-6 h-6 text-orange-600" />
         <h1 className="text-2xl font-bold text-gray-900">Profil Ayarları</h1>
       </div>
 
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Bell className="w-5 h-5 text-blue-600" />
+            <Bell className="w-5 h-5 text-orange-600" />
             Bildirim Ayarları
           </CardTitle>
           <CardDescription>
@@ -228,7 +228,7 @@ export default function ProfileSettings() {
           <div className="flex items-center justify-between">
             <div className="space-y-1">
               <Label className="text-base font-medium flex items-center gap-2">
-                <Mail className="w-4 h-4 text-blue-600" />
+                <Mail className="w-4 h-4 text-orange-600" />
                 Email Bildirimleri
               </Label>
               <p className="text-sm text-gray-500">
@@ -279,7 +279,7 @@ export default function ProfileSettings() {
             <Button 
               onClick={saveSettings} 
               disabled={saving}
-              className="w-full bg-gradient-to-r from-blue-600 to-green-600 hover:from-blue-700 hover:to-green-700"
+              className="w-full bg-gradient-to-r from-orange-600 to-green-600 hover:from-orange-700 hover:to-green-700"
             >
               {saving ? (
                 <>
@@ -293,12 +293,12 @@ export default function ProfileSettings() {
           </div>
 
           {/* Bilgilendirme */}
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
             <div className="flex items-start gap-3">
-              <Bell className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
-              <div className="text-sm text-blue-800">
+              <Bell className="w-5 h-5 text-orange-600 mt-0.5 flex-shrink-0" />
+              <div className="text-sm text-orange-800">
                 <p className="font-medium mb-1">📧 Bildirim Tercihleri Hakkında</p>
-                <p className="text-blue-700">
+                <p className="text-orange-700">
                   • Email bildirimleri: Tüm bildirimleri email ile alın<br />
                   • SMS bildirimleri: Önemli bildirimleri SMS ile alın<br />
                   • Ayarlarınızı istediğiniz zaman değiştirebilirsiniz

@@ -36,7 +36,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { 
+import {
   Package, 
   Search, 
   MoreHorizontal, 
@@ -49,7 +49,9 @@ import {
   TrendingUp,
   AlertTriangle,
   Heart,
-  Ban
+  Ban,
+  Star,
+  StarOff,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import AdminLayout from '@/components/AdminLayout';
@@ -81,6 +83,7 @@ interface Listing {
   offerCount: number;
   viewCount?: number;
   favoriteCount?: number;
+  featured?: boolean;
 }
 
 export default function AdminListings() {
@@ -142,7 +145,8 @@ export default function AdminListings() {
           buyerEmail: listing.buyer_email || '',
           offerCount: listing.offer_count || 0,
           viewCount: listing.view_count || 0,
-          favoriteCount: listing.favorite_count || 0
+          favoriteCount: listing.favorite_count || 0,
+          featured: listing.featured === true || listing.is_featured === 1
         }));
         
         console.log('🔄 Transformed listings:', transformedListings.length, 'items');
@@ -269,6 +273,23 @@ export default function AdminListings() {
     }
   };
 
+  const handleFeaturedToggle = async (listing: Listing, featured: boolean) => {
+    try {
+      const response = await mysqlAPI.updateListingFeatured(listing.id, featured);
+      if (response.success) {
+        setListings(prev => prev.map(l => 
+          l.id === listing.id ? { ...l, featured } : l
+        ));
+        toast.success(`İlan ${featured ? 'vitrine eklendi' : 'vitrinden çıkarıldı'}`);
+      } else {
+        toast.error('İlan vitrin durumu güncellenirken hata oluştu');
+      }
+    } catch (error) {
+      console.error('Error toggling featured listing:', error);
+      toast.error('İlan vitrin durumu güncellenirken hata oluştu');
+    }
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'active':
@@ -276,7 +297,7 @@ export default function AdminListings() {
       case 'inactive':
         return 'bg-gray-100 text-gray-800 border-gray-300';
       case 'completed':
-        return 'bg-blue-100 text-blue-800 border-blue-300';
+        return 'bg-orange-100 text-orange-800 border-orange-300';
       case 'suspended':
         return 'bg-red-100 text-red-800 border-red-300';
       case 'closed':
@@ -462,7 +483,7 @@ export default function AdminListings() {
                   <p className="text-sm font-medium text-gray-600">Toplam İlan</p>
                   <p className="text-2xl font-bold">{listings.length}</p>
                 </div>
-                <Package className="h-8 w-8 text-blue-600" />
+                <Package className="h-8 w-8 text-orange-600" />
               </div>
             </CardContent>
           </Card>
@@ -514,11 +535,11 @@ export default function AdminListings() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-600">Bu Hafta</p>
-                  <p className="text-2xl font-bold text-blue-600">
+                  <p className="text-2xl font-bold text-orange-600">
                     {listings.filter(l => new Date(l.createdAt) > new Date(Date.now() - 1000 * 60 * 60 * 24 * 7)).length}
                   </p>
                 </div>
-                <TrendingUp className="h-8 w-8 text-blue-600" />
+                <TrendingUp className="h-8 w-8 text-orange-600" />
               </div>
             </CardContent>
           </Card>
@@ -574,6 +595,7 @@ export default function AdminListings() {
                   <TableHead>İlan</TableHead>
                   <TableHead>Kategori</TableHead>
                   <TableHead>Bütçe</TableHead>
+                  <TableHead>Vitrin</TableHead>
                   <TableHead>Durum</TableHead>
                   <TableHead>Onay Durumu</TableHead>
                   <TableHead>İlan Sahibi</TableHead>
@@ -640,6 +662,12 @@ export default function AdminListings() {
                     </TableCell>
                     
                     <TableCell>
+                      <Badge variant={listing.featured ? 'default' : 'secondary'} className={listing.featured ? 'bg-amber-100 text-amber-800 border-amber-200' : 'text-gray-700'}>
+                        {listing.featured ? 'Evet' : 'Hayır'}
+                      </Badge>
+                    </TableCell>
+                    
+                    <TableCell>
                       <Badge variant="outline" className={getStatusColor(listing.status)}>
                         {getStatusText(listing.status)}
                       </Badge>
@@ -670,7 +698,7 @@ export default function AdminListings() {
                       <div className="space-y-1">
                         <div className="flex items-center text-sm text-gray-600">
                           <TrendingUp className="h-3 w-3 mr-1" />
-                          <span className="font-medium text-blue-600">{listing.offerCount}</span> teklif
+                          <span className="font-medium text-orange-600">{listing.offerCount}</span> teklif
                         </div>
                         <div className="flex items-center text-sm text-gray-600">
                           <Eye className="h-3 w-3 mr-1" />
@@ -755,6 +783,17 @@ export default function AdminListings() {
                               Aktif Yap
                             </DropdownMenuItem>
                           ) : null}
+                          <DropdownMenuItem
+                            onClick={() => handleFeaturedToggle(listing, !listing.featured)}
+                            className={listing.featured ? 'text-yellow-600' : 'text-gray-700'}
+                          >
+                            {listing.featured ? (
+                              <Star className="mr-2 h-4 w-4" />
+                            ) : (
+                              <StarOff className="mr-2 h-4 w-4" />
+                            )}
+                            {listing.featured ? 'Vitrinden Çıkar' : 'Vitrine Ekle'}
+                          </DropdownMenuItem>
                           <DropdownMenuItem
                             onClick={() => {
                               setSelectedListing(listing);
@@ -905,7 +944,7 @@ export default function AdminListings() {
                   </div>
                   
                   {/* Budget */}
-                  <div className="bg-gradient-to-r from-green-50 to-blue-50 p-4 rounded-lg border border-green-200">
+                  <div className="bg-gradient-to-r from-green-50 to-orange-50 p-4 rounded-lg border border-green-200">
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="text-sm text-gray-600 mb-1">Bütçe</p>
@@ -916,8 +955,8 @@ export default function AdminListings() {
                       <div className="text-right">
                         <div className="flex items-center gap-4 text-sm text-gray-600">
                           <div className="flex items-center">
-                            <TrendingUp className="h-4 w-4 mr-1 text-blue-600" />
-                            <span className="font-medium text-blue-600">{previewListing.offerCount}</span> teklif
+                            <TrendingUp className="h-4 w-4 mr-1 text-orange-600" />
+                            <span className="font-medium text-orange-600">{previewListing.offerCount}</span> teklif
                           </div>
                           <div className="flex items-center">
                             <Eye className="h-4 w-4 mr-1 text-green-600" />

@@ -56,6 +56,7 @@ function normalizeGender(gender: string | null | undefined): string | null {
   if (normalized === 'erkek' || normalized === 'male') return 'male';
   if (normalized === 'kadın' || normalized === 'kadin' || normalized === 'female') return 'female';
   if (normalized === 'diğer' || normalized === 'diger' || normalized === 'other') return 'other';
+  if (normalized === 'belirtmek istemiyorum' || normalized === 'prefer_not_to_say' || normalized === 'prefer not to say') return 'prefer_not_to_say';
   return null;
 }
 
@@ -66,6 +67,7 @@ function denormalizeGender(gender: string | null | undefined): string {
   if (normalized === 'male') return 'Erkek';
   if (normalized === 'female') return 'Kadın';
   if (normalized === 'other') return 'Diğer';
+  if (normalized === 'prefer_not_to_say') return 'Belirtmek istemiyorum';
   return '';
 }
 
