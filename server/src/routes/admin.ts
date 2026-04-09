@@ -702,12 +702,12 @@ router.put('/listings/:listingId/featured', authenticateToken, adminOnly, async 
       return res.status(400).json({ success: false, message: 'Featured değeri boolean olmalıdır' });
     }
 
-    const result = await query(
+    const result: any = await query(
       'UPDATE listings SET is_featured = ? WHERE id = ?',
       [featured ? 1 : 0, listingId]
     );
 
-    if (result && result.affectedRows === 0) {
+    if ((result && result[0] && result[0].affectedRows === 0) || !result) {
       return res.status(404).json({ success: false, message: 'İlan bulunamadı' });
     }
 
