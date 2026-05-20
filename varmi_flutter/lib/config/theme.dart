@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 
 class AppColors {
   // Primary Colors
-  static const Color primary = Color(0xFF3B82F6); // Blue-600
-  static const Color primaryDark = Color(0xFF2563EB); // Blue-700
-  static const Color primaryLight = Color(0xFF60A5FA); // Blue-400
+  static const Color primary = Color(0xFFF97316); // Orange-500
+  static const Color primaryDark = Color(0xFFEA580C); // Orange-600
+  static const Color primaryLight = Color(0xFFFB923C); // Orange-400
   
   // Secondary Colors
   static const Color secondary = Color(0xFF9333EA); // Purple-600
@@ -18,7 +18,7 @@ class AppColors {
   static const Color success = Color(0xFF10B981); // Green-600
   static const Color warning = Color(0xFFF59E0B); // Amber-600
   static const Color error = Color(0xFFEF4444); // Red-600
-  static const Color info = Color(0xFF3B82F6); // Blue-600
+  static const Color info = Color(0xFFF97316); // Orange-500
   
   // Text Colors
   static const Color textPrimary = Color(0xFF111827); // Gray-900
@@ -36,13 +36,13 @@ class AppColors {
   
   // Gradient Colors
   static const LinearGradient primaryGradient = LinearGradient(
-    colors: [Color(0xFF9333EA), Color(0xFF3B82F6), Color(0xFF14B8A6)],
+    colors: [Color(0xFFEA580C), Color(0xFFF97316), Color(0xFFFB923C)],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
   
   static const LinearGradient secondaryGradient = LinearGradient(
-    colors: [Color(0xFF7C3AED), Color(0xFF2563EB)],
+    colors: [Color(0xFFEA580C), Color(0xFFF97316)],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );

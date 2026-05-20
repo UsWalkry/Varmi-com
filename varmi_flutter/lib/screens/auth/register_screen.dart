@@ -53,7 +53,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Hesabınız oluşturuldu! Hoş geldiniz 🎉'),
-          backgroundColor: Color(0xFF9333EA),
+          backgroundColor: Color(0xFFF97316),
         ),
       );
       Navigator.of(context).pushAndRemoveUntil(
@@ -76,10 +76,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
     final size = MediaQuery.of(context).size;
 
     return Scaffold(
-      backgroundColor: isDark ? const Color(0xFF0A0A14) : const Color(0xFFF0EDFF),
+      backgroundColor: isDark ? const Color(0xFF0D0A06) : const Color(0xFFFFF7ED),
       body: Stack(
         children: [
-          // Decorative blobs
+          // Decorative blobs - orange theme
           Positioned(
             top: -60,
             right: -40,
@@ -88,7 +88,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               height: 200,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: const Color(0xFF9333EA).withOpacity(0.12),
+                color: const Color(0xFFF97316).withOpacity(0.13),
               ),
             ),
           ),
@@ -100,7 +100,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               height: 160,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: const Color(0xFF3B82F6).withOpacity(0.10),
+                color: const Color(0xFFEA580C).withOpacity(0.09),
               ),
             ),
           ),
@@ -150,49 +150,48 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Icon badge
+                      // Turuncu marka aksanı - ikon yok
                       Container(
-                        width: 56,
-                        height: 56,
+                        width: 44,
+                        height: 5,
                         decoration: BoxDecoration(
                           gradient: const LinearGradient(
-                            colors: [Color(0xFF9333EA), Color(0xFF6366F1)],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
+                            colors: [Color(0xFFEA580C), Color(0xFFF97316)],
                           ),
-                          borderRadius: BorderRadius.circular(16),
-                          boxShadow: [
-                            BoxShadow(
-                              color: const Color(0xFF9333EA).withOpacity(0.4),
-                              blurRadius: 16,
-                              offset: const Offset(0, 6),
-                            ),
-                          ],
-                        ),
-                        child: const Icon(
-                          Icons.person_add_rounded,
-                          color: Colors.white,
-                          size: 28,
+                          borderRadius: BorderRadius.circular(3),
                         ),
                       ),
-                      const SizedBox(height: 14),
+                      const SizedBox(height: 20),
                       Text(
                         'Hesap Oluştur',
                         style: TextStyle(
-                          color: isDark ? Colors.white : const Color(0xFF1F1F2E),
-                          fontSize: 28,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: -0.5,
+                          color: isDark ? Colors.white : const Color(0xFF1A0A00),
+                          fontSize: 32,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: -1.0,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      ShaderMask(
+                        shaderCallback: (bounds) => const LinearGradient(
+                          colors: [Color(0xFFEA580C), Color(0xFFF97316)],
+                        ).createShader(bounds),
+                        child: const Text(
+                          'Al • Sat • Kazan',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: 1.5,
+                          ),
                         ),
                       ),
                       const SizedBox(height: 4),
                       Text(
                         'Birkaç adımda üyeliğini tamamla',
                         style: TextStyle(
-                          color: isDark
-                              ? Colors.grey.shade500
-                              : Colors.grey.shade500,
-                          fontSize: 14,
+                          color: Colors.grey.shade500,
+                          fontSize: 13,
                         ),
                       ),
                     ],
@@ -368,14 +367,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                         gradient: LinearGradient(
                                           colors: auth.isLoading
                                               ? [
-                                                  const Color(0xFF9333EA)
-                                                      .withOpacity(0.6),
-                                                  const Color(0xFF6366F1)
-                                                      .withOpacity(0.6),
+                                                  const Color(0xFFEA580C).withOpacity(0.6),
+                                                  const Color(0xFFF97316).withOpacity(0.6),
                                                 ]
                                               : const [
-                                                  Color(0xFF9333EA),
-                                                  Color(0xFF6366F1),
+                                                  Color(0xFFEA580C),
+                                                  Color(0xFFF97316),
                                                 ],
                                           begin: Alignment.centerLeft,
                                           end: Alignment.centerRight,
@@ -385,8 +382,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                             ? []
                                             : [
                                                 BoxShadow(
-                                                  color: const Color(0xFF9333EA)
-                                                      .withOpacity(0.4),
+                                                  color: const Color(0xFFF97316).withOpacity(0.4),
                                                   blurRadius: 20,
                                                   offset: const Offset(0, 8),
                                                 ),
@@ -447,7 +443,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                         TextSpan(
                                           text: 'Giriş Yap',
                                           style: TextStyle(
-                                            color: Color(0xFF9333EA),
+                                            color: Color(0xFFF97316),
                                             fontWeight: FontWeight.w700,
                                           ),
                                         ),
@@ -479,7 +475,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           height: 16,
           decoration: BoxDecoration(
             gradient: const LinearGradient(
-              colors: [Color(0xFF9333EA), Color(0xFF6366F1)],
+              colors: [Color(0xFFEA580C), Color(0xFFF97316)],
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
             ),
@@ -552,7 +548,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         ),
         prefixIcon: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 14),
-          child: Icon(icon, color: const Color(0xFF9333EA).withOpacity(0.65), size: 20),
+          child: Icon(icon, color: const Color(0xFFF97316).withOpacity(0.65), size: 20),
         ),
         prefixIconConstraints: const BoxConstraints(minWidth: 48),
         suffixIcon: suffixIcon != null
@@ -563,7 +559,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             : null,
         suffixIconConstraints: const BoxConstraints(minWidth: 40),
         filled: true,
-        fillColor: isDark ? const Color(0xFF1C1C2A) : const Color(0xFFF9F8FF),
+        fillColor: isDark ? const Color(0xFF1C0E04) : const Color(0xFFFFFBF5),
         contentPadding: const EdgeInsets.symmetric(horizontal: 0, vertical: 15),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
@@ -572,13 +568,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
           borderSide: BorderSide(
-            color: isDark ? const Color(0xFF2A2A3A) : const Color(0xFFEDE9FE),
+            color: isDark ? const Color(0xFF2A1A0A) : const Color(0xFFFFEDD5),
             width: 1.5,
           ),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: Color(0xFF9333EA), width: 1.8),
+          borderSide: const BorderSide(color: Color(0xFFF97316), width: 1.8),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),

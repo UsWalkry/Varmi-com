@@ -56,6 +56,13 @@ const dbConfig = {
     port: parseInt(process.env.DB_PORT || '3306'),
 };
 
+// Deep link redirect URL helper — email butonlarında uygulamayı açar, yoksa web'e gider
+function appRedirectUrl(type: 'listing' | 'order' | 'dashboard', id?: string | number): string {
+    const base = process.env.FRONTEND_URL || 'https://varmii.com';
+    if (type === 'dashboard') return `${base}/redirect?to=dashboard`;
+    return `${base}/redirect?to=${type}&id=${id}`;
+}
+
 // Generic sendEmail function
 export async function sendEmail(options: {
   to: string;
@@ -265,7 +272,7 @@ export async function sendListingCreatedNotification(userId: number, listingTitl
         }
 
         const user = users[0];
-        const listingUrl = (process.env.FRONTEND_URL || 'https://varmii.com') + '/listing/' + listingId;
+        const listingUrl = appRedirectUrl('listing', listingId);
 
         const mailOptions = {
             from: process.env.SMTP_FROM || process.env.EMAIL_FROM || process.env.SMTP_USER || 'noreply@varmii.com',
@@ -377,7 +384,7 @@ export async function sendOfferNotification(sellerId: number, buyerName: string,
         }
 
         const seller = users[0];
-        const listingUrl = (process.env.FRONTEND_URL || 'https://varmii.com') + '/listing/' + listingId;
+        const listingUrl = appRedirectUrl('listing', listingId);
 
         const mailOptions = {
             from: process.env.SMTP_FROM || process.env.EMAIL_FROM || process.env.SMTP_USER || 'noreply@varmii.com',
@@ -500,7 +507,7 @@ export async function sendPurchaseNotification(buyerId: number, sellerId: number
 
         const buyer = buyers[0];
         const seller = sellers[0];
-        const listingUrl = (process.env.FRONTEND_URL || 'https://varmii.com') + '/listing/' + listingId;
+        const listingUrl = appRedirectUrl('listing', listingId);
 
         // Send notification to buyer
         const buyerMailOptions = {
@@ -785,7 +792,7 @@ export async function sendOrderStatusChangeEmail(
                         ${trackingInfo}
                         
                         <div style="text-align: center; margin: 35px 0;">
-                            <a href="https://varmii.com/order/${orderNumber}" 
+                            <a href="${appRedirectUrl('order', orderNumber)}" 
                                style="background: linear-gradient(135deg, #007bff 0%, #0056b3 100%); 
                                       color: white; 
                                       padding: 15px 40px; 
@@ -1166,7 +1173,7 @@ export async function sendOfferApprovedNotification(
         }
 
         const seller = sellers[0];
-        const listingUrl = `${process.env.FRONTEND_URL || 'https://varmii.com'}/listing/${listingId}`;
+        const listingUrl = appRedirectUrl('listing', listingId);
 
         const mailOptions = {
             from: process.env.SMTP_FROM || process.env.EMAIL_FROM || process.env.SMTP_USER || 'noreply@varmii.com',

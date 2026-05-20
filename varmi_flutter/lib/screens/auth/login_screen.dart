@@ -67,9 +67,9 @@ class _LoginScreenState extends State<LoginScreen> {
                   decoration: InputDecoration(
                     hintText: 'E-posta adresi',
                     hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14),
-                    prefixIcon: const Icon(Icons.email_outlined, color: Color(0xFF9333EA), size: 20),
+                    prefixIcon: const Icon(Icons.email_outlined, color: Color(0xFFF97316), size: 20),
                     filled: true,
-                    fillColor: isDark ? const Color(0xFF1C1C2A) : const Color(0xFFF9F8FF),
+                    fillColor: isDark ? const Color(0xFF1C0E04) : const Color(0xFFFFFBF5),
                     contentPadding: const EdgeInsets.symmetric(horizontal: 0, vertical: 13),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
@@ -78,13 +78,13 @@ class _LoginScreenState extends State<LoginScreen> {
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide(
-                        color: isDark ? const Color(0xFF2A2A3A) : const Color(0xFFEDE9FE),
+                        color: isDark ? const Color(0xFF2A1A0A) : const Color(0xFFFFEDD5),
                         width: 1.5,
                       ),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: Color(0xFF9333EA), width: 1.8),
+                      borderSide: const BorderSide(color: Color(0xFFF97316), width: 1.8),
                     ),
                   ),
                 ),
@@ -109,18 +109,27 @@ class _LoginScreenState extends State<LoginScreen> {
                             headers: {'Content-Type': 'application/json'},
                             body: jsonEncode({'email': email}),
                           );
-                          if (!ctx.mounted) return;
+                          if (!mounted || !ctx.mounted) return;
                           Navigator.pop(ctx);
+                          if (!mounted) return;
+                          final isSuccess = response.statusCode >= 200 && response.statusCode < 300;
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Eğer e-posta kayıtlıysa sıfırlama bağlantısı gönderildi.'),
-                              backgroundColor: Color(0xFF9333EA),
-                              duration: Duration(seconds: 4),
+                            SnackBar(
+                              content: Text(
+                                isSuccess
+                                    ? 'E-posta kayıtlıysa sıfırlama bağlantısı gönderildi.'
+                                    : 'Bir hata oluştu, lütfen tekrar deneyin.',
+                              ),
+                              backgroundColor: isSuccess
+                                  ? const Color(0xFFF97316)
+                                  : const Color(0xFFEF4444),
+                              duration: const Duration(seconds: 4),
                             ),
                           );
                         } catch (_) {
-                          if (!ctx.mounted) return;
+                          if (!mounted || !ctx.mounted) return;
                           setDialogState(() => sending = false);
+                          if (!mounted) return;
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
                               content: Text('Bağlantı hatası, lütfen tekrar deneyin.'),
@@ -130,7 +139,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         }
                       },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF9333EA),
+                  backgroundColor: const Color(0xFFF97316),
                   foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                 ),
@@ -143,7 +152,8 @@ class _LoginScreenState extends State<LoginScreen> {
         },
       ),
     );
-    emailController.dispose();
+    // emailController lokal değişken - dialog kapatılırken animasyon frame'inde
+    // controller'a erişim hatası verir, dispose çağrısı kaldırıldı (GC tarafından temizlenir)
   }
 
   Future<void> _handleLogin() async {    if (!_formKey.currentState!.validate()) return;
@@ -177,10 +187,10 @@ class _LoginScreenState extends State<LoginScreen> {
 
     return Scaffold(
       backgroundColor:
-          isDark ? const Color(0xFF0A0A14) : const Color(0xFFF0EDFF),
+          isDark ? const Color(0xFF0D0A06) : const Color(0xFFFFF7ED),
       body: Stack(
         children: [
-          // Decorative blobs
+          // Decorative blobs - orange theme
           Positioned(
             top: -60,
             right: -40,
@@ -189,7 +199,7 @@ class _LoginScreenState extends State<LoginScreen> {
               height: 200,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: const Color(0xFF9333EA).withOpacity(0.12),
+                color: const Color(0xFFF97316).withOpacity(0.13),
               ),
             ),
           ),
@@ -201,7 +211,7 @@ class _LoginScreenState extends State<LoginScreen> {
               height: 160,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: const Color(0xFF3B82F6).withOpacity(0.10),
+                color: const Color(0xFFEA580C).withOpacity(0.09),
               ),
             ),
           ),
@@ -213,7 +223,7 @@ class _LoginScreenState extends State<LoginScreen> {
               height: 140,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: const Color(0xFF6366F1).withOpacity(0.08),
+                color: const Color(0xFFFB923C).withOpacity(0.07),
               ),
             ),
           ),
@@ -265,48 +275,50 @@ class _LoginScreenState extends State<LoginScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      // Turuncu marka aksanı - ikon yok
                       Container(
-                        width: 56,
-                        height: 56,
+                        width: 44,
+                        height: 5,
                         decoration: BoxDecoration(
                           gradient: const LinearGradient(
-                            colors: [Color(0xFF9333EA), Color(0xFF6366F1)],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
+                            colors: [Color(0xFFEA580C), Color(0xFFF97316)],
                           ),
-                          borderRadius: BorderRadius.circular(16),
-                          boxShadow: [
-                            BoxShadow(
-                              color: const Color(0xFF9333EA).withOpacity(0.4),
-                              blurRadius: 16,
-                              offset: const Offset(0, 6),
-                            ),
-                          ],
-                        ),
-                        child: const Icon(
-                          Icons.waving_hand_rounded,
-                          color: Colors.white,
-                          size: 28,
+                          borderRadius: BorderRadius.circular(3),
                         ),
                       ),
-                      const SizedBox(height: 14),
+                      const SizedBox(height: 20),
                       Text(
-                        'Hoş Geldin!',
+                        'Var mıı?',
                         style: TextStyle(
                           color: isDark
                               ? Colors.white
-                              : const Color(0xFF1F1F2E),
-                          fontSize: 28,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: -0.5,
+                              : const Color(0xFF1A0A00),
+                          fontSize: 32,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: -1.0,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      ShaderMask(
+                        shaderCallback: (bounds) => const LinearGradient(
+                          colors: [Color(0xFFEA580C), Color(0xFFF97316)],
+                        ).createShader(bounds),
+                        child: const Text(
+                          'Al • Sat • Kazan',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: 1.5,
+                          ),
                         ),
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        'Devam etmek için giriş yap',
+                        'Hesabınla devam et',
                         style: TextStyle(
                           color: Colors.grey.shade500,
-                          fontSize: 14,
+                          fontSize: 13,
                         ),
                       ),
                     ],
@@ -403,7 +415,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                   child: const Text(
                                     'Şifremi Unuttum?',
                                     style: TextStyle(
-                                      color: Color(0xFF9333EA),
+                                      color: Color(0xFFF97316),
                                       fontSize: 13,
                                       fontWeight: FontWeight.w600,
                                     ),
@@ -429,14 +441,14 @@ class _LoginScreenState extends State<LoginScreen> {
                                         gradient: LinearGradient(
                                           colors: auth.isLoading
                                               ? [
-                                                  const Color(0xFF9333EA)
+                                                  const Color(0xFFEA580C)
                                                       .withOpacity(0.6),
-                                                  const Color(0xFF6366F1)
+                                                  const Color(0xFFF97316)
                                                       .withOpacity(0.6),
                                                 ]
                                               : const [
-                                                  Color(0xFF9333EA),
-                                                  Color(0xFF6366F1),
+                                                  Color(0xFFEA580C),
+                                                  Color(0xFFF97316),
                                                 ],
                                           begin: Alignment.centerLeft,
                                           end: Alignment.centerRight,
@@ -448,7 +460,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                             : [
                                                 BoxShadow(
                                                   color: const Color(
-                                                          0xFF9333EA)
+                                                          0xFFF97316)
                                                       .withOpacity(0.4),
                                                   blurRadius: 20,
                                                   offset:
@@ -518,7 +530,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                         TextSpan(
                                           text: 'Kayıt Ol',
                                           style: TextStyle(
-                                            color: Color(0xFF9333EA),
+                                            color: Color(0xFFF97316),
                                             fontWeight: FontWeight.w700,
                                           ),
                                         ),
@@ -572,7 +584,7 @@ class _LoginScreenState extends State<LoginScreen> {
         prefixIcon: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 14),
           child: Icon(icon,
-              color: const Color(0xFF9333EA).withOpacity(0.65), size: 20),
+              color: const Color(0xFFF97316).withOpacity(0.65), size: 20),
         ),
         prefixIconConstraints: const BoxConstraints(minWidth: 48),
         suffixIcon: suffixIcon != null
@@ -584,7 +596,7 @@ class _LoginScreenState extends State<LoginScreen> {
         suffixIconConstraints: const BoxConstraints(minWidth: 40),
         filled: true,
         fillColor:
-            isDark ? const Color(0xFF1C1C2A) : const Color(0xFFF9F8FF),
+            isDark ? const Color(0xFF1C0E04) : const Color(0xFFFFFBF5),
         contentPadding:
             const EdgeInsets.symmetric(horizontal: 0, vertical: 15),
         border: OutlineInputBorder(
@@ -595,15 +607,15 @@ class _LoginScreenState extends State<LoginScreen> {
           borderRadius: BorderRadius.circular(14),
           borderSide: BorderSide(
             color: isDark
-                ? const Color(0xFF2A2A3A)
-                : const Color(0xFFEDE9FE),
+                ? const Color(0xFF2A1A0A)
+                : const Color(0xFFFFEDD5),
             width: 1.5,
           ),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
           borderSide:
-              const BorderSide(color: Color(0xFF9333EA), width: 1.8),
+              const BorderSide(color: Color(0xFFF97316), width: 1.8),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),

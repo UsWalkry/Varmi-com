@@ -38,6 +38,7 @@ dependencies:
   timeago: ^3.6.0
   uuid: ^4.3.3
   url_launcher: ^6.2.4
+  app_links: ^6.3.2
   
   # Notifications (Mobile only)
   firebase_core: ^2.24.2

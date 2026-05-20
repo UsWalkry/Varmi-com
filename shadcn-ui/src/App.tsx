@@ -24,11 +24,15 @@ import ResetPasswordPage from './pages/ResetPasswordPage';
 import TermsOfService from './pages/TermsOfService';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import CookiePolicy from './pages/CookiePolicy';
+import Kvkk from './pages/Kvkk';
+import MesafeliSatis from './pages/MesafeliSatis';
+import IadeIptal from './pages/IadeIptal';
 import Contact from './pages/Contact';
 import Help from './pages/Help';
 import HowItWorks from './pages/HowItWorks';
 import Commission from './pages/Commission';
 import Ibans from './pages/Ibans';
+import AppRedirect from './pages/AppRedirect';
 // Lazy load admin pages for better performance
 const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
 const AdminUsers = lazy(() => import('./pages/AdminUsers'));
@@ -39,6 +43,7 @@ const AdminOrderDetail = lazy(() => import('./pages/AdminOrderDetail'));
 const AdminCommission = lazy(() => import('./pages/AdminCommission'));
 const AdminSupport = lazy(() => import('./pages/AdminSupport'));
 const AdminSellerProfiles = lazy(() => import('./pages/AdminSellerProfiles'));
+const AdminVitrin = lazy(() => import('./pages/AdminVitrin'));
 import Notifications from './pages/Notifications';
 import AdminProtectedRoute from './components/AdminProtectedRoute';
 import AuthStateMonitor from './components/AuthStateMonitor';
@@ -95,12 +100,16 @@ const RoutesContent = () => {
       <Route path="/privacy" element={<PrivacyPolicy />} />
       <Route path="/cookie-policy" element={<CookiePolicy />} />
       <Route path="/cookies" element={<CookiePolicy />} />
+      <Route path="/kvkk" element={<Kvkk />} />
+      <Route path="/mesafeli-satis" element={<MesafeliSatis />} />
+      <Route path="/iade" element={<IadeIptal />} />
       <Route path="/contact" element={<Contact />} />
       <Route path="/help" element={<Help />} />
       <Route path="/how-it-works" element={<HowItWorks />} />
       <Route path="/notifications" element={<Notifications />} />
       <Route path="/commission" element={<Commission />} />
       <Route path="/profile/ibans" element={<Ibans />} />
+      <Route path="/redirect" element={<AppRedirect />} />
       
       {/* Admin Routes with lazy loading */}
       <Route path="/admin" element={
@@ -163,6 +172,13 @@ const RoutesContent = () => {
         <AdminProtectedRoute>
           <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div></div>}>
             <AdminSellerProfiles />
+          </Suspense>
+        </AdminProtectedRoute>
+      } />
+      <Route path="/admin/vitrin" element={
+        <AdminProtectedRoute>
+          <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div></div>}>
+            <AdminVitrin />
           </Suspense>
         </AdminProtectedRoute>
       } />
